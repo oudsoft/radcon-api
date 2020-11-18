@@ -1,0 +1,226 @@
+<!-- Tab links -->
+<div class="tab">
+  <button id="PACSTab" class="tablinks" onclick="openCity(event, 'PACSDiv')">Local File</button>
+  <button id="ReadWaitTab" class="tablinks" onclick="openCity(event, 'ReadWaitDiv')">เคสรออ่าน</button>
+  <button id="ReadSuccessTab" class="tablinks" onclick="openCity(event, 'ReadSuccessDiv')">เคสได้ผลอ่านแล้ว</button>
+  <button id="AllCasesTab" class="tablinks" onclick="openCity(event, 'AllCasesDiv')">เคสทั้งหมด</button>
+</div>
+
+<!-- Tab content -->
+<div id="PACSDiv" class="tabcontent">
+  <h3>Local File</h3>
+  <div id="PACSDiv-Content">
+  	<div id="Dicom-Filter"></div>
+  	<div id="Spacing">&nbsp;</div>
+  	<div id="Dicom-Result"></div>
+  </div>
+</div>
+<div id="ReadWaitDiv" class="tabcontent">
+  <h3>เคสรออ่าน</h3>
+  <div id="ReadWaitDiv-Content">
+  	<p>กำลังอ่านข้อมูล...</p>
+  </div>
+</div>
+
+<div id="ReadSuccessDiv" class="tabcontent">
+  <h3>เคสได้ผลอ่านแล้ว</h3>
+  <div id="ReadSuccessDiv-Content">
+  	<p>กำลังอ่านข้อมูล...</p>
+  </div>
+</div>
+
+<div id="AllCasesDiv" class="tabcontent">
+  <div id="AllCasesDiv-Control"></div>
+  <div id="AllCasesDiv-Content">
+  	<p>กำลังอ่านข้อมูล...</p>
+  </div>
+</div>
+
+<script>
+	function openCity(evt, cityName) {
+	  // Declare all variables
+	  var i, tabcontent, tablinks;
+
+	  // Get all elements with class="tabcontent" and hide them
+	  tabcontent = document.getElementsByClassName("tabcontent");
+	  for (i = 0; i < tabcontent.length; i++) {
+	    tabcontent[i].style.display = "none";
+	  }
+
+	  // Get all elements with class="tablinks" and remove the class "active"
+	  tablinks = document.getElementsByClassName("tablinks");
+	  for (i = 0; i < tablinks.length; i++) {
+	    tablinks[i].className = tablinks[i].className.replace(" active", "");
+	  }
+
+	  // Show the current tab, and add an "active" class to the button that opened the tab
+	  document.getElementById(cityName).style.display = "block";
+	  if (evt.currentTarget) {
+	  	evt.currentTarget.className += " active";
+	  }
+
+		let event = new CustomEvent(cityName, {"detail": {eventname: cityName}});
+		document.dispatchEvent(event);
+	}
+</script>
+
+<style>
+	/* Style the tab */
+
+	.tab {
+	  overflow: hidden;
+	  border: 1px solid #ccc;
+	  background-color: #f1f1f1;
+	  width: 100%;
+	}
+
+	/* Style the buttons that are used to open the tab content */
+	.tab button {
+	  background-color: inherit;
+	  float: left;
+	  border: none;
+	  outline: none;
+	  cursor: pointer;
+	  padding: 14px 16px;
+	  transition: 0.3s;
+	  font-family: THSarabunNew;
+	  font-size: 24px;
+	  font-weight: normal;
+	}
+
+	/* Change background color of buttons on hover */
+	.tab button:hover {
+	  background-color: #ddd;
+	}
+
+	/* Create an active/current tablink class */
+	.tab button.active {
+	  background-color: #ccc;
+	}
+
+	/* Style the tab content */
+	.tabcontent {
+	  display: none;
+	  padding: 6px 12px;
+	  border: 1px solid #ccc;
+	  border-top: none;
+ 	  width: 100%;
+	  font-size: 24px;
+	  font-family: THSarabunNew;
+	  font-weight: normal;
+	}
+
+	/* Tooltip */
+	.tooltip {
+	  position: relative;
+	  display: inline-block;
+	  border-bottom: 1px dotted black;
+	}
+
+	.tooltip .tooltiptext {
+	  visibility: hidden;
+	  width: 120px;
+	  background-color: #555;
+	  color: #fff;
+	  text-align: center;
+	  border-radius: 6px;
+	  padding: 5px 0;
+	  position: absolute;
+	  z-index: 1;
+	  bottom: 125%;
+	  left: 50%;
+	  margin-left: -60px;
+	  opacity: 0;
+	  transition: opacity 0.3s;
+	}
+
+	.tooltip .tooltiptext::after {
+	  content: "";
+	  position: absolute;
+	  top: 100%;
+	  left: 50%;
+	  margin-left: -5px;
+	  border-width: 5px;
+	  border-style: solid;
+	  border-color: #555 transparent transparent transparent;
+	}
+
+	.tooltip:hover .tooltiptext {
+	  visibility: visible;
+	  opacity: 1;
+	}
+
+	/* etc */
+	#Spacing {
+		min-height: 14px;
+	}
+	.study-desc {
+	  border-radius: 10px;
+	  border: 2px solid #73AD21;
+	  padding: 5px;
+	}
+	.protoname {
+		margin-top: 3px;
+	  border-radius: 10px;
+	  border: 2px solid #0066ff;
+	  padding: 5px;
+	}
+	.pacs-command {
+		width: 35px;
+		height: auto;
+		cursor: pointer;
+		padding: 4px;
+	}
+  .pacs-command-dd {
+		width: 45px;
+		height: auto;
+		cursor: pointer;
+		padding: 5px;
+	}
+  /* all table of case */
+  table { box-sizing: border-box; }
+  table, th, td { border: 1px solid /*rgb(60, 60, 60)*/gray;}
+  .case-row {
+    background-color: #fbfbfb;
+    box-shadow: 0px 5px 5px gray;
+    -moz-box-shadow: 0px 5px 5px gray, ;
+    -webkit-box-shadow: 0px 5px 5px gray;
+  }
+  .case-row:hover {
+    background-color: rgb(165, 182, 229);
+    box-shadow: 0px 2px 18px 0px rgba(0, 0, 0, 0.5);
+    /* cursor: pointer; */
+  }
+
+  .radcon-button {
+    border: none;
+    color: white;
+    padding: 1px 16px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 20px;
+    margin: 4px 2px;
+    transition-duration: 0.4s;
+    cursor: pointer;
+    max-height: 30px;
+  }
+
+  .button-bw {
+    background-color: green; /* Green */
+    color: white;
+  }
+
+  .button-bw:hover {
+    background-color: white;
+    color: black;
+    border: 2px solid #4CAF50;
+  }
+
+  #AllCasesDiv-Control {
+    width: 100%;
+    position: relative;
+    padding: 4px;
+    float: left;
+  }
+</style>

@@ -1,0 +1,311 @@
+<div id="myModal" class="modal">
+  <!-- Modal content -->
+  <div class="modal-content">
+	  <div class="modal-header">
+	    <span class="close">&times;</span>
+	    <h2 id="dialog-title">ส่งอ่านผล</h2>
+	  </div>
+    <div id="InputCaseBox">
+      <table id="MainTableForm" width="100%" cellpadding="5" cellspacing="0">
+        <tr>
+          <td width="25%" align="left" class="input-label">Patient Name</td>
+          <td width="25%" align="left"><input type="text" id="patient-name-en" size="20"/></td>
+          <td width="25%" align="left" class="input-label">ชื่อผู้ป่วย(ไทย)</td>
+          <td width="*" align="left"><input type="text" id="patient-name-th" size="20"/></td>
+        </tr>
+        <tr>
+          <td align="left">
+            <span class="input-label-span">HN</span>
+            <input type="text" id="hn" size="5"/>
+          </td>
+          <td align="left">
+            <span class="input-label-span">ACC</span>
+            <input type="text" id="acc" size="10"/>
+          </td>
+          <td align="left">
+            <span class="input-label-span">เพศ</span>
+            <select id="patient-sex"><option value="M">ชาย</option><option value="F">หญิง</option></select>
+          </td>
+          <td align="left">
+            <span class="input-label-span">อายุ</span>
+            <input type="text" id="patient-age" size="10"/>
+          </td>
+        </tr>
+        <tr>
+          <td align="left" class="input-label">สิทธิ์ผู้ป่วย</td>
+          <td align="left">
+            <select id="patient-rights">
+              <option value="0">เลือกสิทธิ์ผู้ป่วย</option>
+            </select>
+          </td>
+          <td align="left" class="input-label">ราคา</td>
+          <td align="left"><input type="number" id="price" size="10" value="0" /></td>
+        </tr>
+        <tr>
+          <td align="left" class="input-label">แพทย์เจ้าของไข้</td>
+          <td align="left">
+            <div id="dr-owner-select-div">
+              <select id="dr-owner-select">
+                <option value="-1">เลือกหมอ</option>
+              </select>&nbsp;&nbsp;
+            </div>
+            <div id="dr-owner-text-div">
+              <input type="text" id="dr-owner-text" size="20"/>
+            </div>
+          </td>
+          <td align="left" class="input-label">แผนก</td>
+          <td align="left"><input type="text" id="department" size="20"/></td>
+        </tr>
+        <tr>
+          <td align="left" class="input-label">Study Desc. / Protocol Name</td>
+          <td align="left"><input type="text" id="bodypart" size="20"/></td>
+          <td align="left" class="input-label">ประภทความเร่งด่วน</td>
+          <td align="left">
+            <select id="urgent-type">
+              <option value="0">เลือกประเภท</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td align="left" class="input-label">รูปประวัติ</td>
+          <td align="left" style="vertical-align: top">
+            <div id='ManageImageCmdDiv' style="width: 100%; text-align: left; padding: 5px; display: block;">
+              <!--
+              <button id="OpenScaner-Cmd" class="radcon-button button-bw">Scanner</button>
+              <button id="OpenScreenCapture-Cmd" class="radcon-button button-bw">Capture</button>
+              <button id="OpenFileDialog-Cmd" class="radcon-button button-bw">Attach File</button>
+              -->
+            </div>
+            <div id="magic-box"></div>
+          </td>
+          <td align="left" class="input-label">รายละเอียดเพิ่มเติม</td>
+          <td align="left"><textarea id="detail" cols="25" rows="5"></textarea></td>
+        </tr>
+        <tr>
+          <td align="left" class="input-label">รังสีแพทย์</td>
+          <td align="left" colspan="3">
+            <select id="dr-reader">
+              <option value="-1">เลือกหมอ</option>
+            </select>
+          </td>
+        </tr>
+      </table>
+      <input type="hidden" id="mdl"/>
+      <input type="hidden" id="studyID"/>
+      <input type="hidden" id="studyDesc"/>
+      <input type="hidden" id="protocalName"/>
+      <input type="hidden" id="manufacturer"/>
+      <input type="hidden" id="stationName"/>
+      <input type="hidden" id="caseID"/>
+      <input type="hidden" id="studyInstanceUID"/>
+    </div>
+    <div class="modal-footer">
+      <input type="Button" value=" ส่งอ่าน " id="SaveNewCase-Cmd"/>
+      <input type="Button" value=" ยกเลิก " onclick="doCloseNewCaseBox()"/>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Get the modal
+  var modal = document.getElementById("myModal");
+
+  // Get the <span> element that closes the modal
+  var span = document.getElementsByClassName("close")[0];
+
+  // When the user clicks on <span> (x), close the modal
+  span.onclick = function() {
+    modal.style.display = "none";
+  }
+
+  // When the user clicks anywhere outside of the modal, close it
+  window.onclick = function(event) {
+    if (event.target == modal) {
+      //modal.style.display = "none";
+    }
+  }
+
+  modal.style.display = "block";
+
+  var patientHistoryBox;
+
+  function doVerifyInputForm() {
+    let patientNameTH = $('#patient-name-th').val();
+    let patientNameEN = $('#patient-name-en').val();
+    let patientSex = $('#patient-sex').val();
+    let patientAge = $('#patient-age').val();
+    let patientRights = $('#patient-rights').val();
+    let price = $('#price').val();
+    let hn = $('#hn').val();
+    let acc = $('#acc').val();
+    let department = $('#department').val();
+    let drOwner = $('#dr-owner-select').val();
+    let bodyPart = $('#bodypart').val();
+    let drReader = $('#dr-reader').val();
+    let urgentType = $('#urgent-type').val();
+    let detail = $('#detail').val();
+
+    let patientHistory = patientHistoryBox.images();
+
+    let studyID = $('#studyID').val();
+    let mdl = $('#mdl').val();
+    let studyDesc = $('#studyDes').val();
+    let protocalName = $('#protocalName').val();
+    let manufacturer = $('#manufacturer').val();
+    let stationName = $('#stationName').val();
+    let studyInstanceUID = $('#studyInstanceUID').val();
+    //console.log(/^[a-zA-Z]\w{1,65}$/.test(patientNameEN));
+    resetFieldValidate();
+
+    if (!(/^[a-zA-Z]\w{1,65}$/.test(patientNameEN))) {
+      $('#patient-name-en').css("border","4px solid red");
+      $("#patient-name-en").notify("ชื่อผู้ป่วยภาษาอังกฤษ ต้องไม่มีอักษรภาษาไทย หรือ ช่องว่าง", "error");
+      $('#patient-name-en').focus();
+      return false;
+    } else if (patientRights === '0') {
+      $('#patient-rights').css("border","4px solid red");
+      $("#patient-rights").notify("โปรดเลือกสิทธิ์ผู้ป่วย", "error");
+      $('#patient-rights').focus();
+      return false;
+    } else if (!(Number(price) >= 0 )) {
+      $('#price').css("border","4px solid red");
+      $("#price").notify("โปรดระบุราครเป็นตัวเลข", "error");
+      $('#price').focus();
+      return false;
+    } else if (urgentType === '0') {
+      $('#urgent-type').css("border","4px solid red");
+      $("#urgent-type").notify("โปรดเลือกความเร่งด่วน", "error");
+      $('#urgent-type').focus();
+      return false;
+    } else if (drOwner === '-1') {
+      $('#dr-owner-select').css("border","4px solid red");
+      $("#dr-owner-select").notify("โปรดเลือกแพทย์เจ้าของไข้", "error");
+      $('#dr-owner-select').focus();
+      return false;
+    } else if (drReader === '-1') {
+      $('#dr-reader').css("border","4px solid red");
+      $("#dr-reader").notify("โปรดเลือกรังสีแพทย์", "error");
+      $('#dr-reader').focus();
+      return false;
+    } else {
+      let newCase = {patientNameTH, patientNameEN, patientHistory, studyID, patientSex, patientAge, patientRights, price, hn, acc, department, drOwner, bodyPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID};
+      //console.log(newCase);
+      return newCase;
+    }
+  }
+
+  function resetFieldValidate() {
+    $('#patient-name-en').css("border","");
+    $('#patient-rights').css("border","");
+    $('#price').css("border","");
+    $('#dr-owner-select').css("border","");
+    $('#dr-reader').css("border","");
+    $('#urgent-type').css("border","");
+  }
+
+  function doCloseNewCaseBox() {
+    modal.style.display = "none";
+  }
+
+  function doCloseSubModal(){
+    var subModal = document.getElementById("sub-dialog");
+    subModal.style.display = "none";
+    modal.style.display = "block";
+  }
+</script>
+
+<style>
+  /* The Modal (background) */
+  .modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+  }
+
+  /* Modal Content/Box */
+  .modal-content {
+    background-color: #fefefe;
+    margin: 1% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+    font-family: THSarabunNew;
+    font-size: 24px;
+    font-weight: normal;
+  }
+
+  /* The Close Button */
+  .close {
+    color: #aaabbb;
+    float: right;
+    font-size: 24px;
+    font-weight:bold;
+  }
+
+  .close:hover,
+  .close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .modal-header {
+    padding: 2px 2px;
+    background-color: green;
+    color: white;
+    height: 70px;
+  }
+
+  .modal-footer {
+    padding: 2px 2px;
+    background-color: green;
+    color: white;
+    text-align: center;
+    vertical-align: middle;;
+    height: 60px;
+  }
+
+  table#MainTableForm, th, td {
+    border: 1px solid black;
+  }
+  tr {background-color: white;}
+
+  .input-label {
+    background-color: #5cb85c;
+  }
+
+  .input-label-span {
+    background-color: #5cb85c;
+    padding: 3px;
+    border: 1px solid black;
+  }
+
+  img.scanned {
+    padding: 5px;
+    height: 200px; /** Sets the display size */
+    margin-right: 12px;
+  }
+
+  .remove {
+    width: 100%;
+    top: 0;
+    right: 0;
+    font-size: 30px;
+    cursor: pointer;
+  }
+
+  .remove:after{
+    display: inline-block;
+    content: "\00d7"; /* This will render the 'X' */
+  }
+
+  #dr-owner-select-div{display: block;}
+  #dr-owner-text-div{display: none;}
+</style>

@@ -1,0 +1,87 @@
+<!-- Include one of jTable styles. -->
+<link href="../../../lib/jtable/themes/metro/blue/jtable.min.css" rel="stylesheet" type="text/css" />
+
+<!-- Include jTable script file. -->
+<script src="../../../lib/jtable/jquery.jtable.min.js" type="text/javascript"></script>
+
+<div id="CaseStatusTableContainer"></div>
+
+<div id="ControlCmd">
+  <input type="button" id="BackCmd" value=" Back "/>
+</div>
+
+<script type="text/javascript">
+  $.ajaxSetup({
+    beforeSend: function(xhr) {
+      xhr.setRequestHeader('Authorization', localStorage.getItem('token'));
+    }
+  });
+
+  $(document).ready(function () {
+    //http://www.jtable.org/
+    doGetApi('/api/generalstatus/options').then((result) =>{
+      $('#CaseStatusTableContainer').jtable({
+        title: 'Table of Case-Status for Control Case',
+        paging: true,
+        pageSize: 10,
+        sorting: true,
+        defaultSorting: 'id ASC',
+        actions: {
+          listAction: '/api/casestatus/list',
+          createAction: '/api/casestatus/add',
+          updateAction: '/api/casestatus/update',
+          deleteAction: '/api/casestatus/delete'
+        },
+        recordsLoaded: (event, data) => {
+          console.log(data);
+        },
+
+        fields: {
+          id: {
+            key: true,
+            list: false
+          },
+          CS_Name_EN: {
+            title: 'Name(EN)',
+            width: '20%'
+          },
+          CS_Name_TH: {
+            title: 'Name(TH)',
+            width: '30%'
+          },
+          CS_DESC: {
+            title: 'Description',
+            type: 'textarea',
+            visibility: 'hidden',
+            width: '30%'
+          },
+          generalstatusId: {
+            title: 'Status',
+            width: '10%',
+            //options: '/api/generalstatus/options'
+            options: result.Options
+          }
+        }
+      });
+
+      $('#CaseStatusTableContainer').jtable('load');
+    });
+
+    $("#BackCmd").click(()=>{
+      let url = '/staff.html';
+      window.location.replace(url);
+    });
+  });
+
+  function doGetApi(url) {
+    return new Promise(function(resolve, reject) {
+      $.get({url}, {test: 'test foo'}, function(response){
+        resolve(response);
+  		}).catch((err) => {
+  			console.log(JSON.stringify(err));
+        reject(err);
+  		})
+    });
+  }
+
+</script>

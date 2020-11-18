@@ -1,0 +1,82 @@
+<div id="trigger-form-div" style="display: none;">
+  <form id="trigger-form" method="post" enctype="multipart/form-data">
+    <input type="hidden" id="dcmname"/>
+    <input type="submit" value=" OK ">
+  </form>
+</div>
+<div id="your-command-div" style="margin-top: 20px;">
+  <input type="text" id="your-command" size="70"/>
+  <input type="button" value=" Copy " onclick="doCopyToClipboard()"/>
+</div>
+<div id="download-dicom-command-div" style="margin-top: 15px;">
+  <input type="button" value=" Download " onclick="doDownloadDicom()"/>
+</div>
+<div id="howtodo-div">
+  <p>Please <b>copy</b> this command and <b>past</b> to your <b>terminal command prompt</b> for import new dicom file to ypor local modalities.</p>
+  <p>Type <b>cmd</b> on your search bar for open your terminal command prompt.</p>
+  <p>Or you can download new dicom file by click on <b>Download</b> button</p>
+</div>
+<div id="close-window-command-div" style="text-align: center; margin-top: 20px;">
+  <input type="button" value=" Close " onclick="doCloseWindow()"/>
+</div>
+
+<script src="../lib/jquery.js"></script>
+<script>
+  function urlQueryToObject(url) {
+  	let result = url.split(/[?&]/).slice(1).map(function(paramPair) {
+  				return paramPair.split(/=(.+)?/).slice(0, 2);
+  		}).reduce(function (obj, pairArray) {
+  				obj[pairArray[0]] = pairArray[1];
+  				return obj;
+  		}, {});
+  	return result;
+  }
+  /*
+  function doSetCookieForOrthanc(Username, Password) {
+    var myDate = new Date();
+    myDate.setMonth(myDate.getMonth() + 12);
+    document.cookie = 'Username' + "=" + Username + ";expires=" + myDate + ";domain=localhost:8042;path=/";
+  }
+  */
+  let urlParams = urlQueryToObject(window.location.search);
+  let dcmnameParam = urlParams.dcmname;
+  console.log(dcmnameParam);
+  let userParam = urlParams.user;
+  console.log(userParam);
+  //doSetCookieForOrthanc(userParam, 'demo');
+  let data = "doLocalStore('" + dcmnameParam + "')";
+  let dcmnameForm = document.getElementById('dcmname');
+  dcmnameForm.setAttribute("value", data);
+  let triggerForm = document.getElementById('trigger-form');
+  let triggerUrl = 'http://localhost:8042/tools/execute-script' + '?user=' + userParam;
+  //triggerForm.append(new Blob([data], {type:"application/octet-stream"}));
+  triggerForm.append(new Blob([data], {type:"plain/text"}));
+  //triggerForm.append(data);
+  triggerForm.setAttribute("action", triggerUrl);
+
+  setTimeout(() => {
+    //triggerForm.submit();
+  }, 2500);
+
+
+    let yourcommand = 'curl -X POST http://localhost:8042/tools/execute-script -d "doLocalStore(\'' + dcmnameParam + '\')"';
+    $('#your-command').val(yourcommand);
+
+    function doCopyToClipboard() {
+      $('#your-command').select();
+      document.execCommand("copy");
+    }
+
+    function doDownloadDicom() {
+      let dwnLink = "../img/usr/pdf/" + dcmnameParam;
+      console.log(dwnLink);
+      let pom = document.createElement('a');
+			pom.setAttribute('href', dwnLink);
+			pom.setAttribute('download', dcmnameParam);
+			pom.click();
+    }
+
+    function doCloseWindow() {
+      window.close();
+    }
+</script>

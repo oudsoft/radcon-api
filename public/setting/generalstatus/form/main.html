@@ -1,0 +1,58 @@
+<!-- Include one of jTable styles. -->
+<link href="../../../lib/jtable/themes/metro/blue/jtable.min.css" rel="stylesheet" type="text/css" />
+
+<!-- Include jTable script file. -->
+<script src="../../../lib/jtable/jquery.jtable.min.js" type="text/javascript"></script>
+
+<div id="GeneralStatusTableContainer"></div>
+
+<div id="ControlCmd">
+  <input type="button" id="BackCmd" value=" Back "/>
+</div>
+
+<script type="text/javascript">
+  $.ajaxSetup({
+    beforeSend: function(xhr) {
+      xhr.setRequestHeader('Authorization', localStorage.getItem('token'));
+    }
+  });
+
+  $(document).ready(function () {
+    //http://www.jtable.org/
+    $('#GeneralStatusTableContainer').jtable({
+      title: 'Table of General Status',
+      paging: true,
+      pageSize: 10,
+      sorting: true,
+      defaultSorting: 'id ASC',
+      actions: {
+        listAction: '/api/generalstatus/list',
+        createAction: '/api/generalstatus/add',
+        updateAction: '/api/generalstatus/update',
+        deleteAction: '/api/generalstatus/delete'
+      },
+      fields: {
+        id: {
+          key: true,
+          list: false
+        },
+        GS_Name: {
+          title: 'Name',
+          width: '30%'
+        },
+        GS_Remark: {
+          title: 'Remark',
+          type: 'textarea',
+          width: '*'
+        }
+      }
+    });
+
+    $('#GeneralStatusTableContainer').jtable('load');
+
+    $("#BackCmd").click(()=>{
+      let url = '/staff.html';
+      window.location.replace(url);
+    });
+  });
+</script>

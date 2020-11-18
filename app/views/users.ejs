@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+    <title><%= title %></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  	<script type="text/javascript" src="/lib/jquery.js"></script>
+  	<script type="text/javascript" src="/lib/jquery-ui.min.js"></script>
+  	<script type="text/javascript" src="/lib/jquery.loading.min.js"></script>
+    <script type="text/javascript" src="/lib/notify.min.js"></script>
+    <link rel='stylesheet' href='/lib/jquery-ui.min.css' />
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+  </head>
+  <body>
+    <div id="radconnext-howto-div">
+    	<img src="images/multy-user.png" />
+    </div>
+    <div id="HospitalSelector">
+      <select id="hospital"></select>
+    </div>
+    <div id="UserRegisterAccount">
+      <label>Username :</label>
+      <input type="text" id="username" size="30"/>
+      <label>Password :</label>
+      <input type="text" id="password1" size="30"/>
+      <label>Retry-Password :</label>
+      <input type="text" id="password2" size="30"/>
+      <input type=button" id="RegisterAccountCmd" value="Verify Username"/>
+    </div>
+
+  </body>
+</html>
+
+<script type="text/javascript">
+  function doGetApi(url) {
+    return new Promise(function(resolve, reject) {
+      $.get({url}, {test: 'test foo'}, function(response){
+        resolve(response);
+      }).catch((err) => {
+        console.log(JSON.stringify(err));
+        reject(err);
+      })
+    });
+  }
+
+  $(document).ready(function () {
+    doGetApi('/api/hospital/options').then((result) => {
+      result.Options.forEach((item, i) => {
+        $("#hospital").append("<option value='" + item.Value + "'>" + item.DisplayText + "</option>");
+      });
+    });
+  });
+</script>

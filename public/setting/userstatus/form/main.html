@@ -1,0 +1,58 @@
+<!-- Include one of jTable styles. -->
+<link href="../../../lib/jtable/themes/metro/blue/jtable.min.css" rel="stylesheet" type="text/css" />
+
+<!-- Include jTable script file. -->
+<script src="../../../lib/jtable/jquery.jtable.min.js" type="text/javascript"></script>
+
+<div id="UserStatusTableContainer"></div>
+
+<div id="ControlCmd">
+  <input type="button" id="BackCmd" value=" Back "/>
+</div>
+
+<script type="text/javascript">
+  $.ajaxSetup({
+    beforeSend: function(xhr) {
+      xhr.setRequestHeader('Authorization', localStorage.getItem('token'));
+    }
+  });
+
+  $(document).ready(function () {
+    //http://www.jtable.org/
+    $('#UserStatusTableContainer').jtable({
+      title: 'Table of User Status',
+      paging: true,
+      pageSize: 10,
+      sorting: true,
+      defaultSorting: 'id ASC',
+      actions: {
+        listAction: '/api/userstatuses/list',
+        createAction: '/api/userstatuses/add',
+        updateAction: '/api/userstatuses/update',
+        deleteAction: '/api/userstatuses/delete'
+      },
+      fields: {
+        id: {
+          key: true,
+          list: false
+        },
+        UserStatus_Name: {
+          title: 'Name',
+          width: '30%'
+        },
+        UserStatus_DESC: {
+          title: 'Description',
+          type: 'textarea',
+          width: '*'
+        }
+      }
+    });
+
+    $('#UserStatusTableContainer').jtable('load');
+
+    $("#BackCmd").click(()=>{
+      let url = '/staff.html';
+      window.location.replace(url);
+    });
+  });
+</script>

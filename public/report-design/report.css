@@ -1,0 +1,106 @@
+@font-face { font-family: THSarabunNew; src: url("../font/THSarabunNew.ttf");}
+@font-face { font-family: THSarabunNewBold; src: url("../font/THSarabunNew Bold.ttf");}
+
+
+/* Style the top navigation bar */
+.topnav {
+  overflow: hidden;
+  background-color: #333;
+}
+
+/* Style the topnav links */
+.topnav a {
+  float: left;
+  display: block;
+  color: #f2f2f2;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  font-size: 24px;
+  font-family: THSarabunNew;
+  font-weight: normal;
+}
+
+/* Change color on hover */
+.topnav a:hover {
+  background-color: #ddd;
+  color: black;
+}
+
+/* Clear floats after the columns */
+.row {
+  width: 100%;
+}
+
+.row:after {
+  /*
+  content: "";
+  display: table;
+  clear: both;
+  */
+}
+
+/* Create three unequal columns that floats next to each other */
+.column {
+  float: left;
+  padding: 4px;
+  font-family: THSarabunNew;
+  font-size: 24px;
+  font-weight: normal;
+}
+
+/* Left and right column */
+.column.side {
+  width: 18%;
+}
+
+/* Middle column */
+.column.middle {
+  width: 1004px;
+  max-width: 1004px;
+  height: 1410px;
+  max-height: 1410px;
+}
+
+#report-item {
+  background-color: gray;
+  border: 2px solid yellow;
+  height: 100vh;
+  padding: 2px;
+  height: 1410px;
+  max-height: 1410px;  
+}
+
+#report-container {
+  position: relative;
+  border: 2px solid red;
+  height: 1410px;
+  max-height: 1410px;
+}
+
+#report-property {
+  background-color: rgba(17, 99, 71, 0.7);
+  border: 2px solid blue;
+  /* height: 100vh; */
+  min-height: 110px;
+  margin-top: 20px;
+  padding: 2px;
+}
+
+#selectable .ui-selecting { background: #FECA40; }
+#selectable .ui-selected { background: #F39814; color: white; }
+#selectable { list-style-type: none; margin: 0; padding: 0; width: 96%; }
+#selectable li { margin: 2px; padding: 0.2em; font-size: 1.0em; height: 23px; text-align: center;}
+
+.reportElement {position: absolute; padding: 0px; overflow: visible; font-family: THSarabunNew;}
+.textElement {border: 2px solid yellow;}
+.hrElement {border: 2px solid yellow;}
+.imageElement {border: 2px solid yellow;}
+
+.elementActive {border: 2px dashed red;}
+.cmd {cursor: pointer;}
+input[type="button"] {
+  font-size: 22px;
+  font-family: THSarabunNew;
+  font-weight: normal;
+}

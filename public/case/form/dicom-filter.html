@@ -1,0 +1,81 @@
+<div>
+	<table width="100%" cellspacing="0" cellpadding="10">
+		<tr style="background-color: gray;">
+			<td width="5%" align="left"><b>Modality</b></td>
+			<td width="20%" align="left">
+				<b>Filter By</b>
+				<select id="Filter-Key-1" onchange="filterKeyChange(this)">
+					<option value="ALL">ALL</option>
+					<option value="PatientID">Patient ID</option>
+					<option value="PatientName">Patient Name</option>
+					<option value="PatientSax">Patient Sex</option>
+					<option value="AccessionNumber">Accession Number</option>
+					<option value="StudyDescription">Study Description</option>
+				</select>
+			</td>
+			<td width="20%" align="left"><b>Study date</b></td>
+			<td width="20%" align="left"><b>Limit</b></td>
+			<td width="*" align="left">&nbsp;</td>
+		</tr>
+		<tr>
+			<td align="left">
+				<select id="modality">
+					<option value="ALL">ALL</option>
+					<option value="CT">CT</option>
+					<option value="CR">CR</option>
+					<option value="MR">MR</option>
+					<option value="XA">XA</option>
+					<option value="DR">DR</option>
+				</select>
+			</td>
+			<td align="left">
+				<input type="text" id="Filter-Value-1" size="30" value="*">
+			</td>
+			<td align="left">
+				<select id="studydate">
+					<option value="ALL">Any Date</option>
+					<option value="TODAY">Today</option>
+					<option value="YESTERDAY">Yesterday</option>
+					<option value="WEEK">Last 7 days</option>
+					<option value="MONTH">Last 31 days</option>
+					<option value="3MONTH">Last 3 months</option>
+					<option value="YEAR">Last year</option>
+				</select>
+			</td>
+			<td align="left">
+				<select id="limit">
+					<option value="ALL">ALL</option>
+					<option value="5">5</option>
+					<option value="10">10</option>
+					<option value="20">20</option>
+					<option value="30">30</option>
+					<option value="50">50</option>
+					<option value="100">100</option>
+				</select>
+			</td>
+			<td align="left">
+				<input type="button" id="search-cmd" value="Search">
+			</td>
+		</tr>
+	</table>
+</div>
+
+<script>
+
+	function filterKeyChange(filter) {
+		console.log(filter);
+		/*
+		var key1 = document.getElementById("Filter-Key-1");
+		console.log(key1);
+		*/
+		var val1 = document.getElementById("Filter-Value-1");
+		val1.value = '*';
+	}
+
+</script>
+
+<style>
+	table, td {
+	  border: 2px solid black;
+	}
+</style>

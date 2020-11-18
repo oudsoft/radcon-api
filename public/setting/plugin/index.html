@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <link href="icon.png" rel="shortcut icon" type="image/x-icon"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rad Connext Plugin</title>
+    <link rel="stylesheet" href="../../lib/jquery-ui.min.css"/>
+    <link rel="stylesheet" href="../../lib/tui-image-editor.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../lib/tui-color-picker.css" type="text/css" />
+    <link rel="stylesheet" href="plugin.css"/>
+    <script type="text/javascript" src="../../lib/jquery.js"></script>
+    <script type="text/javascript" src="../../lib/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="jquery-patient-history-image-plugin.js"></script>
+  </head>
+  <body>
+    <div id="main">
+      <div>
+        <div id="Contaner"></div>
+      </div>
+      <div>
+        <button type="button" id="result-button">Get Image</button>
+      </div>
+    </div>
+    <div id="result"></div>
+  </body>
+</html>
+<style>
+
+</style>
+<script type="text/javascript">
+  let phProp = {
+    attachFileUploadApiUrl: '/api/uploadpatienthistory',
+    scannerUploadApiUrl: '/api/scannerupload',
+    captureUploadApiUrl: '/api/captureupload',
+  };
+  var patientHistoryBox = $("<div></div>").appendTo($("#Contaner")).imagehistory( phProp ).data("custom-imagehistory");
+
+  $('#result-button').click(()=> {
+    let imagesResult = patientHistoryBox.images();
+    console.log(imagesResult);
+    $('#result').empty();
+    $('#result').append("<p>" + JSON.stringify(imagesResult) + "</p>")
+  })
+</script>

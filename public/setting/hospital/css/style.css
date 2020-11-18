@@ -1,0 +1,21 @@
+@font-face { font-family: THSarabunNew; src: url("../../../font/THSarabunNew.ttf");}
+@font-face { font-family: THSarabunNewBold; src: url("../../../font/THSarabunNew Bold.ttf");}
+
+#UserFilter {
+  font-family: THSarabunNew;
+  font-size: 24px;
+  display: none;
+}
+
+#CliameRightsTableContainer {
+  font-family: THSarabunNew;
+  font-size: 24px;
+}
+#ControlCmd{
+  position: relative;
+  padding: 4px;
+  margin-top: 8px;
+  text-align: center;
+  font-family: THSarabunNew;
+  font-size: 24px;
+}

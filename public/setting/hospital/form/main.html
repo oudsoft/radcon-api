@@ -1,0 +1,670 @@
+<!-- Include one of jTable styles. -->
+<link href="../../../lib/jtable/themes/metro/blue/jtable.min.css" rel="stylesheet" type="text/css" />
+
+<!-- Include jTable script file. -->
+<script src="../../../lib/jtable/jquery.jtable.min.js" type="text/javascript"></script>
+
+<div id="UserFilter">
+  <div >
+    <label>Filter By Type</label>
+    <select id="UserType"></select>
+  </div>
+  <div>
+    <input type="button" id="AddUserCmd" value=" Add "/>
+  </div>
+</div>
+
+<div id="HospitalTableContainer"></div>
+
+<div id="ControlCmd">
+  <input type="button" id="BackCmd" value=" Back "/>
+</div>
+
+<script type="text/javascript">
+  $.ajaxSetup({
+    beforeSend: function(xhr) {
+      xhr.setRequestHeader('Authorization', localStorage.getItem('token'));
+    }
+  });
+
+  $(document).ready(function () {
+    //http://www.jtable.org/
+    $('#HospitalTableContainer').jtable({
+      title: 'Table of Hospital',
+      paging: true,
+      pageSize: 10,
+      sorting: true,
+      defaultSorting: 'id ASC',
+      openChildAsAccordion: true,
+      actions: {
+        listAction: '/api/hospital/list',
+        createAction: '/api/hospital/add',
+        updateAction: '/api/hospital/update',
+        deleteAction: '/api/hospital/delete'
+      },
+      fields: {
+        id: {
+          key: true,
+          list: false
+        },
+        User: userInterface,
+        Urgent: urgentInterface,
+        Orthanc: orthancInterface,
+        Patient: patientInterface,
+        Radiologist: radiologistInterface,
+        ReportFormat: reportformatInterface,
+        WorkingHour: workinghourInterface,
+        WorkingSchedule: workingschecduleInterface,
+        Hos_Name: {
+          title: 'Name',
+          width: '15%'
+        },
+        Hos_Address: {
+          title: 'Address',
+          width: '30%'
+        },
+        Hos_Tel: {
+          title: 'Tel',
+          width: '5%'
+        },
+        Hos_WebUrl: {
+          title: 'Web Url',
+          width: '10%',
+          visibility: 'hidden'
+        },
+        Hos_Contact: {
+          title: 'Contact',
+          width: '10%',
+        },
+        Hos_Remark: {
+          title: 'Remark',
+          type: 'textarea',
+          width: '*',
+          visibility: 'hidden'
+        }
+      }
+    });
+
+    $('#HospitalTableContainer').jtable('load');
+
+    $('#UserType').on('change', (e) => {
+      e.preventDefault();
+      let hospitalId = hosData.record.id;
+      $('#HospitalTableContainer').jtable('load', { hospitalId: hospitalId });
+    });
+
+    $("#BackCmd").click(()=>{
+      let url = '/staff.html';
+      window.location.replace(url);
+    });
+
+    $("#AddUserCmd").click(()=>{
+      let url = '/setting/hospital/users.html';
+      window.location.replace(url);
+    });
+  });
+
+
+  //testPostApi('/api/usertypes/options');
+  let usertypeOption, userStatusOption, hosData;
+  testGetApi('/api/usertypes/options').then((result) =>{
+    usertypeOption = result.Options;
+    $("#UserType").empty();
+    $("#UserType").append("<option value='0'>All</option>");
+    usertypeOption.forEach((item, i) => {
+      $("#UserType").append("<option value='" + item.Value + "'>" + item.DisplayText + "</option>");
+    });
+  });
+  testGetApi('/api/userstatuses/options').then((result) =>{
+    userStatusOption = result.Options;
+  });
+
+  const userInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (hospitalData) {
+      hosData = hospitalData;
+      //Create an image that will be used to open child table
+      var $img = $('<img src="../../../images/multy-user.png" title="Edit Users of Hospital" width="30" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+
+      //Open child table when user clicks the image
+      $img.click(function () {
+        $('#UserFilter').show();
+        let usertypeId = $('#UserType').val();
+        $('#HospitalTableContainer').jtable('openChildTable', $img.closest('tr'), {
+          title: 'Users โรงพยาบาล' + hospitalData.record.Hos_Name,
+          paging: true,
+          pageSize: 10,
+          actions: {
+            listAction: '/api/user/list?hospitalId=' + hospitalData.record.id + '&usertypeId=' + usertypeId,
+            /* createAction: '/api/user/add', */
+            /* updateAction: '/api/user/update', */
+            deleteAction: '/api/user/delete',
+            /*
+            deleteAction: function (postData) {
+              console.log("deleting from custom function...");
+              console.log(JSON.stringify(postData));
+              return $.Deferred(function ($dfd) {
+                $.ajax({
+                  url: '/api/user/delete',
+                  type: 'POST',
+                  dataType: 'json',
+                  data: postData,
+                  success: function (data) {
+                    $dfd.resolve(data);
+                  },
+                  error: function () {
+                    $dfd.reject();
+                  }
+                });
+              });
+            }
+            */
+          },
+          /*
+          deleteConfirmation: function(data) {
+            console.log(data);
+          },
+          */
+          recordsLoaded: (event, data) => {
+            console.log(data);
+          },
+
+          fields: {
+            hospitalId: {
+              type: 'hidden',
+              defaultValue: hospitalData.record.id
+            },
+            id: {
+              key: true,
+              create: false,
+              edit: false,
+              list: false
+            },
+            EditUser: editUserInterface,
+            username: {
+              title: 'Username',
+              width: '10%',
+              list: true,
+              edit: false,
+            },
+            NameEN: {
+              title: 'name',
+              width: '10%',
+              visibility: 'fixed'
+            },
+            LastNameEN: {
+              title: 'LastName',
+              width: '10%',
+              visibility: 'fixed'
+            },
+            NameTH: {
+              title: 'ชื่อ',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            LastNameTH: {
+              title: 'นามสกุล',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            Email: {
+              title: 'Email',
+              width: '10%'
+            },
+            Phone: {
+              title: 'Tel',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            LineID: {
+              title: 'Line ID',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            Hospitals: {
+              title: 'Hospitals',
+              width: '10%',
+              type: 'textarea',
+              visibility: 'hidden'
+            },
+            typeId: {
+              title: 'Type',
+              width: '10%',
+              //options: '/api/usertypes/options'
+              options: usertypeOption
+            },
+            StatusId: {
+              title: 'Status',
+              width: '*',
+              //options: '/api/userstatuses/option'
+              options: userStatusOption
+            }
+
+          }
+        }, function (data) { //opened handler
+          data.childTable.jtable('load');
+        });
+      });
+      return $img;
+    }
+  };
+
+  const urgentInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (hospitalData) {
+      var $img = $('<img src="../../../images/urgent-icon.png" title="Edit Urgent of Hospital" width="20" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        $('#UserFilter').hide();
+        $('#HospitalTableContainer').jtable('openChildTable', $img.closest('tr'), {
+          title: 'Urgent Type โรงพยาบาล' + hospitalData.record.Hos_Name,
+          paging: true,
+          pageSize: 10,
+          actions: {
+            listAction: '/api/urgenttypes/list?hospitalId=' + hospitalData.record.id,
+            deleteAction: '/api/urgenttypes/delete',
+            updateAction: '/api/urgenttypes/update',
+            createAction: '/api/urgenttypes/add',
+          },
+          recordsLoaded: (event, data) => {
+            console.log(data);
+          },
+
+          fields: {
+            hospitalId: {
+              type: 'hidden',
+              defaultValue: hospitalData.record.id
+            },
+            id: {
+              key: true,
+              create: false,
+              edit: false,
+              list: false
+            },
+            UGType_Name: {
+              title: 'Type Name',
+              width: '10%',
+              visibility: 'fixed'
+            },
+            UGType_ColorCode: {
+              title: 'Color Code',
+              width: '5%',
+            },
+            UGType_AcceptStep: {
+              title: 'Accept Time',
+              type: 'textarea',
+              width: '10%',
+            },
+            UGType_WorkingStep: {
+              title: 'Working Time',
+              type: 'textarea',
+              width: '10%',
+            },
+            UGType_WarningStep: {
+              title: 'Warning Time',
+              type: 'textarea',
+              width: '10%',
+            }
+          }
+        }, function (data) { //opened handler
+          data.childTable.jtable('load');
+        });
+      });
+      return $img;
+    }
+  };
+
+  const orthancInterface =  {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (hospitalData) {
+      var $img = $('<img src="../../../images/orthanc-icon.png" title="Edit Orthanc of Hospital" width="20" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        $('#UserFilter').hide();
+        $('#HospitalTableContainer').jtable('openChildTable', $img.closest('tr'), {
+          title: 'Orthanc โรงพยาบาล' + hospitalData.record.Hos_Name,
+          paging: true,
+          pageSize: 10,
+          actions: {
+            listAction: '/api/orthanc/list?hospitalId=' + hospitalData.record.id,
+            deleteAction: '/api/orthanc/delete',
+            updateAction: '/api/orthanc/update',
+            createAction: '/api/orthanc/add',
+          },
+          recordsLoaded: (event, data) => {
+            console.log(data);
+          },
+
+          fields: {
+            hospitalId: {
+              type: 'hidden',
+              defaultValue: hospitalData.record.id
+            },
+            id: {
+              key: true,
+              create: false,
+              edit: false,
+              list: false
+            },
+            TransferLog: transferLogInterface,
+            Orthanc_Local: {
+              title: 'Local',
+              width: '15%',
+              type: 'textarea',
+              visibility: 'fixed'
+            },
+            Orthanc_Cloud: {
+              title: 'Cloud',
+              width: '15%',
+              type: 'textarea',
+              visibility: 'fixed'
+            },
+            Orthanc_Remark: {
+              title: 'Remark',
+              type: 'textarea',
+              width: '*',
+            }
+          }
+        }, function (data) { //opened handler
+          data.childTable.jtable('load');
+        });
+      });
+      return $img;
+    }
+  };
+
+  const patientInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (hospitalData) {
+      var $img = $('<img src="../../../images/patient-icon.png" title="Edit Patient of Hospital" width="25" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        $('#UserFilter').hide();
+        $('#HospitalTableContainer').jtable('openChildTable', $img.closest('tr'), {
+          title: 'Patient โรงพยาบาล' + hospitalData.record.Hos_Name,
+          paging: true,
+          pageSize: 10,
+          actions: {
+            listAction: '/api/patient/list?hospitalId=' + hospitalData.record.id,
+            deleteAction: '/api/patient/delete',
+            updateAction: '/api/patient/update',
+            createAction: '/api/patient/add',
+          },
+          recordsLoaded: (event, data) => {
+            console.log(data);
+          },
+
+          fields: {
+            hospitalId: {
+              type: 'hidden',
+              defaultValue: hospitalData.record.id
+            },
+            id: {
+              key: true,
+              create: false,
+              edit: false,
+              list: false
+            },
+            Patient_HN: {
+              title: 'HN',
+              width: '10%',
+              visibility: 'fixed'
+            },
+            Patient_NameTH: {
+              title: 'ชื่อ',
+              width: '10%',
+              visibility: 'fixed'
+            },
+            Patient_LastNameTH: {
+              title: 'นามสกุล',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            Patient_NameEN: {
+              title: 'Name',
+              width: '10%',
+              visibility: 'fixed'
+            },
+            Patient_LastNameEN: {
+              title: 'LastName',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            Patient_CitizenID: {
+              title: 'CitizenID',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            Patient_Birthday: {
+              title: 'Birthday',
+              type: 'date',
+              displayFormat: 'yyyy-mm-dd',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            Patient_Age: {
+              title: 'Age',
+              width: '5%',
+            },
+            Patient_Sex: {
+              title: 'Sex',
+              width: '5%',
+              options: { 'M': 'Male', 'F': 'Female' }
+            },
+            Patient_Tel: {
+              title: 'Tel',
+              width: '10%',
+              visibility: 'hidden'
+            },
+            Patient_Address: {
+              title: 'Address',
+              type: 'textarea',
+              width: '10%',
+              visibility: 'hidden'
+            }
+          }
+        }, function (data) { //opened handler
+          data.childTable.jtable('load');
+        });
+      });
+      return $img;
+    }
+  };
+
+  const transferLogInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (orthancData) {
+      var $img = $('<img src="../../../images/log-icon.png" title="View Dicom Transfer of Orthanc" width="20" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        $('#HospitalTableContainer').jtable('openChildTable', $img.closest('tr'), {
+          title: 'Dicom Transfer Log',
+          paging: true,
+          pageSize: 10,
+          actions: {
+            listAction: '/api/dicomtransferlog/list?orthancId=' + orthancData.record.id,
+            deleteAction: '/api/dicomtransferlog/delete',
+          },
+          recordsLoaded: (event, data) => {
+            console.log(data);
+          },
+          fields: {
+            createdAt: {
+              title: 'Data Time',
+              width: '10%',
+              type: 'date',
+              displayFormat: 'yyyy-mm-dd',
+              visibility: 'fixed'
+            },
+            DicomTags: {
+              title: 'Tags',
+              width: '*',
+            }
+          }
+        }, function (data) { //opened handler
+          data.childTable.jtable('load');
+        });
+      });
+      return $img;
+    }
+  };
+
+  const editUserInterface = {
+    title: '',
+    width: '5%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (Data) {
+      var $img = $('<img src="../../../images/edit-icon.png" title="User Editor" width="20" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        console.log(Data);
+        let query = 'userid=' + Data.record.userId + '&infoid=' + Data.record.infoId + '&hosid=' + Data.record.hospitalId + '&typeid=' + Data.record.typeId;
+        let url = '/setting/hospital/users.html?' + query;
+        window.location.replace(url);
+      });
+      return $img;
+    }
+  };
+
+  const radiologistInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (Data) {
+      var $img = $('<img src="../../../images/doctor-icon.png" title="Radiologist Management" width="25" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        console.log(Data);
+        let query = 'hosid=' + Data.record.id;
+        let url = '/setting/radiologist/index.html?' + query;
+        window.location.replace(url);
+      });
+      return $img;
+    }
+  };
+
+  const reportformatInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (Data) {
+      var $img = $('<img src="../../../images/report-icon.png" title="Report Format Editor" width="20" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        console.log(Data);
+        let query = 'hosid=' + Data.record.id;
+        let url = '/report-design/index.html?' + query;
+        window.location.replace(url);
+      });
+      return $img;
+    }
+  };
+
+  const  workinghourInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (Data) {
+      var $img = $('<img src="../../../images/worklist-icon.png" title="แบ่งกะเข้าเวร" width="25" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        console.log(Data);
+        let query = 'hosid=' + Data.record.id;
+        let url = '/seting/workinghour/index.html?' + query;
+        window.location.replace(url);
+      });
+      return $img;
+    }
+  };
+
+  const workingschecduleInterface = {
+    title: '',
+    width: '2%',
+    sorting: false,
+    edit: false,
+    create: false,
+    display: function (Data) {
+      var $img = $('<img src="../../../images/schedule-icon.png" title="ตารางเวร" width="30" height="auto"/>');
+      $img.mouseover(function () {
+        $(this).css({'cursor': 'pointer'});
+      });
+      $img.click(function () {
+        console.log(Data);
+        let query = 'hosid=' + Data.record.id;
+        let url = '/seting/workingschedule/index.html?' + query;
+        window.location.replace(url);
+      });
+      return $img;
+    }
+  };
+
+  function testPostApi(url) {
+    return new Promise(function(resolve, reject) {
+      $.get({url}, {test: 'test foo'}, function(response){
+        resolve(response);
+  		}).catch((err) => {
+  			console.log(JSON.stringify(err));
+        reject(err);
+  		})
+    });
+  }
+
+  function testGetApi(url) {
+    return new Promise(function(resolve, reject) {
+      $.get({url}, {test: 'test foo'}, function(response){
+        resolve(response);
+  		}).catch((err) => {
+  			console.log(JSON.stringify(err));
+        reject(err);
+  		})
+    });
+  }
+
+</script>

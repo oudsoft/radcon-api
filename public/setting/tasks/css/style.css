@@ -1,0 +1,4 @@
+@font-face { font-family: THSarabunNew; src: url("../../../font/THSarabunNew.ttf");}
+@font-face { font-family: THSarabunNewBold; src: url("../../../font/THSarabunNew Bold.ttf");}
+
+#TaskDiv {background-color: gray;}

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
+    <title>Rad Connext</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  	<script type="text/javascript" src="../../lib/jquery.js"></script>
+  	<script type="text/javascript" src="../../lib/jquery-ui.min.js"></script>
+  	<script type="text/javascript" src="../../lib/jquery.loading.min.js"></script>
+    <script type="text/javascript" src="../../lib/notify.min.js"></script>
+    <link rel='stylesheet' href='../../lib/jquery-ui.min.css' />
+    <link rel='stylesheet' href='../../stylesheets/style.css' />
+  </head>
+  <body>
+    <div id="radconnext-howto-div">
+    	<img src="../../images/multy-user.png" width="50px" heigth="auto"/>
+    </div>
+    <div id="HospitalSelector">
+      <select id="hospital"></select>
+    </div>
+    <div id="UserRegisterAccount">
+      <div class="InputField">
+        <label>Username :</label>
+        <input type="text" id="username" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>Password :</label>
+        <input type="password" id="password1" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>Retry-Password :</label>
+        <input type="password" id="password2" size="30"/>
+      </div>
+      <div class="SubmitField">
+        <input type="button" id="RegisterAccountCmd" value="Verify Username"/>
+      </div>
+    </div>
+    <div id="UserRegisterInfo">
+      <div class="InputField">
+        <label>NameEN :</label>
+        <input type="text" id="NameEN" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>LastNameEN :</label>
+        <input type="text" id="LastNameEN" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>NameTH :</label>
+        <input type="text" id="NameTH" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>LastNameTH :</label>
+        <input type="text" id="LastNameTH" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>Email :</label>
+        <input type="text" id="Email" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>Phone :</label>
+        <input type="text" id="Phone" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>LineID :</label>
+        <input type="text" id="LineID" size="30"/>
+      </div>
+      <div class="InputField">
+        <label>User Type :</label>
+        <select id="UserType"></select>
+      </div>
+      <div class="InputField" id="UserHospitals">
+        <label>Hospital List :</label>
+        <textarea id="Hospitals" cols="20" rows="5"></textarea>
+      </div>
+      <div class="SubmitField">
+        <input type="button" id="RegisterInfoCmd" value="Register"/>
+      </div>
+    </div>
+    <div id="BackCmdDiv">
+      <!-- <input type="button" id="EditUserCmd" value="Edit"/> -->
+      <input type="button" id="BackCmd" value="Back"/>
+    </div>
+  </body>
+</html>
+<style>
+  #HospitalSelector{}
+  #UserRegisterAccount{display: block;}
+  #UserRegisterInfo{display: none;}
+  .InputField{padding: 4px;}
+  .SubmitField{padding: 4px; text-align: center;}
+  #BackCmdDiv{padding: 4px; text-align: center;}
+  #EditUserCmd{display: block;}
+  #UserHospitals{display: none;}
+</style>
+<script type="text/javascript">
+
+  let queryObj;
+
+  function urlQueryToObject(url) {
+  	let result = url.split(/[?&]/).slice(1).map(function(paramPair) {
+  				return paramPair.split(/=(.+)?/).slice(0, 2);
+  		}).reduce(function (obj, pairArray) {
+  				obj[pairArray[0]] = pairArray[1];
+  				return obj;
+  		}, {});
+  	return result;
+  }
+
+  function doGetApi(url) {
+    return new Promise(function(resolve, reject) {
+      $.get(url, {test: 'test foo'}, function(response){
+        resolve(response);
+      })
+    });
+  }
+
+  function doVerifyUsername(){
+    let username = $("#username").val();
+    if (username) {
+      $.get('/api/users/searchusername/' + username, {}, function(response){
+        if((response.status.code === 200) && (response.result.length === 0)) {
+          let password1 = $("#password1").val();
+          let password2 = $("#password2").val();
+          if (password1 === password2) {
+            doGetApi('/api/usertypes/options').then((typeoptions) => {
+              $("#UserRegisterAccount").hide();
+              $("#UserRegisterInfo").show();
+              $("#UserType").empty();
+              let Options = typeoptions.Options;
+              Options.forEach((item, i) => {
+                $("#UserType").append("<option value='" + item.Value + "'>" + item.DisplayText + "</option>");
+              });
+            });
+          } else {
+            $("#password1").css({'border': '1px solid red'});
+            $("#password2").css({'border': '1px solid red'});
+          }
+        } else {
+          $("#username").css({'border': '1px solid red'});
+        }
+      });
+    } else {
+      $("#username").css({'border': '1px solid red'});
+    }
+  }
+
+  function doValidateForm() {
+    let NameEN = $("#NameEN").val();
+    let LastNameEN = $("#LastNameEN").val();
+    let NameTH = $("#NameTH").val();
+    let LastNameTH = $("#LastNameTH").val();
+    let Email = $("#Email").val();
+    let Phone = $("#Phone").val();
+    let LineID = $("#LineID").val();
+    let UserType = $("#UserType").val();
+    let Hospital = $("#hospital").val();
+    let username = $("#username").val();
+    let password = $("#password1").val();
+    let Hospitals = $("#Hospitals").val();
+    if (NameEN !== ''){
+      if (LastNameEN !== ''){
+        if (NameTH !== ''){
+          if (LastNameTH !== ''){
+            if (Email !== ''){
+              if (Phone !== ''){
+                if (LineID !== ''){
+                  if (UserType == 4) {
+                    if (Hospitals !== '') {
+                      let params = {User_NameEN: NameEN, User_LastNameEN: LastNameEN, User_NameTH: NameTH, User_LastNameTH: LastNameTH, User_Email: Email, User_Phone: Phone, User_LineID: LineID, User_PathRadiant: '/path/to/khow', User_Hospitals: Hospitals, usertypeId: UserType, hospitalId: Hospital, username: username, password: password};
+                      return params;
+                    } else {
+                      $("#Hospitals").css({'border': '1px solid red'});
+                      $("#UserType").css({'border': '1px solid red'});
+                      return;
+                    }
+                  } else {
+                    console.log('AA');
+                    let params = {User_NameEN: NameEN, User_LastNameEN: LastNameEN, User_NameTH: NameTH, User_LastNameTH: LastNameTH, User_Email: Email, User_Phone: Phone, User_LineID: LineID, User_PathRadiant: '/path/to/khow', usertypeId: UserType, hospitalId: Hospital, username: username, password: password};
+                    return params;
+                  }
+                } else {
+                  $("#LineID").css({'border': '1px solid red'});
+                  return;
+                }
+              } else {
+                $("#Phone").css({'border': '1px solid red'});
+                return;
+              }
+            } else {
+              $("#Email").css({'border': '1px solid red'});
+              return;
+            }
+          } else {
+            $("#LastNameTH").css({'border': '1px solid red'});
+            return;
+          }
+        } else {
+          $("#NameTH").css({'border': '1px solid red'});
+          return;
+        }
+      } else {
+        $("#LastNameEN").css({'border': '1px solid red'});
+        return;
+      }
+    } else {
+      $("#NameEN").css({'border': '1px solid red'});
+      return;
+    }
+  }
+
+  function doRegisterUser(){
+    let params = doValidateForm();
+    if (params) {
+      $.post('/api/user/add', params, function(response){
+        console.log(response);
+        alert('Thank you.')
+        $("#UserRegisterAccount").show();
+        $("#UserRegisterInfo").hide();
+        $("#username").val('');
+        $("#password1").val('');
+        $("#password2").val('');
+        $("#UserRegisterAccount").append("<div>Your Token is ::</div><div style='color: blue;'>" + response.token + "</div>");
+        setTimeout(()=> {
+          $("#BackCmd").click();
+        }, 30000)
+      });
+    } else {
+
+    }
+  }
+
+  function doBackToSettingHome(){
+    let url = '/setting/hospital/';
+    window.location.replace(url);
+  }
+
+  function doEditUser(){
+    //let userEditId = 10;
+    let userEditId = queryObj.userid;
+    doGetApi('/api/usertypes/options').then((typeoptions) => {
+      $("#UserType").empty();
+      let Options = typeoptions.Options;
+      Options.forEach((item, i) => {
+        $("#UserType").append("<option value='" + item.Value + "'>" + item.DisplayText + "</option>");
+      });
+      doGetApi('/api/user/'+userEditId).then((result) => {
+        console.log(result);
+        $("#hospital").val(queryObj.hosid);
+        $("#NameEN").val(result.Record.info.User_NameEN);
+        $("#LastNameEN").val(result.Record.info.User_LastNameEN);
+        $("#NameTH").val(result.Record.info.User_NameTH);
+        $("#LastNameTH").val(result.Record.info.User_LastNameTH);
+        $("#Email").val(result.Record.info.User_Email);
+        $("#Phone").val(result.Record.info.User_Phone);
+        $("#LineID").val(result.Record.info.User_LineID);
+        $("#Hospitals").val(result.Record.info.User_Hospitals);
+        $("#UserType").val(result.Record.type);
+        $("#UserRegisterAccount").hide();
+        $("#UserRegisterInfo").show();
+        $("#RegisterInfoCmd").hide();
+        let userIdHidden = $("<input type='hidden' id='userId'/>");
+        $(userIdHidden).val(result.Record.user.id);
+        $(userIdHidden).appendTo($("#UserRegisterInfo"));
+        let infoIdHidden = $("<input type='hidden' id='infoId'/>");
+        $(infoIdHidden).val(result.Record.info.id);
+        $(infoIdHidden).appendTo($("#UserRegisterInfo"));
+        let saveButton = $("<input type='button' id='SaveCmd' value=' Save '/>");
+        $(saveButton).appendTo($("#UserRegisterInfo"));
+        $(saveButton).on('click',doUpdateUser);
+        $('#EditUserCmd').hide();
+        doTypeChange();
+      });
+    });
+  }
+
+  function doUpdateUser(){
+    let params = doValidateForm();
+    let userId = $('#userId').val();
+    let infoId = $('#infoId').val();
+    if (params) {
+      params.userId = userId;
+      params.infoId = infoId;
+      $.post('/api/user/update', params, function(response){
+        console.log(response);
+        alert('Thank you for user update.')
+        $("#UserRegisterAccount").show();
+        $("#UserRegisterInfo").hide();
+        $("SaveCmd").remove();
+        $('#EditUserCmd').show();
+        setTimeout(()=> {
+          doBackToSettingHome();
+        }, 30000);
+      });
+    } else {
+
+    }
+  }
+
+  function doTypeChange(){
+    let typeValue = $("#UserType").val();
+    if (typeValue != 4){
+      $("#UserHospitals").hide();
+    } else {
+      $("#UserHospitals").show();
+    }
+  }
+
+  $(document).ready(function () {
+    $.ajaxSetup({
+      beforeSend: function(xhr) {
+        xhr.setRequestHeader('Authorization', localStorage.getItem('token'));
+      }
+    });
+
+    doGetApi('/api/hospital/options').then((result) => {
+      result.Options.forEach((item, i) => {
+        $("#hospital").append("<option value='" + item.Value + "'>ร.พ. " + item.DisplayText + "</option>");
+      });
+    });
+
+    $("#RegisterAccountCmd").on('click',doVerifyUsername);
+    $("#RegisterInfoCmd").on('click',doRegisterUser);
+    $("#BackCmd").on('click',doBackToSettingHome);
+    $("#EditUserCmd").on('click',doEditUser);
+    $("#UserType").on('change',doTypeChange)
+
+    queryObj = urlQueryToObject(window.location.href);
+    if (queryObj.userid) {
+      doEditUser();
+    }
+  });
+</script>
