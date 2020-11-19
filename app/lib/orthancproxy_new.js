@@ -153,13 +153,13 @@ app.post('/deletedicom/(:studyID)', function(req, res) {
 });
 
 app.get('/orthancexternalport', function(req, res) {
-	hospitalId = req.query.hospitalId;
-	doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
+	let hospitalId = req.query.hospitalId;
+	let hostname = req.hostname;
+	doLoadOrthancTarget(hospitalId, hostname).then((orthanc) => {
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud);
 		res.status(200).send({port: cloud.portex});
 	});
 });
-
 module.exports = ( dbconn, monitor ) => {
   db = dbconn;
   log = monitor;

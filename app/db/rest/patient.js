@@ -29,13 +29,13 @@ app.post('/search', (req,res) => {
 })
 
 //List API
-app.post('/list', (req, res) => {
+app.post('/list/hospital/(:hospitalId)', (req, res) => {
   let token = req.headers.authorization;
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
         try {
-          const hospitalId = req.query.hospitalId;
+          const hospitalId = req.params.hospitalId;
           const limit = req.query.jtPageSize;
           const startAt = req.query.jtStartIndex;
           const count = await Patient.count();
@@ -58,36 +58,68 @@ app.post('/list', (req, res) => {
   }
 });
 
-//insert, update, delete API
-app.post('/(:subAction)', (req, res) => {
+//add api
+app.post('/add', (req, res) => {
   let token = req.headers.authorization;
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
-      	const subAction = req.params.subAction;
-        log.info('Start Action => ' + subAction);
-        log.info('Body of Request=> ' + JSON.stringify(req.body));
-        log.info('Query of Request=> ' + JSON.stringify(req.query));
-        const id = req.body.id;
         try {
-          switch (subAction) {
-            case 'add':
-              let newPatient = req.body.data;
-              let adPatient = await Patient.create(newPatient);
-              await Patient.update({hospitalId: req.body.hospitalId},{where: {id: adPatient.id}});
-              res.json({Result: "OK", Record: adPatient});
-            break;
-            case 'update':
-              let updatePatient = req.body.data;
-              await Patient.update(updatePatient, { where: { id: req.body.patientId } });
-              res.json({Result: "OK"});
-            break;
-            case 'delete':
-              await Patient.destroy({ where: { id: id } });
-              res.json({Result: "OK"});
-            break;
-          }
+          let newPatient = req.body.data;
+          let adPatient = await Patient.create(newPatient);
+          await Patient.update({hospitalId: req.body.hospitalId},{where: {id: adPatient.id}});
+          res.json({Result: "OK", Record: adPatient});
+        } catch(error) {
+      		log.error(error);
+          res.json({ status: {code: 500}, error: error });
+      	}
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+//update api
+app.post('/update', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          const id = req.body.id;
+          let updatePatient = req.body.data;
+          await Patient.update(updatePatient, { where: { id: req.body.patientId } });
+          res.json({Result: "OK"});
+        } catch(error) {
+      		log.error(error);
+          res.json({ status: {code: 500}, error: error });
+      	}
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+//delete api
+app.post('/delete', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          const id = req.body.id;
+          await Patient.destroy({ where: { id: id } });
+          res.json({Result: "OK"});
         } catch(error) {
       		log.error(error);
           res.json({ status: {code: 500}, error: error });

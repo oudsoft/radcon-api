@@ -414,6 +414,7 @@ app.post('/convert', (req, res) => {
         const hospitalId = req.body.hospitalId;
 				const studyID = req.body.studyID;
 				const modality = req.body.modality;
+				const studyInstanceUID = req.body.studyInstanceUID;
 				const pdfFileName = genUniqueID();
 
 				const reports = await db.hospitalreports.findAll({ attributes: ['Content'], where: {hospitalId: hospitalId}});
@@ -429,9 +430,9 @@ app.post('/convert', (req, res) => {
 				let cwss = websocket.socket.clients;
 				cwss.forEach((wc) => {
 					log.info('wc.id=> ' + wc.id);
-					log.info('ur[0].username=> ' + ur[0].username);					
+					log.info('ur[0].username=> ' + ur[0].username);
 					if (wc.id == ur[0].username) {
-						let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: studyID, dcmname: dicom.dcmname};
+						let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: studyID, dcmname: dicom.dcmname, studyInstanceUID: studyInstanceUID, owner: ur[0].username};
 						wc.send(JSON.stringify(socketTrigger));
 					}
 				});

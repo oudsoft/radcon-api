@@ -345,7 +345,8 @@
     });
     $("#add-item-cmd").click((event) => {
       let elemType = activeType.type;
-      doCreateElement($("#report-container"), elemType);
+      let wrapper = $("#report-container");
+      doCreateElement(wrapper, elemType);
     });
 
     $("#remove-item-cmd").click((event) => {

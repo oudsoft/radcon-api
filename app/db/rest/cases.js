@@ -72,7 +72,6 @@ const doGenNewCaseOptions = function(hospitalId) {
         refes.push(tempRef);
       });
       let rades = await doSearchRadioForHospital(hospitalId);
-      log.info('rades=> ' + rades);
       setTimeout(()=> {
         resolve({Result: "OK", Options: {cliames, urgents, rades, refes}});
       },400);
@@ -498,6 +497,30 @@ app.post('/search/radio', (req, res) => {
           }).catch((err)=>{
             reject(err);
           });
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+app.post('/hospital/radio', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          const hospitalId = req.body.hospitalId;
+          let rades = await doSearchRadioForHospital(hospitalId);
+          res.json({status: {code: 200}, Records: rades});
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});

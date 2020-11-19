@@ -516,10 +516,10 @@ module.exports = function ( jq ) {
     });
   }
 
-  const doConvertPdfToDicom = function(caseId, hospitalId, userId, studyID, modality){
+  const doConvertPdfToDicom = function(caseId, hospitalId, userId, studyID, modality, studyInstanceUID){
     return new Promise(function(resolve, reject) {
       let convertorEndPoint = proxyRootUri + "/casereport/convert";;
-      let params = {caseId, hospitalId, userId, studyID, modality};
+      let params = {caseId, hospitalId, userId, studyID, modality, studyInstanceUID};
 			$.post(convertorEndPoint, params, function(data){
 				resolve(data);
 			}).fail(function(error) {
@@ -918,7 +918,8 @@ module.exports = function ( jq ) {
 						const userdata = JSON.parse(main.doGetUserData());
 						let hospitalId = userdata.hospitalId;
 						let userId = userdata.id;
-						doConvertResultToDicom(incidents[i].case.id, hospitalId, userId, incidents[i].case.Case_OrthancStudyID, incidents[i].case.Case_Modality);
+						let studyInstanceUID = incidents[i].case.Case_StudyInstanceUID
+						doConvertResultToDicom(incidents[i].case.id, hospitalId, userId, incidents[i].case.Case_OrthancStudyID, incidents[i].case.Case_Modality, studyInstanceUID);
 					});
 					$(convertResultButton).appendTo($(operationCmdBox));
 				}
@@ -1340,9 +1341,9 @@ module.exports = function ( jq ) {
 		});
 	}
 
-	function doConvertResultToDicom(caseId, hospitalId, userId, studyID, modality) {
+	function doConvertResultToDicom(caseId, hospitalId, userId, studyID, modality, studyInstanceUID) {
 		$('body').loading('start');
-		apiconnector.doConvertPdfToDicom(caseId, hospitalId, userId, studyID, modality).then((dicomRes) => {
+		apiconnector.doConvertPdfToDicom(caseId, hospitalId, userId, studyID, modality, studyInstanceUID).then((dicomRes) => {
 			console.log(dicomRes);
 			if (dicomRes.status.code == 200) {
 				//alert('แปลงผลอ่านเข้า dicom ชองผู้ป่วยเรียบร้อย\nโปรดตรวจสอบได้จาก Local File.');
@@ -2728,7 +2729,7 @@ exports.doConnectWebsocketMaster = function(username, hospitalId, type){
       $.notify(data.message, "success");
     } else if (data.type == 'trigger') {
 			if (wsl) {
-	      let message = {type: 'trigger', dcmname: data.dcmname};
+	      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere};
 	      wsl.send(JSON.stringify(message));
 	      $.notify('The system will be start store dicom to your local.', "success");
 			}
@@ -2804,7 +2805,7 @@ exports.doConnectWebsocketLocal = function(username){
 			} else if (data.type == 'move') {
 				wsm.send(JSON.stringify(data.data));
 			} else if (data.type == 'run') {
-				wsm.send(JSON.stringify(data.data));			
+				wsm.send(JSON.stringify(data.data));
 	    }
 	  };
 

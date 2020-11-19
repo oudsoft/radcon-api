@@ -212,10 +212,10 @@ module.exports = function ( jq ) {
     });
   }
 
-  const doConvertPdfToDicom = function(caseId, hospitalId, userId, studyID, modality){
+  const doConvertPdfToDicom = function(caseId, hospitalId, userId, studyID, modality, studyInstanceUID){
     return new Promise(function(resolve, reject) {
       let convertorEndPoint = proxyRootUri + "/casereport/convert";;
-      let params = {caseId, hospitalId, userId, studyID, modality};
+      let params = {caseId, hospitalId, userId, studyID, modality, studyInstanceUID};
 			$.post(convertorEndPoint, params, function(data){
 				resolve(data);
 			}).fail(function(error) {
@@ -552,7 +552,7 @@ exports.doConnectWebsocketMaster = function(username, hospitalId, type){
       $.notify(data.message, "success");
     } else if (data.type == 'trigger') {
 			if (wsl) {
-	      let message = {type: 'trigger', dcmname: data.dcmname};
+	      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere};
 	      wsl.send(JSON.stringify(message));
 	      $.notify('The system will be start store dicom to your local.', "success");
 			}
@@ -619,7 +619,7 @@ exports.doConnectWebsocketLocal = function(username){
 	    if (data.type == 'test') {
 	      $.notify(data.message, "success");
 	    } else if (data.type == 'result') {
-	      $.notify(data.message, "success");
+	      $.notify(daata.message, "success");
 	    } else if (data.type == 'notify') {
 	      $.notify(data.message, "warnning");
 	    } else if (data.type == 'exec') {
@@ -628,7 +628,7 @@ exports.doConnectWebsocketLocal = function(username){
 			} else if (data.type == 'move') {
 				wsm.send(JSON.stringify(data.data));
 			} else if (data.type == 'run') {
-				wsm.send(JSON.stringify(data.data));			
+				wsm.send(JSON.stringify(data.data));
 	    }
 	  };
 
@@ -835,7 +835,9 @@ function doShowRadioList(hosSelected) {
 		let radioSelector = $("<select id='RadiologistSelector'></select>");
 		$(radioSelector).appendTo($(".main"));
 		let radioList = result.Records;
+		if ((radioList) && (radioList.length > 0)) {
 		radioList.forEach((item, i) => {
+			/*
 			let radioDisplayName;
 			if (item.userinfo.User_NameTH) {
 				radioDisplayName = item.userinfo.User_NameTH + ' ' + item.userinfo.User_LastNameTH;
@@ -844,13 +846,15 @@ function doShowRadioList(hosSelected) {
 			} else {
 				radioDisplayName = item.userinfo.User_NameEN + ' ' + item.userinfo.User_LastNameEN;
 			}
-			$(radioSelector).append("<option value='" + item.id + "'>" + radioDisplayName + "</option>");
+			*/
+			$(radioSelector).append("<option value='" + item.Value + "'>" + item.DisplayText + "</option>");
 		});
-		$(radioSelector).on('change',(e)=> {
-			let radioSelected = $(radioSelector).val();
-			doShowRadio(radioSelected);
-		});
-		$(radioSelector).change();
+			$(radioSelector).on('change',(e)=> {
+				let radioSelected = $(radioSelector).val();
+				doShowRadio(radioSelected);
+			});
+			$(radioSelector).change();
+		}
 	});
 }
 
@@ -898,71 +902,76 @@ function doShowCase(radioId) {
 
 function doCreateClassifyCase(cases){
 	return new Promise(function(resolve, reject){
-		let caseClassifyTabs = $('<div id="CaseClassify"><ul><li><a href="#NewCase">เคสใหม่<span id="NewCaseHot" class="Hot">hot</span></a></li><li><a href="#WaitResponse">เคสรอผลอ่าน<span id="WaitResponseHot" class="Hot"></span></a></li><li><a href="#AllCase">เคสทั้งหมด<span id="AllCaseSum"></span></a></li></ul></div>')
+		let caseClassifyTabs = $('<div id="CaseClassify"><ul><li><a href="#NewCase">เคสใหม่<span id="NewCaseHot" class="Hot">(0)</span></a></li><li><a href="#WaitResponse">เคสรอผลอ่าน<span id="WaitResponseHot" class="Hot">(0)</span></a></li><li><a href="#AllCase">เคสทั้งหมด<span id="AllCaseSum"></span></a></li></ul></div>')
 		let newCaseTab = $('<div id="NewCase" class="CaseClassifyContent"></div>');
 		$(newCaseTab).appendTo($(caseClassifyTabs));
 		let waitResponseCaseTab = $('<div id="WaitResponse" class="CaseClassifyContent"></div>');
 		$(waitResponseCaseTab).appendTo($(caseClassifyTabs));
 		let allCaseTab = $('<div id="AllCase" class="CaseClassifyContent"></div>');
 		$(allCaseTab).appendTo($(caseClassifyTabs));
+		let searchCaseForm = doCreateSearchCaseForm();
+		$(allCaseTab).empty().append($(searchCaseForm));
+		$(allCaseTab).on('searchcase', (e, data)=>{
+			$('body').loading('start');
+			let radioSelected = $('#RadiologistSelector').val();
+			let statusId = [1, 2, 5];
+			let conditionSearch = {hospitalId: data.hospitalId, key: data.key, value: data.value, statusId: statusId};
+			let searchResultDiv = $('<div style="margin-top: 10px;"></div>');
+			$(searchResultDiv).appendTo($(allCaseTab));
+			radio.doSearchCase(radioSelected, conditionSearch).then((result)=>{
+				console.log(result);
+				let caseItems = result.Records;
+				caseItems.forEach(async (item, i) => {
+					let caseAccordion = await doCreateCaseAccordion(item);
+					$(searchResultDiv).append($(caseAccordion));
+				});
+				$('body').loading('stop');
+			});
+		})
+
 		var promiseList = new Promise(function(resolve, reject){
 			let newCount = 0;
 			let waitCount = 0;
-			cases.forEach(async (item, i) => {
-				//console.log(JSON.stringify(item));
-				let caseAccordion = await doCreateCaseAccordion(item);
-				let actionRow;
-				let tableLine;
-				let tableRow;
-				let rowDetail;
-				switch (item.case.casestatusId) {
-					case 1:
-						newCount++;
-						$(newCaseTab).append($(caseAccordion));
-						actionRow = doCreateNewStatusCaseAction(item);
-						$(caseDetailContent).append($(actionRow));
-					break;
-					case 2:
-						waitCount++;
-						$(waitResponseCaseTab).append($(caseAccordion));
-						tableLine = $('<div style="display: table"></div>');
-						tableRow = $('<div style="display: table-row"></div>');
-						rowDetail = $('<div style="display: table-cell; width: 650px;" class="HorBar"><b>Your Response</b></div>');
-						$(tableRow).append($(rowDetail));
-						$(tableLine).append($(tableRow));
-						$(caseDetailContent).append($(tableLine));
-						actionRow = await doCreateAcceptStatusCaseAction(item);
-						$(caseDetailContent).append($(actionRow));
-					break;
-				}
-			});
-			setTimeout(()=> {
-				$(caseClassifyTabs).find('#NewCaseHot').text('(' + newCount + ')');
-				$(caseClassifyTabs).find('#WaitResponseHot').text('(' + waitCount + ')');
-				let searchCaseForm = doCreateSearchCaseForm();
-				$(allCaseTab).empty().append($(searchCaseForm));
-				$(allCaseTab).on('searchcase', (e, data)=>{
-					$('body').loading('start');
-					let radioSelected = $('#RadiologistSelector').val();
-					let statusId = [1, 2, 5];
-					let conditionSearch = {hospitalId: data.hospitalId, key: data.key, value: data.value, statusId: statusId};
-					let searchResultDiv = $('<div style="margin-top: 10px;"></div>');
-					$(searchResultDiv).appendTo($(allCaseTab));
-					radio.doSearchCase(radioSelected, conditionSearch).then((result)=>{
-						console.log(result);
-						let caseItems = result.Records;
-						caseItems.forEach(async (item, i) => {
-							let caseAccordion = await doCreateCaseAccordion(item);
-							$(searchResultDiv).append($(caseAccordion));
-						});
-						$('body').loading('stop');
-					});
-				})
-				resolve(cases);
-			}, 400);
+			if ((cases) && (cases.length > 0)) {
+				cases.forEach(async (item, i) => {
+					//console.log(JSON.stringify(item));
+					let caseAccordion = await doCreateCaseAccordion(item);
+					let findId = '#CaseContent-'+item.case.id;
+					let actionRow;
+					let tableLine;
+					let tableRow;
+					let rowDetail;
+					switch (item.case.casestatusId) {
+						case 1:
+							newCount++;
+							$(newCaseTab).append($(caseAccordion));
+							actionRow = doCreateNewStatusCaseAction(item);
+							$($(caseAccordion)).find(findId).append($(actionRow));
+						break;
+						case 2:
+							waitCount++;
+							$(waitResponseCaseTab).append($(caseAccordion));
+							tableLine = $('<div style="display: table"></div>');
+							tableRow = $('<div style="display: table-row"></div>');
+							rowDetail = $('<div style="display: table-cell; width: 650px;" class="HorBar"><b>Your Response</b></div>');
+							$(tableRow).append($(rowDetail));
+							$(tableLine).append($(tableRow));
+							$($(caseAccordion)).find(findId).append($(tableLine));
+							actionRow = await doCreateAcceptStatusCaseAction(item);
+							$($(caseAccordion)).find(findId).append($(actionRow));
+						break;
+					}
+				});
+				setTimeout(()=> {
+					$(caseClassifyTabs).find('#NewCaseHot').text('(' + newCount + ')');
+					$(caseClassifyTabs).find('#WaitResponseHot').text('(' + waitCount + ')');
+					resolve(cases);
+				}, 400);
+			} else {
+				resolve();
+			}
 		});
 		Promise.all([promiseList]).then((ob)=>{
-			console.log('Final JSON =>', ob[0]);
 			resolve($(caseClassifyTabs));
 		})
 	});
@@ -974,7 +983,7 @@ function doCreateCaseAccordion(item){
 		let caseDetail = await doCreateCaseDetail(item);
 		let caseAccordion = $('<div class="CaseClassifyContent"></div>');
 		let caseHeader = $('<h3>' + caseDetailTitle + '</h3>');
-		let caseDetailContent =  $('<div id="CaseContent-"' + item.case.id + ' class="CaseContent"></div>');
+		let caseDetailContent =  $('<div id="CaseContent-' + item.case.id + '" class="CaseContent"></div>');
 		$(caseDetailContent).append($(caseDetail));
 		$(caseAccordion).append($(caseHeader));
 		$(caseAccordion).append($(caseDetailContent));
@@ -1083,7 +1092,7 @@ function doCreateCaseDetail(caseItem){
 		let rowCommand = $('<div style="display: table-cell"></div>');
 		let dicomPreviewCmd = $('<img src="../../images/preview-icon.png" width="50" style="cursor: pointer;"/>');
 		$(dicomPreviewCmd).click( (e) => {
-			doOpenStoneWebViewer(caseItem.case.Case_StudyInstanceUID);
+			doOpenStoneWebViewer(caseItem.case.Case_StudyInstanceUID, caseItem.case.hospitalId);
 		});
 		$(dicomPreviewCmd).appendTo($(rowCommand));
 		$(tableRow).append($(rowCommand));
@@ -1100,9 +1109,7 @@ function doCreateCaseDetail(caseItem){
 	});
 }
 
-function doOpenStoneWebViewer(StudyInstanceUID) {
-	let userdata = JSON.parse(doGetUserData());
-	const hospitalId = userdata.hospitalId;
+function doOpenStoneWebViewer(StudyInstanceUID, hospitalId) {
 	apiconnector.doGetOrthancPort(hospitalId).then((response) => {
 		const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
 		let orthancwebapplink = orthancStoneWebviewer + StudyInstanceUID;
@@ -1152,12 +1159,14 @@ function doCreateNewStatusCaseAction(caseItem){
 		doChangeCaseStatus(caseItem.case.id, caseItem.case.Case_DESC, newStatus);
 	});
 	$(caseAcceptCmd).appendTo($(rowCommand));
+	$(rowCommand).append('<span>  </span>')
 	let caseNotAcceptCmd = $('<input type="button" value="Not Accept"/>');
 	$(caseNotAcceptCmd).click( (e) => {
 		let newStatus = 3;
 		doChangeCaseStatus(caseItem.case.id, caseItem.case.Case_DESC, newStatus);
 	});
 	$(caseNotAcceptCmd).appendTo($(rowCommand));
+	$(rowCommand).find('input[type="button"]').css(inputStyleClass);
 
 	$(tableRow).append($(rowCommand));
 
@@ -1170,14 +1179,12 @@ function doCreateAcceptStatusCaseAction(caseItem){
 		//const userId = userdata.userId;
 		const radioId = $('#RadiologistSelector').val();
 		radio.doLoadTemplateList(radioId).then((result)=>{
-			let simpleEditorPluginStyleUrl = '../../simple-editor/styles.css'
-			$('head').append('<link rel="stylesheet" href="' + simpleEditorPluginStyleUrl + '" type="text/css" />');
-			let simpleEditorPluginScriptUrl = '../../simple-editor/script.js'
-			$('head').append('<script src="' + simpleEditorPluginScriptUrl + '"></script>');
-			$('head').append('<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">');
-	    $('head').append('<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">');
+			let jqtePluginStyleUrl = '../../lib/jqte/jquery-te-1.4.0.css';
+			$('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
+			let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
+			$('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
 
-			let simpleEditor = doCreateSimpleTextEditor('<p>type your text here, Thank you.</p>');
+			let simpleEditor = $('<input type="text" id="SimpleEditor"/>');
 
 			let templates = result.Options;
 			let templateSelector = $('<select id="TemplateSelector"></select>');
@@ -1192,14 +1199,14 @@ function doCreateAcceptStatusCaseAction(caseItem){
 				let templateId = $(templateSelector).val();
 				let result = await radio.doLoadTemplate(templateId);
 				if ((result.Record) && (result.Record.length > 0)) {
-					$(simpleEditor).find('#TextArea').html(result.Record[0].Content);
+					$('#SimpleEditor').jqteVal(result.Record[0].Content);
 				}
 			});
 
 			let sendResponseCmd = $('<input type="button" value =" Send "/>');
 			$(sendResponseCmd).css({'font-family': 'THSarabunNew', 'font-size': '24px'});
 			$(sendResponseCmd).click(async (e)=>{
-				let responseHTML = $(simpleEditor).find('#TextArea').html();
+				let responseHTML = $('#SimpleEditor').val();
 				console.log(responseHTML);
 				let saveData = {Response_Text: responseHTML};
 				let result = await radio.doSaveNewResponse(caseItem.case.id, radioId, saveData);
@@ -1216,21 +1223,10 @@ function doCreateAcceptStatusCaseAction(caseItem){
 			$(rowTools).append($(templateSelector));
 			$(rowTools).append($(simpleEditor));
 			$(rowTools).append($(sendResponseCmd));
-
+			$(simpleEditor).jqte();
 			resolve($(tableLine));
 		});
 	});
-}
-
-function doCreateSimpleTextEditor(startContentHTML){
-	let simpleEditor = $('<div id="editor" contenteditable="false"></div>');
-	let editorTools = $('<section id="toolbar"><div id="bold" class="icon fas fa-bold"></div><div id="italic" class="icon fas fa-italic"></div><div id="underline" class="icon fas fa-underline"></div><div id="strikeThrough" class="icon fas fa-strikethrough"></div><div id="createLink" class="icon fas fa-link"></div><div id="insertUnorderedList" class="icon fas fa-list-ul"></div><div id="insertOrderedList" class="icon fas fa-list-ol"></div><div id="justifyLeft" class="icon fas fa-align-left"></div><div id="justifyRight" class="icon fas fa-align-right"></div><div id="justifyCenter" class="icon fas fa-align-center"></div><div id="justifyFull" class="icon fas fa-align-justify"></div></section>');
-	let editorArea = $('<section id="TextArea" contenteditable="true"></section>');
-	$(simpleEditor).append($(editorTools));
-	$(simpleEditor).append($(editorArea));
-	$(editorArea).append($(startContentHTML));
-	$(editorArea).css('min-height','140px');
-	return $(simpleEditor);
 }
 
 function doCallResponse(caseId) {
@@ -1287,11 +1283,11 @@ const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
 /* Radio Work Schedule */
 
 function doShowWorkSchedules(radioId) {
-	$('body').loading('start');
 	//$('#WorkScheduleSection').empty();
 	//let controlForm = await doCreateHospitalJoinForm(radioId);
 	$('#WorkScheduleSection').on('togglemainform', async (e, data)=>{
-		$('#WorkScheduleSection').empty();
+		$('body').loading('start');
+		$('#WorkScheduleSection').find('#HospitalJoinForm').remove();
 		let controlForm = await doCreateHospitalJoinForm(radioId);
 		$('#WorkScheduleSection').append($(controlForm));
 		$(controlForm).on('openjoinconfig', (e, data)=>{
@@ -1306,6 +1302,7 @@ function doShowWorkSchedules(radioId) {
 		});
 		$('body').loading('stop');
 	});
+	$('#WorkScheduleSection').find('#HospitalJoinForm').remove();
 	let eventData = {radioId: radioId};
 	$('#WorkScheduleSection').trigger('togglemainform', [eventData]);
 }
@@ -1440,7 +1437,7 @@ function doShowTools(radioId) {
 	$('body').loading('start');
 	let userdata = JSON.parse(doGetUserData());
 	$('#ToolSection').empty();
-	let toolsTabs = $('<div id="ToolsTabs"><ul><li><a href="#RemoteDicom">Remote Dicom</a></li><li><a href="#Template">Template</a></li><li><a href="#Other">Other</a></li></ul></div>')
+	let toolsTabs = $('<div id="ToolsTabs"><ul><li><a href="#RemoteDicom">Remote Dicom</a></li><li><a href="#Template">Template</a></li><li><a href="#Message">Message</a></li><li><a href="#Other">Other</a></li></ul></div>')
 	let remoteDicomTab = $('<div id="RemoteDicom" class="CaseClassifyContent"></div>');
 	let searchForm = doCreateSearchDicomForm(userdata.username);
 	$(searchForm).find('input[type="text"]').css(inputStyleClass);
@@ -1509,7 +1506,8 @@ function doShowTools(radioId) {
 			$('body').loading('start');
 			let studyInstanceUID = results.StudyInstanceUID;
 			console.log(studyInstanceUID);
-			doOpenStoneWebViewer(studyInstanceUID);
+			console.log(e.detail.hospitalId);
+			doOpenStoneWebViewer(studyInstanceUID, e.detail.hospitalId);
 			$('body').loading('stop');
 		});
 		$(remoteDicomTab).append($(cmoveResultDiv));
@@ -1519,6 +1517,9 @@ function doShowTools(radioId) {
 
 	let templateTab = $('<div id="Template" class="CaseClassifyContent"></div>');
 	$(templateTab).appendTo($(toolsTabs));
+
+	let messageTab = $('<div id="Message" class="CaseClassifyContent"></div>');
+	$(messageTab).appendTo($(toolsTabs));
 
 	let otherTab = $('<div id="Other" class="CaseClassifyContent"></div>');
 	$(otherTab).appendTo($(toolsTabs));
@@ -1790,7 +1791,8 @@ module.exports = function ( jq ) {
 
 	const doLoadRadioList = function(hospitalId) {
 		return new Promise(function(resolve, reject) {
-			var apiUri = '/api/radiologist/list';
+			//var apiUri = '/api/radiologist/list';
+			var apiUri = '/api/cases/hospital/radio';
 			var params = {hospitalId: hospitalId};
 			$.post(apiUri, params, function(response){
 				resolve(response);
