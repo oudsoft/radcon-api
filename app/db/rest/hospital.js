@@ -61,6 +61,31 @@ app.post('/list', (req, res) => {
   }
 });
 
+//Select API
+app.post('/select/(:hospitalId)', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          let hospitalId = req.params.hospitalId;
+          const hoss = await Hospital.findAll({ attributes: excludeColumn, where: {id: hospitalId}});
+          res.json({status: {code: 200}, Record: hoss[0]});
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
 //Add New Hospital API
 app.post('/add', (req, res) => {
   let token = req.headers.authorization;

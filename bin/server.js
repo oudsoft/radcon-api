@@ -8,7 +8,7 @@
 const log = require('electron-log');
 log.transports.console.level = 'info';
 log.transports.file.level = 'info';
-
+log.transports.file.file = __dirname + '/..' + '/log/log.log';
 log.info('inside child express process...');
 
 /**

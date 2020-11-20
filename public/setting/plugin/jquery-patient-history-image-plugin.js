@@ -135,18 +135,27 @@ $.widget( "custom.imagehistory", {
   render: function(me) {
     this.element.empty();
     this.element.data({images: []})
-    let iconCmdDiv = $('<div id="IconCmdDiv" style="width: 100%"></div>');
-    let imageListDiv = $('<div id="ImageListDiv" style="width: 100%"></div>');
+    let iconCmdDiv = $('<div id="IconCmdDiv" style="width: 100%; position: relative;"></div>');
+    let imageListDiv = $('<div id="ImageListDiv" style="width: 100%; position: relative;"></div>');
     this.element.append($(iconCmdDiv));
     this.element.append($(imageListDiv));
-    let uploadIconProp = {imgUrl: '/images/attach-icon.png',
-    onClick: function(e){me.uploadClick(e, imageListDiv)}}
+    let uploadIconProp = {
+      /* imgUrl: '/images/attach-icon.png', */
+      imgUrl: this.options.attachFileUploadIconUrl,
+      onClick: function(e){me.uploadClick(e, imageListDiv)}
+    };
     let uploadIconCmd = $( "<div></div>" ).appendTo($(iconCmdDiv)).iconitem( uploadIconProp );
-    let scannerIconProp = {imgUrl: '/images/scanner-icon.png',
-    onClick: function(e){me.scannerClick(e, imageListDiv)}}
+    let scannerIconProp = {
+      /* imgUrl: '/images/scanner-icon.png', */
+      imgUrl: this.options.scannerUploadIconUrl,
+      onClick: function(e){me.scannerClick(e, imageListDiv)}
+    };
     let scannerIconCmd = $( "<div></div>" ).appendTo($(iconCmdDiv)).iconitem( scannerIconProp );
-    let captureIconProp = {imgUrl: '/images/screen-capture-icon.png',
-    onClick: function(e){me.captureClick(e, imageListDiv)}}
+    let captureIconProp = {
+      /* imgUrl: '/images/screen-capture-icon.png', */
+      imgUrl: this.options.captureUploadIconUrl,
+      onClick: function(e){me.captureClick(e, imageListDiv)}
+    };
     let captureIconCmd = $( "<div></div>" ).appendTo($(iconCmdDiv)).iconitem( captureIconProp );
   },
   uploadClick: function(e, imageListBox){

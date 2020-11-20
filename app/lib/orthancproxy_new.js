@@ -76,7 +76,7 @@ app.post('/find', function(req, res) {
 			command = 'curl -X GET --user ' + cloud.user + ':' + cloud.pass + ' ' + orthancUrl + req.body.uri + '?user=' + cloud.user;
 		}
 
-		log.info('curl command >>', command);
+		log.info('Find Dicom with command >>', command);
 
 		runcommand(command).then((stdout) => {
 			let studyObj = JSON.parse(stdout);
@@ -94,7 +94,7 @@ app.get('/find', function(req, res) {
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud)
 		let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
 		var command = 'curl -X GET --user ' + cloud.user + ':' + cloud.pass + ' -H "user: ' + cloud.user + ' ' + orthancUrl + req.body.uri;
-		log.info('curl command >>', command);
+		log.info('Find Dicom with command >>', command);
 		runcommand(command).then((stdout) => {
 			let studyObj = JSON.parse(stdout);
 			res.status(200).send(studyObj);
@@ -111,7 +111,7 @@ app.post('/preview/(:instanceID)', function(req, res) {
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud);
 		let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
 		var command = 'curl --user ' + cloud.user + ':' + cloud.pass + ' -H "user: ' + cloud.user + '" ' + orthancUrl + '/instances/' + instanceID + '/preview > ' + usrPreviewDir + '/' + previewFileName;
-		log.info('curl command >>', command);
+		log.info('Open Dicom preview with command >>', command);
 		runcommand(command).then((stdout) => {
 			//res.redirect('/' + rootname + USRPREVIEW_PATH + '/' + previewFileName);
 			let link = process.env.USRPREVIEW_PATH + '/' + previewFileName;
@@ -129,7 +129,7 @@ app.post('/loadarchive/(:studyID)', function(req, res) {
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud);
 		let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
 		var command = 'curl --user ' + cloud.user + ':' + cloud.pass + ' -H "user: ' + cloud.user + '" ' + orthancUrl + '/studies/' + studyID + '/archive > ' + usrArchiveDir + '/' + archiveFileName;
-		log.info('curl command >>', command);
+		log.info('Load Dicom achive with command >>', command);
 		runcommand(command).then((stdout) => {
 			let link = process.env.USRARCHIVE_PATH + '/' + archiveFileName;
 			res.status(200).send({link: link});
@@ -141,11 +141,10 @@ app.post('/deletedicom/(:studyID)', function(req, res) {
 	hospitalId = req.body.hospitalId;
 	doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
 		var studyID = req.params.studyID;
-		var username = req.body.username;
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud);
 		let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
 		var command = 'curl -X DELETE --user ' + cloud.user + ':' + cloud.pass + ' -H "user: ' + cloud.user + '" ' + orthancUrl + '/studies/' + studyID;
-		log.info('curl command >>', command);
+		log.info('Delete Dicom with command >>', command);
 		runcommand(command).then((stdout) => {
 			res.status(200).send({response: {message: stdout}});
 		});

@@ -60,36 +60,67 @@ app.post('/list', (req, res) => {
   }
 });
 
-//insert, update, delete API
-app.post('/(:subAction)', (req, res) => {
+//Add API
+app.post('/add', (req, res) => {
   let token = req.headers.authorization;
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
-      	const subAction = req.params.subAction;
-        //log.info('Start Action => ' + subAction);
-        //log.info('Body of Request=> ' + JSON.stringify(req.body));
-        //log.info('Query of Request=> ' + JSON.stringify(req.query));
         try {
-          switch (subAction) {
-            case 'add':
-              const hospitalId = req.body.hospitalId;
-              let newWorkingH = req.body.data;
-              let adWorkingH = await WorkingH.create(newWorkingH);
-              await WorkingH.update({hospitalId: hospitalId}, { where: { id: adWorkingH.id } });
-              res.json({ status: {code: 200}, Record: adWorkingH});
-            break;
-            case 'update':
-              let upWorkingH = req.body.data;
-              await WorkingH.update(upWorkingH, { where: { id: req.body.id } });
-              res.json({status: {code: 200}});
-            break;
-            case 'delete':
-              await WorkingH.destroy({ where: { id: req.body.id } });
-              res.json({status: {code: 200}});
-            break;
-          }
+          let hospitalId = req.body.hospitalId;
+          let newWorkingH = {WH_Name: req.body.data.WHName, WH: JSON.stringify(req.body.data.WH)};
+          let adWorkingH = await WorkingH.create(newWorkingH);
+          await WorkingH.update({hospitalId: hospitalId}, { where: { id: adWorkingH.id } });
+          res.json({ status: {code: 200}, Record: adWorkingH});
+        } catch(error) {
+      		log.error(error);
+          res.json({ status: {code: 500}, error: error });
+      	}
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+//Update API
+app.post('/update', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          let upWorkingH = req.body.data;
+          await WorkingH.update(upWorkingH, { where: { id: req.body.id } });
+          res.json({status: {code: 200}});
+        } catch(error) {
+      		log.error(error);
+          res.json({ status: {code: 500}, error: error });
+      	}
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+//Delete API
+app.post('/delete', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          await WorkingH.destroy({ where: { id: req.body.id } });
+          res.json({status: {code: 200}});
         } catch(error) {
       		log.error(error);
           res.json({ status: {code: 500}, error: error });

@@ -475,10 +475,10 @@ module.exports = function ( jq ) {
 		});
 	}
 
-	const doCallDeleteDicom = function (studyID, username) {
+	const doCallDeleteDicom = function (studyID, hospitalId) {
 		return new Promise(function(resolve, reject) {
   		let orthancProxyEndPoint = proxyRootUri + orthancProxyApi + '/deletedicom/' + studyID;
-  		let params = {username: username};
+  		let params = {hospitalId: hospitalId};
   		$.post(orthancProxyEndPoint, params, function(data){
 				resolve(data);
 			})
@@ -1364,6 +1364,9 @@ module.exports = function ( jq ) {
 		    attachFileUploadApiUrl: '/api/uploadpatienthistory',
 		    scannerUploadApiUrl: '/api/scannerupload',
 		    captureUploadApiUrl: '/api/captureupload',
+				attachFileUploadIconUrl: '/images/attach-icon.png',
+		    scannerUploadIconUrl: '/images/scanner-icon.png',
+		    captureUploadIconUrl: '/images/screen-capture-icon.png'
 		  };
 			/* patientHistoryBox Variable declair in file newcase-dialog.html */
 		  patientHistoryBox = $("<div ></div>").appendTo($("#ManageImageCmdDiv")).imagehistory( phProp ).data("custom-imagehistory");
@@ -1407,8 +1410,8 @@ module.exports = function ( jq ) {
   		$('body').loading('start');
 			const main = require('../main.js');
 			let userdata = JSON.parse(main.doGetUserData());
-			const username = userdata.username;
-			apiconnector.doCallDeleteDicom(studyID, username).then((response) => {
+			const hospitalId = userdata.hospitalId;
+			apiconnector.doCallDeleteDicom(studyID, hospitalId).then((response) => {
 				console.log(response);
 				if (response.status.code == 200) {
 					$('#CurrentPage').remove();
@@ -2796,7 +2799,7 @@ exports.doConnectWebsocketLocal = function(username){
 	    if (data.type == 'test') {
 	      $.notify(data.message, "success");
 	    } else if (data.type == 'result') {
-	      $.notify(data.message, "success");
+	      $.notify(daata.message, "success");
 	    } else if (data.type == 'notify') {
 	      $.notify(data.message, "warnning");
 	    } else if (data.type == 'exec') {

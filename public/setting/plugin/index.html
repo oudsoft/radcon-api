@@ -14,15 +14,15 @@
     <script type="text/javascript" src="jquery-patient-history-image-plugin.js"></script>
   </head>
   <body>
-    <div id="main">
-      <div>
+    <div id="main" style="position: relative;">
+      <div style="position: relative;">
         <div id="Contaner"></div>
       </div>
-      <div>
+      <div style="position: relative;">
         <button type="button" id="result-button">Get Image</button>
       </div>
     </div>
-    <div id="result"></div>
+    <div id="result" style="position: relative;"></div>
   </body>
 </html>
 <style>
@@ -33,8 +33,13 @@
     attachFileUploadApiUrl: '/api/uploadpatienthistory',
     scannerUploadApiUrl: '/api/scannerupload',
     captureUploadApiUrl: '/api/captureupload',
+    attachFileUploadIconUrl: '/images/attach-icon.png',
+    scannerUploadIconUrl: '/images/scanner-icon.png',
+    captureUploadIconUrl: '/images/screen-capture-icon.png'
   };
-  var patientHistoryBox = $("<div></div>").appendTo($("#Contaner")).imagehistory( phProp ).data("custom-imagehistory");
+  //var patientHistoryBox = $("<div></div>").appendTo($("#Contaner")).imagehistory( phProp ).data("custom-imagehistory");
+  var patientHistoryBox = $("<div></div>").appendTo($("#Contaner"));
+  $(patientHistoryBox).imagehistory( phProp ).data("custom-imagehistory");
 
   $('#result-button').click(()=> {
     let imagesResult = patientHistoryBox.images();

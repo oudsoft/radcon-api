@@ -1,391 +1,6 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-/* utilmod.js */
+/* main.js */
 
-/* internal functions */
-let wsm, wsl;
-
-const formatDateStr = function(d) {
-	var yy, mm, dd;
-	yy = d.getFullYear();
-	if (d.getMonth() + 1 < 10) {
-		mm = '0' + (d.getMonth() + 1);
-	} else {
-		mm = '' + (d.getMonth() + 1);
-	}
-	if (d.getDate() < 10) {
-		dd = '0' + d.getDate();
-	} else {
-		dd = '' + d.getDate();
-	}
-	var td = `${yy}-${mm}-${dd}`;
-	return td;
-}
-
-const formatTimeStr = function(d) {
-	var hh, mn, ss;
-	hh = d.getHours();
-	mn = d.getMinutes();
-	ss = d.getSeconds();
-	var td = `${hh}:${mn}:${ss}`;
-	return td;
-}
-
-const formatDate = function(dateStr) {
-	var fdate = new Date(dateStr);
-	var mm, dd;
-	if (fdate.getMonth() + 1 < 10) {
-		mm = '0' + (fdate.getMonth() + 1);
-	} else {
-		mm = '' + (fdate.getMonth() + 1);
-	}
-	if (fdate.getDate() < 10) {
-		dd = '0' + fdate.getDate();
-	} else {
-		dd = '' + fdate.getDate();
-	}
-	var date = fdate.getFullYear() + (mm) + dd;
-	return date;
-}
-
-const videoConstraints = {video: {displaySurface: "application", height: 1080, width: 1920 }};
-
-const doGetScreenSignalError = function(e) {
-	var error = {
-		name: e.name || 'UnKnown',
-		message: e.message || 'UnKnown',
-		stack: e.stack || 'UnKnown'
-	};
-
-	if(error.name === 'PermissionDeniedError') {
-		if(location.protocol !== 'https:') {
-			error.message = 'Please use HTTPs.';
-			error.stack   = 'HTTPs is required.';
-		}
-	}
-
-	console.error(error.name);
-	console.error(error.message);
-	console.error(error.stack);
-
-	alert('Unable to capture your screen.\n\n' + error.name + '\n\n' + error.message + '\n\n' + error.stack);
-}
-
-/* export function */
-exports.getTodayDevFormat = function(){
-	var d = new Date();
-	return formatDateStr(d);
-}
-
-exports.getToday = function(){
-	var d = new Date();
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getYesterday = function() {
-	var d = new Date();
-	d.setDate(d.getDate() - 1);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getDateLastWeek = function(){
-	var days = 7;
-	var d = new Date();
-	var last = new Date(d.getTime() - (days * 24 * 60 * 60 * 1000));
-	var td = formatDateStr(last);
-	return formatDate(td);
-}
-
-exports.getDateLastMonth = function(){
-	var d = new Date();
-	d.setDate(d.getDate() - 31);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getDateLast3Month = function(){
-	var d = new Date();
-	d.setMonth(d.getMonth() - 3);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getDateLastYear = function(){
-	var d = new Date();
-	d.setFullYear(d.getFullYear() - 1);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getFomateDateTime = function(date) {
-	var todate = formatDateStr(date);
-	var totime = formatTimeStr(date);
-	return todate + 'T' + totime;
-}
-
-exports.getAge = function(dateString) {
-	var dob = dateString;
-	var yy = dob.substr(0, 4);
-	var mo = dob.substr(4, 2);
-	var dd = dob.substr(6, 2);
-	var dobf = yy + '-' + mo + '-' + dd;
-  var today = new Date();
-  var birthDate = new Date(dobf);
-  var age = today.getFullYear() - birthDate.getFullYear();
-  var ageTime = today.getTime() - birthDate.getTime();
-  ageTime = new Date(ageTime);
-  if (age > 0) {
-  	if ((ageTime.getMonth() > 0) || (ageTime.getDate() > 0)) {
-  		age = (age + 1) + 'Y';
-  	} else {
-  		age = age + 'Y';
-  	}
-  } else {
-  	if (ageTime.getMonth() > 0) {
-  		age = ageTime.getMonth() + 'M';
-  	} else if (ageTime.getDate() > 0) {
-  		age = ageTime.getDate() + 'D';
-  	}
-  }
-  return age;
-}
-exports.formatStudyDate = function(studydateStr){
-	if (studydateStr.length >= 8) {
-		var yy = studydateStr.substr(0, 4);
-		var mo = studydateStr.substr(4, 2);
-		var dd = studydateStr.substr(6, 2);
-		var stddf = yy + '-' + mo + '-' + dd;
-		var stdDate = new Date(stddf);
-		var month = stdDate.toLocaleString('default', { month: 'short' });
-		return Number(dd) + ' ' + month + ' ' + yy;
-	} else {
-		return studydateStr;
-	}
-}
-exports.formatStudyTime = function(studytimeStr){
-	if (studytimeStr.length >= 4) {
-		var hh = studytimeStr.substr(0, 2);
-		var mn = studytimeStr.substr(2, 2);
-		return hh + '.' + mn;
-	} else {
-		return studytimeStr;
-	}
-}
-exports.getDatetimeValue = function(studydateStr, studytimeStr){
-	if ((studydateStr.length >= 8) && (studytimeStr.length >= 6)) {
-		var yy = studydateStr.substr(0, 4);
-		var mo = studydateStr.substr(4, 2);
-		var dd = studydateStr.substr(6, 2);
-		var hh = studytimeStr.substr(0, 2);
-		var mn = studytimeStr.substr(2, 2);
-		var ss = studytimeStr.substr(4, 2);
-		var stddf = yy + '-' + mo + '-' + dd + ' ' + hh + ':' + mn + ':' + ss;
-		var stdDate = new Date(stddf);
-		return stdDate.getTime();
-	}
-}
-exports.formatDateDev = function(dateStr) {
-	if (dateStr.length >= 8) {
-		var yy = dateStr.substr(0, 4);
-		var mo = dateStr.substr(4, 2);
-		var dd = dateStr.substr(6, 2);
-		var stddf = yy + '-' + mo + '-' + dd;
-		return stddf;
-	} else {
-		return;
-	}
-}
-
-exports.invokeGetDisplayMedia = function(success) {
-	if(navigator.mediaDevices.getDisplayMedia) {
-    navigator.mediaDevices.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
-  } else {
-    navigator.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
-  }
-}
-
-exports.addStreamStopListener = function(stream, callback) {
-	stream.getTracks().forEach(function(track) {
-		track.addEventListener('ended', function() {
-			callback();
-		}, false);
-	});
-}
-
-exports.base64ToBlob = function (base64, mime) {
-	mime = mime || '';
-	var sliceSize = 1024;
-	var byteChars = window.atob(base64);
-	var byteArrays = [];
-
-	for (var offset = 0, len = byteChars.length; offset < len; offset += sliceSize) {
-		var slice = byteChars.slice(offset, offset + sliceSize);
-
-		var byteNumbers = new Array(slice.length);
-		for (var i = 0; i < slice.length; i++) {
-			byteNumbers[i] = slice.charCodeAt(i);
-		}
-
-		var byteArray = new Uint8Array(byteNumbers);
-
-		byteArrays.push(byteArray);
-	}
-
-	return new Blob(byteArrays, {type: mime});
-}
-
-exports.windowMinimize = function (){
-	window.innerWidth = 100;
-	window.innerHeight = 100;
-	window.screenX = screen.width;
-	window.screenY = screen.height;
-	alwaysLowered = true;
-}
-
-exports.windowMaximize = function () {
-	window.innerWidth = screen.width;
-	window.innerHeight = screen.height;
-	window.screenX = 0;
-	window.screenY = 0;
-	alwaysLowered = false;
-}
-
-exports.doAssignWsm = function(socket){
-	wsm = socket;
-}
-
-exports.doAssignWsl = function(socket){
-	wsl = socket;
-}
-
-exports.doConnectWebsocketMaster = function(username, hospitalId, type){
-  const hostname = window.location.hostname;
-  const port = window.location.port;
-  const paths = window.location.pathname.split('/');
-  const rootname = paths[1];
-
-  const wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '/' + hospitalId + '?type=' + type;
-  const wsm = new WebSocket(wsUrl);
-	wsm.onopen = function () {
-		//console.log('Master Websocket is connected to the signaling server')
-	};
-
-	wsm.onmessage = function (msgEvt) {
-    let data = JSON.parse(msgEvt.data);
-    console.log(data);
-		if (data.type !== 'test') {
-			let masterNotify = localStorage.getItem('masternotify');
-	    let MasterNotify = JSON.parse(masterNotify);
-			if (MasterNotify) {
-	      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
-	    } else {
-	      MasterNotify = [];
-	      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
-	    }
-	    localStorage.setItem('masternotify', JSON.stringify(MasterNotify));
-		}
-    if (data.type == 'test') {
-      $.notify(data.message, "success");
-    } else if (data.type == 'trigger') {
-			if (wsl) {
-	      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere};
-	      wsl.send(JSON.stringify(message));
-	      $.notify('The system will be start store dicom to your local.', "success");
-			}
-    } else if (data.type == 'notify') {
-      $.notify(data.message, "warnning");
-		} else if (data.type == 'exec') {
-			if (wsl) {
-				wsl.send(JSON.stringify(data));
-			}
-		} else if (data.type == 'cfindresult') {
-			let remoteDicom = document.getElementById('RemoteDicom');
-			remoteDicom.dispatchEvent(new CustomEvent("cfindresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
-		} else if (data.type == 'move') {
-			if (wsl) {
-				wsl.send(JSON.stringify(data));
-			}
-		} else if (data.type == 'cmoveresult') {
-			let remoteDicom = document.getElementById('RemoteDicom');
-			remoteDicom.dispatchEvent(new CustomEvent("cmoveresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
-		} else if (data.type == 'run') {
-			if (wsl) {
-				wsl.send(JSON.stringify(data));
-			}
-		} else if (data.type == 'runresult') {
-			//let remoteDicom = document.getElementById('RemoteDicom');
-			remoteDicom.dispatchEvent(new CustomEvent("runresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
-		}
-  };
-
-  wsm.onclose = function(event) {
-		//console.log("Master WebSocket is closed now. with  event:=> ", event);
-	};
-
-	wsm.onerror = function (err) {
-	   console.log("Master WS Got error", err);
-	};
-
-	return wsm;
-}
-
-exports.doConnectWebsocketLocal = function(username){
-  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
-  let wsl;
-	try {
-		wsl = new WebSocket(wsUrl);
-		wsl.onopen = function () {
-			console.log('Local Websocket is connected to the signaling server')
-		};
-
-		wsl.onmessage = function (msgEvt) {
-	    let data = JSON.parse(msgEvt.data);
-	    console.log(data);
-			if (data.type !== 'test') {
-				let localNotify = localStorage.getItem('localnotify');
-		    let LocalNotify = JSON.parse(localNotify);
-		    if (LocalNotify) {
-		      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
-		    } else {
-		      LocalNotify = [];
-		      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
-		    }
-		    localStorage.setItem('localnotify', JSON.stringify(LocalNotify));
-			}
-	    if (data.type == 'test') {
-	      $.notify(data.message, "success");
-	    } else if (data.type == 'result') {
-	      $.notify(daata.message, "success");
-	    } else if (data.type == 'notify') {
-	      $.notify(data.message, "warnning");
-	    } else if (data.type == 'exec') {
-				//Send result of exec back to websocket server
-	    	wsm.send(JSON.stringify(data.data));
-			} else if (data.type == 'move') {
-				wsm.send(JSON.stringify(data.data));
-			} else if (data.type == 'run') {
-				wsm.send(JSON.stringify(data.data));
-	    }
-	  };
-
-	  wsl.onclose = function(event) {
-			console.log("Local WebSocket is closed now. with  event:=> ", event);
-		};
-
-		wsl.onerror = function (err) {
-		   console.log("Local WS Got error", err);
-		};
-
-		return wsl;
-
-	} catch(error) {
-		console.log('I can not connect to local socket with error message => ' + error);
-		return;
-	}
-}
-
-},{}],2:[function(require,module,exports){
 window.$ = window.jQuery = require('jquery');
 
 $.ajaxSetup({
@@ -394,20 +9,33 @@ $.ajaxSetup({
 	}
 });
 
-const utilMod = require('../case/mod/utilmod.js');
+$.fn.center = function () {
+  this.css("position","absolute");
+  this.css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 2) + $(window).scrollTop()) + "px");
+  this.css("left", Math.max(0, (($(window).width() - $(this).outerWidth()) / 2) +  $(window).scrollLeft()) + "px");
+  return this;
+}
+
+const worksch = require('./mod/worksch.js')($);
 
 var upwd, wsm, wsl;
 
 $( document ).ready(function() {
 	console.log('page on ready ...');
 	const initPage = function() {
+    let jqueryUiCssUrl = "../../lib/jquery-ui.min.css";
+    let jqueryUiJsUrl = "../../lib/jquery-ui.min.js";
+    $('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
+  	$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
+
 		var token = doGetToken();
 		if (token) {
-			doLoadUserstatusPage()
+			doLoadMainPage()
 		} else {
-			//doLoadLogin();
-      let url = '/';
-      window.location.replace(url);
+			doLoadLogin()
+      $('#RegisterDialogBox').dialog({
+        modal: true, autoOpen: false, width: 350, resizable: false, title: 'ลงทะเบียนเข้าใช้งาน'
+      });
 		}
 	};
 
@@ -443,6 +71,7 @@ function doLogin(){
 		doCallLoginApi(user).then((response) => {
 			// var resBody = JSON.parse(response.res.body); <= ใช้ในกรณีเรียก API แบบ By Proxy
 			//var resBody = JSON.parse(response); <= ใช้ในกรณีเรียก API แบบ Direct
+      console.log(response);
 
 			if (response.success == false) {
 				$('input[type="text"]').css({"border":"2px solid red","box-shadow":"0 0 3px red"});
@@ -474,6 +103,9 @@ function doLoadLogin() {
         doLogin();
       };
     });
+    $("#register-cmd").click(function(){
+			doRegister();
+		});
 	});
 }
 
@@ -484,13 +116,15 @@ function doUserLogout() {
   window.location.replace(url);
 }
 
-function doLoadUserstatusPage(){
-  let jqueryUiCssUrl = "../../lib/jquery-ui.min.css";
-	let jqueryUiJsUrl = "../../lib/jquery-ui.min.js";
+function doLoadMainPage(){
+	//let paths = window.location.pathname.split('/');
+	//let rootname = paths[1];
+	//let jqueryUiCssUrl = "/lib/jquery-ui.min.css";
+	//let jqueryUiJsUrl = "/lib/jquery-ui.min.js";
 	let jqueryLoadingUrl = '../../lib/jquery.loading.min.js';
 	let jqueryNotifyUrl = '../../lib/notify.min.js';
-	$('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
-	$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
+	//$('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
+	//$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
 	//https://carlosbonetti.github.io/jquery-loading/
 	$('head').append('<script src="' + jqueryLoadingUrl + '"></script>');
 	//https://notifyjs.jpillora.com/
@@ -502,101 +136,252 @@ function doLoadUserstatusPage(){
   $('body').loading('stop');
 
   let userdata = JSON.parse(doGetUserData());
+  let queryObj = worksch.urlQueryToObject(window.location.href);
 
-  $('#app').load('form/main.html', function(){
+	$('#app').load('form/main.html', function(){
 		$("#User-Identify").text(userdata.userinfo.User_NameEN + ' ' + userdata.userinfo.User_LastNameEN);
 		$("#User-Identify").click(function(){
 			doShowUserProfile();
 		});
-		$("#Task-Cmd").click(function(){
-			doShowTask();
+		$("#Home-Cmd").click(function(){
+      if (queryObj.hosid) {
+        doLoadWorkingHourDesign(queryObj.hosid);
+      };
 		});
     $("#Logout-Cmd").click(function(){
 			doUserLogout();
 		});
 
-    //doShowUserProfile();
-		doShowTask();
+    if (queryObj.hosid) {
+      doLoadWorkingHourDesign(queryObj.hosid);
+    };
 
-    utilMod.doConnectWebsocketMaster(userdata.username);
+    //doConnectWebsocketMaster(userdata.username);
     //doConnectWebsocketLocal(userdata.username);
 	});
 }
 
-const doShowTask = async function (){
-  var taskApiUri = '/api/tasks/list';
-  var params = {};
-  var response = await $.post(taskApiUri, params);
-  console.log(response);
-	$('.submenu').empty();
-	$('.main').empty();
-	$('#TaskDiv').remove();
-	let TaskDiv = $("<div id='TaskDiv'><ul></ul></div>");
-	$(TaskDiv).appendTo($('.main'));
-	//let resOb = JSON.parse(response);
-	let resOb = response.Records;
-	if (resOb.length > 0) {
-		resOb.forEach((item, i) => {
-			let taskItem = $("<li>" + JSON.stringify(item) + "</li>");
-			let removeCmd = $("<input type='button' value=' Remove ' />");
-			$(removeCmd).on('click',()=>{
-
-			})
-			$(removeCmd).appendTo($(taskItem));
-
-			let d = new Date(item.triggerAt);
-			let offset = d.getTimezoneOffset();
-			let utc = d.getTime() + (offset * 3600000);
-			let nd = new Date(utc);
-			$(taskItem).append(nd);
-
-			$(taskItem).appendTo($(TaskDiv));
-		});
-	}
-	doShowMasterNotify();
-	//$('.main').append("<div>" + doShowLocalNotify() + "</div>");
+async function doLoadWorkingHourDesign(hosId){
+	$(".main").empty();
+	let hospitalData = await worksch.doLoadHospitalData(hosId);
+  $(".main").append($(hospitalData));
+  let workingHourData = await worksch.doLoadHospitalWorkingHour(hosId);
+  $(".main").append($(workingHourData));
+  $(workingHourData).on('updatelist', async (e, data)=>{
+    $(workingHourData).remove();
+    workingHourData = await worksch.doLoadHospitalWorkingHour(hosId);
+    $(".main").append($(workingHourData));
+  });
 }
 
-const doShowMasterNotify = async function() {
-	$('#MasterNotifyDiv').remove();
-	const masterNotify = JSON.parse(localStorage.getItem('masternotify'));
-	await masterNotify.sort((a,b) => {
-		let av = new Date(a.datetime);
-		let bv = new Date(b.datetime);
-		if (av && bv) {
-			return bv - av;
-		} else {
-			return 0;
-		}
-	});
+const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
 
-	let MasterNotifyDiv = $("<div id='MasterNotifyDiv'><ul></ul></div>");
-	$(MasterNotifyDiv).appendTo($('.main'));
-	masterNotify.forEach((item, i) => {
-		let masterItem = $("<li>" + JSON.stringify(item) + "</li>");
-		let openCmd = $("<input type='button' value=' Open ' />");
-		$(openCmd).on('click',()=>{
-			item.status = 'Read';
-			localStorage.setItem('masternotify', JSON.stringify(masterNotify));
-			doShowMasterNotify();
-		})
-		$(openCmd).appendTo($(masterItem));
+function doRegister(){
+  $('#RegisterDialogBox').empty();
+  $('#RegisterDialogBox').css(inputStyleClass);
+  let selectUserTypeLabel = $('<div>โปรดเลือกประเภทผู้ใช้งาน</div>');
+  let selectUserTypeDiv = $('<select id="selectUserType"><option value="0">ประเภทผู้ใช้งานของคุณคือ?</option><option value="2">ลงทะเบียนใช้งาน (เจ้าหน้าที่เทคนิค)</option><option value="5">ลงทะเบียนใช้งาน (แพทย์เจ้าของไข้)</option><option value="4">ลงทะเบียนใช้งาน (รังสีแพทย์)</option></select>');
+  $(selectUserTypeDiv).css(inputStyleClass);
+  $('#RegisterDialogBox').append($(selectUserTypeLabel));
+  $('#RegisterDialogBox').append($(selectUserTypeDiv));
 
-		let removeCmd = $("<input type='button' value=' Remove ' />");
-		$(removeCmd).on('click',()=>{
-			masterNotify.splice(i, 1);
-			localStorage.setItem('masternotify', JSON.stringify(masterNotify));
-			doShowMasterNotify();
-		})
-		$(removeCmd).appendTo($(masterItem));
-		$(masterItem).appendTo($(MasterNotifyDiv));
-	});
+  $("#selectUserType").on('change', (e)=>{
+    let userTypeSelected = $("#selectUserType").val();
+    if (userTypeSelected != 0) {
+      $("#selectUserType").trigger('selecthospital', [{usertype: userTypeSelected}]);
+    }
+  });
+
+  $('#RegisterDialogBox').on('selecthospital', (e, data)=> {
+    $(selectUserTypeLabel).remove();
+    $(selectUserTypeDiv).remove();
+    var hospitalOptionsApiUri = '/api/hospital/options';
+    var params = {};
+    $.post(hospitalOptionsApiUri, params, function(result){
+      if(result.Options.length > 0) {
+        let selecthospitalLabel = $('<div id="SelecthospitalLabel">โปรดเลือกโรงพยาบาลที่สังกัด</div>')
+        let selectHospitalDiv = $('<select id="SelectHospital"></select>');
+        $(selectHospitalDiv).css(inputStyleClass);
+        $(selectHospitalDiv).append('<option value="0">โรงพยาบาลที่คุณสังกัดคือ?</option>');
+        result.Options.forEach((item, i) => {
+          $(selectHospitalDiv).append('<option value="' + item.Value + '">' + item.DisplayText + '</option>');
+        });
+        $('#RegisterDialogBox').append($(selecthospitalLabel));
+        $('#RegisterDialogBox').append($(selectHospitalDiv));
+
+        $(selectHospitalDiv).on('change', (e)=>{
+          let hospitalSelected = $(selectHospitalDiv).val();
+          if (hospitalSelected != 0) {
+            $(selectHospitalDiv).trigger('registerusername', [{usertype: data.usertype, hospital: hospitalSelected}]);
+          }
+        });
+      }
+    });
+  });
+
+  $('#RegisterDialogBox').on('registerusername', (e, data)=> {
+    $('#RegisterDialogBox').find('#SelecthospitalLabel').remove();
+    $('#RegisterDialogBox').find('#SelectHospital').remove();
+    let registerUsernameForm = doCreateRegisterUserNameForm();
+    $('#RegisterDialogBox').append($(registerUsernameForm));
+    let registerUsernameActionCmdDiv = $('<div id ="RegisterAction" style="text-align: center; margin-top: 10px;"></div>');
+    $(registerUsernameActionCmdDiv).appendTo('#RegisterDialogBox');
+    let submitActionCmd = $('<input type="button" value=" ตกลง "/>');
+    $(submitActionCmd).appendTo(registerUsernameActionCmdDiv);
+    $(submitActionCmd).click((e) => {
+      let username = $(registerUsernameForm).find('#username').val();
+      let password1 = $(registerUsernameForm).find('#password1').val();
+      let password2 = $(registerUsernameForm).find('#password2').val();
+      if (username !=='') {
+        if ((password1 !=='') && (password1.length >= 4) && (password2 !=='') && (password1 === password2)) {
+          $(registerUsernameForm).find('#username').css('border', '');
+          $(registerUsernameForm).find('#password1').css('border', '');
+          $(registerUsernameForm).find('#password2').css('border', '');
+          $(submitActionCmd).trigger('verifyusername', [{usertype: data.usertype, hospital: data.hospital, username: username, password: password1}]);
+        } else {
+          $(registerUsernameForm).find('#password1').css('border', '1px solid red');
+          $(registerUsernameForm).find('#password2').css('border', '1px solid red');
+        }
+      } else {
+        $(registerUsernameForm).find('#username').css('border', '1px solid red');
+      }
+    });
+    $(registerUsernameActionCmdDiv).append("<span>  </span>");
+    let cancelActionCmd = $('<input type="button" value=" ยกเลิก "/>');
+    $(cancelActionCmd).appendTo(registerUsernameActionCmdDiv);
+    $(cancelActionCmd).click((e) => {
+      $('#RegisterDialogBox').dialog('close');
+    });
+  	$(registerUsernameActionCmdDiv).find('input[type="button"]').css(inputStyleClass);
+  });
+
+  $('#RegisterDialogBox').on('verifyusername', (e, data)=> {
+    var verifyusernameApiUri = '/api/users/verifyusername/' + data.username;
+    var params = data;
+    $.post(verifyusernameApiUri, params, function(result){
+      if((result.status.code == 200) && (!result.result.data)) {
+        $('#RegisterDialogBox').find('#RegisterUserNameForm').find('#ErrorMessage').remove();
+        $('#RegisterDialogBox').trigger('registeruser', [data]);
+      } else {
+        $('#RegisterDialogBox').find('#username').css('border', '1px solid red');
+        $('#RegisterDialogBox').find('#RegisterUserNameForm').append('<div id="ErrorMessage">Invalid This Userane</div>').css('color', 'red');
+      }
+    });
+  });
+
+  $('#RegisterDialogBox').on('registeruser', (e, data)=> {
+    $('#RegisterDialogBox').find('#RegisterUsernameForm').remove();
+    $('#RegisterDialogBox').find('#RegisterAction').remove();
+    let registerUserForm = doCreateRegisterUserForm();
+    $('#RegisterDialogBox').append($(registerUserForm));
+    let registerUserActionCmdDiv = $('<div id="RegisterUserActionCmdDiv" style="text-align: center; margin-top: 10px;"></div>');
+    $(registerUserActionCmdDiv).appendTo('#RegisterDialogBox');
+    let submitActionCmd = $('<input type="button" value=" ตกลง "/>');
+    $(submitActionCmd).appendTo(registerUserActionCmdDiv);
+    $(submitActionCmd).click(async (e) => {
+      let userParams = doValidateForm(registerUserForm, data);
+      if (userParams){
+        let result = await regiternewUserReq(userParams);
+        if ((result.status) && (result.status.code == 200)) {
+          $('#RegisterDialogBox').find('#RegisterUserInfo').remove();
+          $('#RegisterDialogBox').find('#RegisterUserActionCmdDiv').remove();
+          let congratulationLabel1 = $('<div><h1>ยินดีต้อนรับเข้่าสู่ระบบ  Rad Connext</h1></div>');
+          let congratulationLabel2 = $('<div><h2>โปรดเข้าสู่ระบบฯ ด้วย Username และ Password ที่ได้ลงทะเบียนเสร็จสิ้นไปเมื่อสักครู่</h2></div>');
+          $('#RegisterDialogBox').append($(congratulationLabel1));
+          $('#RegisterDialogBox').append($(congratulationLabel2));
+          setTimeout(()=> {
+            $('#RegisterDialogBox').dialog('close');
+          }, 5000);
+        } else {
+          alert('ไม่สามารถบันทึกการลงทะเบียนหมอเจ้าของไข้ได้ในขณะนี้')
+        }
+      }
+    });
+    $(registerUserActionCmdDiv).append("<span>  </span>");
+    let cancelActionCmd = $('<input type="button" value=" ยกเลิก "/>');
+    $(cancelActionCmd).appendTo(registerUserActionCmdDiv);
+    $(cancelActionCmd).click((e) => {
+      $('#RegisterDialogBox').dialog('close');
+    });
+    $(registerUserActionCmdDiv).find('input[type="button"]').css(inputStyleClass);
+    var x = $('#RegisterDialogBox').position().left;
+    var y = $('#RegisterDialogBox').position().top - $(document).scrollTop();
+    $('#RegisterDialogBox').dialog('option', 'position', [x,y]);
+  });
+
+  $('#RegisterDialogBox').dialog('open');
 }
 
-const doShowLocalNotify = function() {
-	const localNotify = JSON.parse(localStorage.getItem('localnotify'));
-	console.log(localNotify);
-	return localNotify;
+function doCreateRegisterUserNameForm(){
+  let form = $('<div id="RegisterUsernameForm"></div>');
+  $(form).append('<div class="InputField"><label>Username :</label><input type="text" id="username" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>Password :</label><input type="password" id="password1" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>Retry Password :</label><input type="password" id="password2" size="25"/></div>');
+  return $(form);
+}
+
+function doCreateRegisterUserForm(){
+  const form = $('<div id="RegisterUserInfo"></div>');
+  $(form).append('<div class="InputField"><label>ชื่อ (ภาษาอังกฤษ) :</label><input type="text" id="NameEN" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>นามสกุล (ภาษาอังกฤษ) :</label><input type="text" id="LastNameEN" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>ชื่อ (ภาษาไทย) :</label><input type="text" id="NameTH" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>นามสกุล (ภาษาไทย) :</label><input type="text" id="LastNameTH" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>Email :  </label><input type="text" id="Email" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>เบอร์โทรศัพท์ :</label><input type="text" id="Phone" size="25"/></div>');
+  $(form).append('<div class="InputField"><label>LineID :</label><input type="text" id="LineID" size="25"/></div>');
+  return $(form);
+}
+
+function doValidateForm(form, data) {
+  const username = data.username;
+  const password = data.password;
+  const UserType = data.usertype;
+  const Hospitals = [];
+  const Hospital = data.hospital;
+  let NameEN = $(form).find("#NameEN").val();
+  let LastNameEN = $(form).find("#LastNameEN").val();
+  let NameTH = $(form).find("#NameTH").val();
+  let LastNameTH = $(form).find("#LastNameTH").val();
+  let Email = $(form).find("#Email").val();
+  let Phone = $(form).find("#Phone").val();
+  let LineID = $(form).find("#LineID").val();
+  if (NameEN !== ''){
+    if (LastNameEN !== ''){
+      if (NameTH !== ''){
+        if (LastNameTH !== ''){
+          let params = {User_NameEN: NameEN, User_LastNameEN: LastNameEN, User_NameTH: NameTH, User_LastNameTH: LastNameTH, User_Email: Email, User_Phone: Phone, User_LineID: LineID, User_PathRadiant: '/path/to/khow', User_Hospitals: JSON.stringify(Hospitals), usertypeId: UserType, hospitalId: Hospital, username: username, password: password};
+          return params;
+        } else {
+          $(form).find("#LastNameTH").css({'border': '1px solid red'});
+          return;
+        }
+      } else {
+        $(form).find("#NameTH").css({'border': '1px solid red'});
+        return;
+      }
+    } else {
+      $(form).find("#LastNameEN").css({'border': '1px solid red'});
+      return;
+    }
+  } else {
+    $(form).find("#NameEN").css({'border': '1px solid red'});
+    return;
+  }
+}
+
+function regiternewUserReq(userParams) {
+  return new Promise(async function(resolve, reject) {
+    let rqParams = userParams;
+    let saveNewUserApiUri = '/api/users/';
+    $.post(saveNewUserApiUri, rqParams, function(result){
+      console.log(result);
+      if (result.status.code == 200) {
+        resolve(result);
+      } else {
+        resolve({});
+      }
+    });
+  });
 }
 
 function doShowUserProfile() {
@@ -606,17 +391,15 @@ function doShowUserProfile() {
   console.log(userdata.userinfo);
 
 	$("#dialog").load('form/dialog.html', function() {
-		$("#UserStaus").text(userdata.hospital.Hos_Name);
-		//$("#OrgName").text(cookie.org[0].name);
-		//$("#OrgName").text(cookie.org[0].name);
-		//$("#PositionName").val(cookie.org[0].position);
+		$("#UserHospital").text(userdata.hospital.Hos_Name);
 		$("#Username").text(userdata.username);
-		//$("#Password").val(upwd);
-		$("#Name").val(userinfo.User_NameEN + ' ' + userinfo.User_LastNameEN);
+		$("#NameEN").val(userinfo.User_NameEN);
+    $("#LastNameEN").val(userinfo.User_LastNameEN);
+    $("#NameTH").val(userinfo.User_NameTH);
+    $("#LastNameTH").val(userinfo.User_LastNameTH);
 		$("#Telno").val(userinfo.User_Phone);
 		$("#Email").val(userinfo.User_Email);
 		$("#LineId").val(userinfo.User_LineID);
-		//$("#Comment").val(cookie.comment);
 		$(".modal-footer").css('text-align', 'center');
 		$("#SaveUserProfile-Cmd").click(function(){
 			doSaveUserProfile();
@@ -625,28 +408,299 @@ function doShowUserProfile() {
 }
 
 function doSaveUserProfile(){
-  alert('Now have not support yet.');
+	let nameEN = $("#NameEN").val();
+  let lastNameEN = $("#LastNameEN").val();
+  let nameTH = $("#NameTH").val();
+  let lastNameTH = $("#LastNameTH").val();
+	let telno = $("#Telno").val();
+	let email = $("#Email").val();
+	let lineId = $("#LineId").val();
+  console.log({nameEN, lastNameEN, nameTH, lastNameTH, telno, email, lineId});
+	alert('It will be comming soon.');
 	$("#myModal").css("display", "none");
 }
 
-function doSaveSetting() {
-	alert('Now have not support yet.');
+function doConnectWebsocketMaster(username){
+  const hostname = window.location.hostname;
+  const port = window.location.port;
+  const paths = window.location.pathname.split('/');
+  const rootname = paths[1];
+
+  let wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '?type=test';
+  wsm = new WebSocket(wsUrl);
+	wsm.onopen = function () {
+		console.log('Master Websocket is connected to the signaling server')
+	};
+
+	wsm.onmessage = function (msgEvt) {
+    let data = JSON.parse(msgEvt.data);
+    console.log(data);
+    if (data.type == 'test') {
+      $.notify(data.message, "success");
+    } else if (data.type == 'trigger') {
+      let message = {type: 'trigger', dcmname: data.dcmname};
+      wsl.send(JSON.stringify(message));
+      $.notify('The system will be start store dicom to your local.', "success");
+    } else if (data.type == 'notify') {
+      $.notify(data.message, "warnning");
+    }
+  };
+
+  wsm.onclose = function(event) {
+		console.log("Master WebSocket is closed now. with  event:=> ", event);
+	};
+
+	wsm.onerror = function (err) {
+	   console.log("Master WS Got error", err);
+	};
 }
 
-const doGetToken = function (){
+function doConnectWebsocketLocal(username){
+  let wsUrl = 'ws://localhost:3000/webapp/' + username + '?type=test';
+  wsl = new WebSocket(wsUrl);
+	wsl.onopen = function () {
+		console.log('Local Websocket is connected to the signaling server')
+	};
+
+	wsl.onmessage = function (msgEvt) {
+    let data = JSON.parse(msgEvt.data);
+    console.log(data);
+    if (data.type == 'test') {
+      $.notify(data.message, "success");
+    } else if (data.type == 'result') {
+      $.notify(data.message, "success");
+    } else if (data.type == 'notify') {
+      $.notify(data.message, "warnning");
+    }
+  };
+
+  wsl.onclose = function(event) {
+		console.log("Local WebSocket is closed now. with  event:=> ", event);
+	};
+
+	wsl.onerror = function (err) {
+	   console.log("Local WS Got error", err);
+	};
+}
+
+function doGetToken(){
 	return localStorage.getItem('token');
 }
 
-const doGetUserData = function (){
+function doGetUserData(){
   return localStorage.getItem('userdata');
 }
 
-module.exports =  {
+module.exports = {
 	doGetToken,
-  doGetUserData,
+  doGetUserData
 }
 
-},{"../case/mod/utilmod.js":1,"jquery":3}],3:[function(require,module,exports){
+},{"./mod/worksch.js":2,"jquery":3}],2:[function(require,module,exports){
+module.exports = function ( jq ) {
+	const $ = jq;
+
+	const doCallApi = function(url, rqParams) {
+		return new Promise(function(resolve, reject) {
+			$.post(url, rqParams).then((response) => {
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+			})
+		});
+	}
+
+	const doGetApi = function(url, rqParams) {
+		return new Promise(function(resolve, reject) {
+			$.get(url, rqParams).then((response) => {
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+			})
+		});
+	}
+
+	const urlQueryToObject = function(url) {
+  	let result = url.split(/[?&]/).slice(1).map(function(paramPair) {
+  				return paramPair.split(/=(.+)?/).slice(0, 2);
+  		}).reduce(function (obj, pairArray) {
+  				obj[pairArray[0]] = pairArray[1];
+  				return obj;
+  		}, {});
+  	return result;
+  }
+
+	const doLoadHospitalData = function(hosId){
+		return new Promise(async function(resolve, reject) {
+			let calParams = {hospitalId: hosId};
+			let callUrl = '/api/hospital/select/' + hosId;
+			let hosDataRes = await doCallApi(callUrl, calParams);
+			let hosData = hosDataRes.Record;
+			let fieldNames = Object.keys(hosData);
+			let hosDataDiv = $('<div id="HosDataDiv" style="display: table"></div>');
+			await fieldNames.forEach((item, i) => {
+				let divRow = $('<div style="display: table-row"></div>');
+				$(hosDataDiv).append($(divRow));
+				let fieldNameCell = $('<div style="display: table-cell; width: 150px; background-color: gray; color: white;"></div>');
+				$(fieldNameCell).append(item);
+				$(fieldNameCell).appendTo($(divRow));
+				let fieldValueCell = $('<div style="display: table-cell; background-color: lightgray;"></div>');
+				$(fieldValueCell).append(Object.values(hosData)[i]);
+				$(fieldValueCell).appendTo($(divRow));
+			});
+			resolve($(hosDataDiv));
+		});
+	}
+
+	const doLoadHospitalWorkingHour = function(hosId){
+		return new Promise(async function(resolve, reject) {
+			let wkHourListDiv = $('<table id="WkHourListDiv" width="100%"></table>');
+			let addWHRow = $('<tr style="background-color: green; color: white;"></tr>');
+			$(wkHourListDiv).append($(addWHRow));
+			let titleCell = $('<td align="left" colspan="4"><b>รายการแบ่งกะเข้าเวร</b></td>');
+			$(addWHRow).append($(titleCell));
+			let addWHCell = $('<td align="left"></td>');
+			$(addWHRow).append($(addWHCell));
+			let addWHCmd = $('<div id="AddWHCmd" style="padding:5px; width: 50px; text-align: center; background-color: white; color: green; float: right; cursor: pointer;">+</div>');
+			$(addWHCmd).appendTo($(addWHCell));
+			$(addWHCmd).click((e)=>{
+				let callAddWHUrl = '/api/workinghour/add';
+				let addformRow = doCreateWHForm(hosId, callAddWHUrl);
+				$(wkHourListDiv).append($(addformRow));
+			});
+			let headerRow = $('<tr style="background-color: green; color: white;"></tr>');
+			$(wkHourListDiv).append($(headerRow));
+			let headerCell = $('<td align="center" width="10%">#</td><td align="center" width="20%">ชื่อกะ</td><td align="center" width="15%">จาก ชม. ที่</td><td align="center" width="15%">ถึง ชม. ที่</td><td align="center" width="20%">คำสั่ง</td>');
+			$(headerRow).append($(headerCell));
+
+			let calParams = {hospitalId: hosId};
+			let callUrl = '/api/workinghour/list';
+			let wkHourListRes = await doCallApi(callUrl, calParams);
+			let wkHourData = wkHourListRes.Records;
+			wkHourData.forEach((item, i) => {
+				let no = i + 1;
+				let whName = item.WH_Name;
+				let obWH = JSON.parse(item.WH);
+				let dataRow = $('<tr id="WH-' + item.id + '"></tr>');
+				let dataCell = $('<td align="center">' + no + '</td><td align="left">' + whName + '</td><td align="center">' + obWH.from + '</td><td align="center">' + obWH.to + '</td>');
+				$(dataRow).append($(dataCell));
+				let cmdCell = $('<td align="center"></td>');
+				$(cmdCell).appendTo($(dataRow));
+
+				let updateCmd = $('<input type="button" id="UpdateCmd-'+ item.id + '" value=" แก้ไข "/>');
+				$(updateCmd).appendTo($(cmdCell));
+				let deleteCmd = $('<input type="button" value=" ลบ "/>');
+				$(deleteCmd).appendTo($(cmdCell));
+
+				$(updateCmd).click(async (e)=>{
+					let eventData = {whId: item.id, whData: item};
+					$(updateCmd).trigger('updateitem', [eventData]);
+					$(dataRow).hide();
+				});
+				$(deleteCmd).click(async (e)=>{
+					let eventData = {whId: item.id};
+					$(deleteCmd).trigger('deleteitem', [eventData]);
+				});
+				$(wkHourListDiv).append($(dataRow));
+			});
+
+			$(wkHourListDiv).on('updateitem', (e, data)=>{
+				let whId = data.whId;
+				let callUpdateWHUrl = '/api/workinghour/update';
+				let updateFormRow = doCreateWHForm(hosId, callUpdateWHUrl, data.whData);
+				$(wkHourListDiv).append($(updateFormRow));
+			});
+
+			$(wkHourListDiv).on('deleteitem', (e, data)=>{
+				let whId = data.whId;
+			});
+
+			$(wkHourListDiv).on('releaselock', (e, data)=>{
+				$(wkHourListDiv).find('#WH-' + data.id).show();
+				$(wkHourListDiv).find('#UpdateCmd-' + data.id).prop('disable', false);
+			});
+
+			resolve($(wkHourListDiv));
+		});
+	}
+
+	function doCreateWHForm(hosId, callUrl, data){
+		const whFormRow = $('<tr id="WHForm" style="background-color: green; color: white;"></tr>');
+		let whForm;
+		if (data) {
+			whForm = $('<td align="left">' + data.id + '</td><td align="left"><input type="text" id="WHName" size="30" /></td><td align="left"><input type="number" id="WHFrom" size="10"/></td><td align="left"><input type="number" id="WHTo" size="10"/></td><td align="center"><input type="button" id="SaveCmd" value=" บันทึก "/>  <input type="button" id="CancelCmd" value=" ยกเลิก "/></td>');
+			console.log(data);
+			let wh = JSON.parse(data.WH);
+			$(whForm).find('#WHName').val(data.WH_Name);
+			$(whForm).find('#WHFrom').val(wh.from);
+			$(whForm).find('#WHTo').val(wh.to);
+		} else {
+			whForm = $('<td align="left">#</td><td align="left"><input type="text" id="WHName" size="30"/></td><td align="left"><input type="number" id="WHFrom" size="10"/></td><td align="left"><input type="number" id="WHTo" size="10"/></td><td align="center"><input type="button" id="SaveCmd" value=" บันทึก "/>  <input type="button" id="CancelCmd" value=" ยกเลิก "/></td>');
+		}
+		$(whFormRow).append($(whForm));
+		$(whForm).find('#SaveCmd').click(async (e)=>{
+			let whParams;
+			if (data) {
+				whParams = doVerifyForm(whForm, hosId, data.id);
+			} else {
+				whParams = doVerifyForm(whForm, hosId);
+			}
+			if (whParams) {
+				let wkHourRes = await doCallApi(callUrl, whParams);
+				if (wkHourRes.status.code == 200) {
+					$.notify('บันทึกข้อมูลสำเร็จ', "success");
+					let eventData = {};
+					$(whFormRow).trigger('updatelist', [eventData]);
+					$(whFormRow).remove();
+				} else {
+					$.notify('ไม่สามารถบันทึกข้อมูลได้ในขณะนี้', "error");
+				}
+			}
+		});
+		$(whForm).find('#CancelCmd').click((e)=>{
+			$(whForm).trigger('releaselock', [data]);
+			$(whFormRow).remove();
+		});
+		return $(whFormRow);
+	}
+
+	function doVerifyForm(form, hosId, itemId) {
+		let wkName = $(form).find('#WHName').val();
+		let whFrom = Number($(form).find('#WHFrom').val());
+		let whTo = Number($(form).find('#WHTo').val());
+		if (wkName === '') {
+			$(form).find('#WHName').css('border', '1px solid red');
+			return;
+		} else if ((whFrom <= 0) && (whFrom >= 25)) {
+			$(form).find('#WHName').css('border', '');
+			$(form).find('#WHFrom').css('border', '1px solid red');
+			return;
+		} else if ((whTo <= 0) && (whTo >= 25)) {
+			$(form).find('#WHFrom').css('border', '');
+			$(form).find('#WHTo').css('border', '1px solid red');
+			return;
+		} else {
+			$(form).find('#WHTo').css('border', '');
+			if (itemId) {
+				let updateWHParams = {id: itemId, data: {WHName: wkName, WH: {from: whFrom, to: whTo}}};
+				return updateWHParams;
+			} else {
+				let addWHParams = {hospitalId: hosId, data: {WHName: wkName, WH: {from: whFrom, to: whTo}}};
+				return addWHParams;
+			}
+		}
+	}
+
+	return {
+		doCallApi,
+		doGetApi,
+		urlQueryToObject,
+		doLoadHospitalData,
+		doLoadHospitalWorkingHour
+	}
+}
+
+},{}],3:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.5.1
  * https://jquery.com/
@@ -11520,4 +11574,4 @@ if ( typeof noGlobal === "undefined" ) {
 return jQuery;
 } );
 
-},{}]},{},[2]);
+},{}]},{},[1]);
