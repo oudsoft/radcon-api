@@ -325,6 +325,8 @@ app.post('/status/(:caseId)', async (req, res) => {
           case 1: //New -> 2, 3, 4, 7
             if (newCaseStatusId == 2) {
               await Case.update(caseStatusChange, { where: { id: caseId } });
+              let refreshAcceptCase = {type: 'refresh', section: 'ReadWaitDiv'};
+              socket.sendMessage(refreshAcceptCase, ur[0].username);
               let urgents = await db.urgenttypes.findAll({ attributes: ['UGType_WorkingStep'], where: {id: targetCases[0].urgenttypeId}});
               let triggerParam = JSON.parse(urgents[0].UGType_WorkingStep);
               let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: targetCases[0].Case_RadiologistId}});
@@ -357,6 +359,10 @@ app.post('/status/(:caseId)', async (req, res) => {
             if ([4, 5, 7].indexOf(newCaseStatusId) >= 0){
               await Case.update(caseStatusChange, { where: { id: caseId } });
               tasks.removeTaskByCaseId(caseId);
+              if (newCaseStatusId == 5) {
+                let refreshSuccessCase = {type: 'refresh', section: 'ReadSuccessDiv'};
+                socket.sendMessage(refreshSuccessCase, ur[0].username);
+              }
             }
             res.json({Result: "OK", status: {code: 200}});
           break;
@@ -549,6 +555,8 @@ app.post('/add', (req, res) => {
           let setupCaseTo = { hospitalId: req.body.hospitalId, patientId: req.body.patientId, userId: req.body.userId, cliamerightId: req.body.cliamerightId, urgenttypeId: req.body.urgenttypeId};
           await Case.update(setupCaseTo, { where: { id: adCase.id } });
           await adCase.setCasestatus(newcaseStatus[0]);
+          let refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv'};
+          socket.sendMessage(refreshNewCase, ur[0].username);
           let urgents = await db.urgenttypes.findAll({ attributes: ['UGType_AcceptStep'], where: {id: req.body.urgenttypeId}});
           let triggerParam = JSON.parse(urgents[0].UGType_AcceptStep);
           let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: req.body.data.Case_RadiologistId}});

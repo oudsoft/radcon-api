@@ -35,7 +35,7 @@ const runcommand = function (command) {
 const doLoadOrthancTarget = function(hospitalId, hostname){
 	return new Promise(async function(resolve, reject) {
 		//log.info('hostname => ' + hostname);
-		if (hostname === 'localhost') {
+		if ((hostname === 'localhost') || (hostname.indexOf('192.168') >= 0)){
 			let myCloud = {os: "docker-linux", ip: "202.28.68.28", httpport: "8042", dicomport: "4242", user: "demo", pass: "demo", portex : "8042"};
 			let localOrthanc = [{id: 0, Orthanc_Local: {}, Orthanc_Cloud: JSON.stringify(myCloud)}];
 			log.info('localOrthanc => ' + JSON.stringify(localOrthanc));

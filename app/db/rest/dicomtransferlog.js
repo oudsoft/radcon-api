@@ -56,7 +56,7 @@ app.post('/add', async (req, res) => {
   if (resourceType === 'patient'){
     cwss.forEach((wc) => {
       if (wc.hospitalId == hospitalId) {
-        let socketTrigger = {type: 'notify', message: 'You have a new patient dicom transfer on Server.', action: 'refresh'};
+        let socketTrigger = {type: 'refresh', section: 'PACSDiv'};
         wc.send(JSON.stringify(socketTrigger));
       }
     });

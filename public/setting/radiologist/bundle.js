@@ -171,10 +171,10 @@ module.exports = function ( jq ) {
 		});
 	}
 
-	const doCallDeleteDicom = function (studyID, username) {
+	const doCallDeleteDicom = function (studyID, hospitalId) {
 		return new Promise(function(resolve, reject) {
   		let orthancProxyEndPoint = proxyRootUri + orthancProxyApi + '/deletedicom/' + studyID;
-  		let params = {username: username};
+  		let params = {hospitalId: hospitalId};
   		$.post(orthancProxyEndPoint, params, function(data){
 				resolve(data);
 			})
@@ -264,387 +264,409 @@ module.exports = function ( jq ) {
 },{}],2:[function(require,module,exports){
 /* utilmod.js */
 
-/* internal functions */
-let wsm, wsl;
+module.exports = function ( jq ) {
+	const $ = jq;
 
-const formatDateStr = function(d) {
-	var yy, mm, dd;
-	yy = d.getFullYear();
-	if (d.getMonth() + 1 < 10) {
-		mm = '0' + (d.getMonth() + 1);
-	} else {
-		mm = '' + (d.getMonth() + 1);
-	}
-	if (d.getDate() < 10) {
-		dd = '0' + d.getDate();
-	} else {
-		dd = '' + d.getDate();
-	}
-	var td = `${yy}-${mm}-${dd}`;
-	return td;
-}
+	let wsl, wsm;
 
-const formatTimeStr = function(d) {
-	var hh, mn, ss;
-	hh = d.getHours();
-	mn = d.getMinutes();
-	ss = d.getSeconds();
-	var td = `${hh}:${mn}:${ss}`;
-	return td;
-}
-
-const formatDate = function(dateStr) {
-	var fdate = new Date(dateStr);
-	var mm, dd;
-	if (fdate.getMonth() + 1 < 10) {
-		mm = '0' + (fdate.getMonth() + 1);
-	} else {
-		mm = '' + (fdate.getMonth() + 1);
-	}
-	if (fdate.getDate() < 10) {
-		dd = '0' + fdate.getDate();
-	} else {
-		dd = '' + fdate.getDate();
-	}
-	var date = fdate.getFullYear() + (mm) + dd;
-	return date;
-}
-
-const videoConstraints = {video: {displaySurface: "application", height: 1080, width: 1920 }};
-
-const doGetScreenSignalError = function(e) {
-	var error = {
-		name: e.name || 'UnKnown',
-		message: e.message || 'UnKnown',
-		stack: e.stack || 'UnKnown'
-	};
-
-	if(error.name === 'PermissionDeniedError') {
-		if(location.protocol !== 'https:') {
-			error.message = 'Please use HTTPs.';
-			error.stack   = 'HTTPs is required.';
+	const formatDateStr = function(d) {
+		var yy, mm, dd;
+		yy = d.getFullYear();
+		if (d.getMonth() + 1 < 10) {
+			mm = '0' + (d.getMonth() + 1);
+		} else {
+			mm = '' + (d.getMonth() + 1);
 		}
-	}
-
-	console.error(error.name);
-	console.error(error.message);
-	console.error(error.stack);
-
-	alert('Unable to capture your screen.\n\n' + error.name + '\n\n' + error.message + '\n\n' + error.stack);
-}
-
-/* export function */
-exports.getTodayDevFormat = function(){
-	var d = new Date();
-	return formatDateStr(d);
-}
-
-exports.getToday = function(){
-	var d = new Date();
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getYesterday = function() {
-	var d = new Date();
-	d.setDate(d.getDate() - 1);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getDateLastWeek = function(){
-	var days = 7;
-	var d = new Date();
-	var last = new Date(d.getTime() - (days * 24 * 60 * 60 * 1000));
-	var td = formatDateStr(last);
-	return formatDate(td);
-}
-
-exports.getDateLastMonth = function(){
-	var d = new Date();
-	d.setDate(d.getDate() - 31);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getDateLast3Month = function(){
-	var d = new Date();
-	d.setMonth(d.getMonth() - 3);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getDateLastYear = function(){
-	var d = new Date();
-	d.setFullYear(d.getFullYear() - 1);
-	var td = formatDateStr(d);
-	return formatDate(td);
-}
-
-exports.getFomateDateTime = function(date) {
-	var todate = formatDateStr(date);
-	var totime = formatTimeStr(date);
-	return todate + 'T' + totime;
-}
-
-exports.getAge = function(dateString) {
-	var dob = dateString;
-	var yy = dob.substr(0, 4);
-	var mo = dob.substr(4, 2);
-	var dd = dob.substr(6, 2);
-	var dobf = yy + '-' + mo + '-' + dd;
-  var today = new Date();
-  var birthDate = new Date(dobf);
-  var age = today.getFullYear() - birthDate.getFullYear();
-  var ageTime = today.getTime() - birthDate.getTime();
-  ageTime = new Date(ageTime);
-  if (age > 0) {
-  	if ((ageTime.getMonth() > 0) || (ageTime.getDate() > 0)) {
-  		age = (age + 1) + 'Y';
-  	} else {
-  		age = age + 'Y';
-  	}
-  } else {
-  	if (ageTime.getMonth() > 0) {
-  		age = ageTime.getMonth() + 'M';
-  	} else if (ageTime.getDate() > 0) {
-  		age = ageTime.getDate() + 'D';
-  	}
-  }
-  return age;
-}
-exports.formatStudyDate = function(studydateStr){
-	if (studydateStr.length >= 8) {
-		var yy = studydateStr.substr(0, 4);
-		var mo = studydateStr.substr(4, 2);
-		var dd = studydateStr.substr(6, 2);
-		var stddf = yy + '-' + mo + '-' + dd;
-		var stdDate = new Date(stddf);
-		var month = stdDate.toLocaleString('default', { month: 'short' });
-		return Number(dd) + ' ' + month + ' ' + yy;
-	} else {
-		return studydateStr;
-	}
-}
-exports.formatStudyTime = function(studytimeStr){
-	if (studytimeStr.length >= 4) {
-		var hh = studytimeStr.substr(0, 2);
-		var mn = studytimeStr.substr(2, 2);
-		return hh + '.' + mn;
-	} else {
-		return studytimeStr;
-	}
-}
-exports.getDatetimeValue = function(studydateStr, studytimeStr){
-	if ((studydateStr.length >= 8) && (studytimeStr.length >= 6)) {
-		var yy = studydateStr.substr(0, 4);
-		var mo = studydateStr.substr(4, 2);
-		var dd = studydateStr.substr(6, 2);
-		var hh = studytimeStr.substr(0, 2);
-		var mn = studytimeStr.substr(2, 2);
-		var ss = studytimeStr.substr(4, 2);
-		var stddf = yy + '-' + mo + '-' + dd + ' ' + hh + ':' + mn + ':' + ss;
-		var stdDate = new Date(stddf);
-		return stdDate.getTime();
-	}
-}
-exports.formatDateDev = function(dateStr) {
-	if (dateStr.length >= 8) {
-		var yy = dateStr.substr(0, 4);
-		var mo = dateStr.substr(4, 2);
-		var dd = dateStr.substr(6, 2);
-		var stddf = yy + '-' + mo + '-' + dd;
-		return stddf;
-	} else {
-		return;
-	}
-}
-
-exports.invokeGetDisplayMedia = function(success) {
-	if(navigator.mediaDevices.getDisplayMedia) {
-    navigator.mediaDevices.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
-  } else {
-    navigator.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
-  }
-}
-
-exports.addStreamStopListener = function(stream, callback) {
-	stream.getTracks().forEach(function(track) {
-		track.addEventListener('ended', function() {
-			callback();
-		}, false);
-	});
-}
-
-exports.base64ToBlob = function (base64, mime) {
-	mime = mime || '';
-	var sliceSize = 1024;
-	var byteChars = window.atob(base64);
-	var byteArrays = [];
-
-	for (var offset = 0, len = byteChars.length; offset < len; offset += sliceSize) {
-		var slice = byteChars.slice(offset, offset + sliceSize);
-
-		var byteNumbers = new Array(slice.length);
-		for (var i = 0; i < slice.length; i++) {
-			byteNumbers[i] = slice.charCodeAt(i);
+		if (d.getDate() < 10) {
+			dd = '0' + d.getDate();
+		} else {
+			dd = '' + d.getDate();
 		}
-
-		var byteArray = new Uint8Array(byteNumbers);
-
-		byteArrays.push(byteArray);
+		var td = `${yy}-${mm}-${dd}`;
+		return td;
 	}
 
-	return new Blob(byteArrays, {type: mime});
-}
+	const formatTimeStr = function(d) {
+		var hh, mn, ss;
+		hh = d.getHours();
+		mn = d.getMinutes();
+		ss = d.getSeconds();
+		var td = `${hh}:${mn}:${ss}`;
+		return td;
+	}
 
-exports.windowMinimize = function (){
-	window.innerWidth = 100;
-	window.innerHeight = 100;
-	window.screenX = screen.width;
-	window.screenY = screen.height;
-	alwaysLowered = true;
-}
-
-exports.windowMaximize = function () {
-	window.innerWidth = screen.width;
-	window.innerHeight = screen.height;
-	window.screenX = 0;
-	window.screenY = 0;
-	alwaysLowered = false;
-}
-
-exports.doAssignWsm = function(socket){
-	wsm = socket;
-}
-
-exports.doAssignWsl = function(socket){
-	wsl = socket;
-}
-
-exports.doConnectWebsocketMaster = function(username, hospitalId, type){
-  const hostname = window.location.hostname;
-  const port = window.location.port;
-  const paths = window.location.pathname.split('/');
-  const rootname = paths[1];
-
-  const wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '/' + hospitalId + '?type=' + type;
-  const wsm = new WebSocket(wsUrl);
-	wsm.onopen = function () {
-		//console.log('Master Websocket is connected to the signaling server')
-	};
-
-	wsm.onmessage = function (msgEvt) {
-    let data = JSON.parse(msgEvt.data);
-    console.log(data);
-		if (data.type !== 'test') {
-			let masterNotify = localStorage.getItem('masternotify');
-	    let MasterNotify = JSON.parse(masterNotify);
-			if (MasterNotify) {
-	      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
-	    } else {
-	      MasterNotify = [];
-	      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
-	    }
-	    localStorage.setItem('masternotify', JSON.stringify(MasterNotify));
+	const formatDate = function(dateStr) {
+		var fdate = new Date(dateStr);
+		var mm, dd;
+		if (fdate.getMonth() + 1 < 10) {
+			mm = '0' + (fdate.getMonth() + 1);
+		} else {
+			mm = '' + (fdate.getMonth() + 1);
 		}
-    if (data.type == 'test') {
-      $.notify(data.message, "success");
-    } else if (data.type == 'trigger') {
-			if (wsl) {
-	      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere};
-	      wsl.send(JSON.stringify(message));
-	      $.notify('The system will be start store dicom to your local.', "success");
-			}
-    } else if (data.type == 'notify') {
-      $.notify(data.message, "warnning");
-		} else if (data.type == 'exec') {
-			if (wsl) {
-				wsl.send(JSON.stringify(data));
-			}
-		} else if (data.type == 'cfindresult') {
-			let remoteDicom = document.getElementById('RemoteDicom');
-			remoteDicom.dispatchEvent(new CustomEvent("cfindresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
-		} else if (data.type == 'move') {
-			if (wsl) {
-				wsl.send(JSON.stringify(data));
-			}
-		} else if (data.type == 'cmoveresult') {
-			let remoteDicom = document.getElementById('RemoteDicom');
-			remoteDicom.dispatchEvent(new CustomEvent("cmoveresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
-		} else if (data.type == 'run') {
-			if (wsl) {
-				wsl.send(JSON.stringify(data));
-			}
-		} else if (data.type == 'runresult') {
-			//let remoteDicom = document.getElementById('RemoteDicom');
-			remoteDicom.dispatchEvent(new CustomEvent("runresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
+		if (fdate.getDate() < 10) {
+			dd = '0' + fdate.getDate();
+		} else {
+			dd = '' + fdate.getDate();
 		}
-  };
+		var date = fdate.getFullYear() + (mm) + dd;
+		return date;
+	}
 
-  wsm.onclose = function(event) {
-		//console.log("Master WebSocket is closed now. with  event:=> ", event);
-	};
+	const videoConstraints = {video: {displaySurface: "application", height: 1080, width: 1920 }};
 
-	wsm.onerror = function (err) {
-	   console.log("Master WS Got error", err);
-	};
-
-	return wsm;
-}
-
-exports.doConnectWebsocketLocal = function(username){
-  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
-  let wsl;
-	try {
-		wsl = new WebSocket(wsUrl);
-		wsl.onopen = function () {
-			console.log('Local Websocket is connected to the signaling server')
+	const doGetScreenSignalError = function(e) {
+		var error = {
+			name: e.name || 'UnKnown',
+			message: e.message || 'UnKnown',
+			stack: e.stack || 'UnKnown'
 		};
 
-		wsl.onmessage = function (msgEvt) {
+		if(error.name === 'PermissionDeniedError') {
+			if(location.protocol !== 'https:') {
+				error.message = 'Please use HTTPs.';
+				error.stack   = 'HTTPs is required.';
+			}
+		}
+
+		console.error(error.name);
+		console.error(error.message);
+		console.error(error.stack);
+
+		alert('Unable to capture your screen.\n\n' + error.name + '\n\n' + error.message + '\n\n' + error.stack);
+	}
+
+	/* export function */
+	const getTodayDevFormat = function(){
+		var d = new Date();
+		return formatDateStr(d);
+	}
+
+	const getToday = function(){
+		var d = new Date();
+		var td = formatDateStr(d);
+		return formatDate(td);
+	}
+
+	const getYesterday = function() {
+		var d = new Date();
+		d.setDate(d.getDate() - 1);
+		var td = formatDateStr(d);
+		return formatDate(td);
+	}
+
+	const getDateLastWeek = function(){
+		var days = 7;
+		var d = new Date();
+		var last = new Date(d.getTime() - (days * 24 * 60 * 60 * 1000));
+		var td = formatDateStr(last);
+		return formatDate(td);
+	}
+
+	const getDateLastMonth = function(){
+		var d = new Date();
+		d.setDate(d.getDate() - 31);
+		var td = formatDateStr(d);
+		return formatDate(td);
+	}
+
+	const getDateLast3Month = function(){
+		var d = new Date();
+		d.setMonth(d.getMonth() - 3);
+		var td = formatDateStr(d);
+		return formatDate(td);
+	}
+
+	const getDateLastYear = function(){
+		var d = new Date();
+		d.setFullYear(d.getFullYear() - 1);
+		var td = formatDateStr(d);
+		return formatDate(td);
+	}
+
+	const getFomateDateTime = function(date) {
+		var todate = formatDateStr(date);
+		var totime = formatTimeStr(date);
+		return todate + 'T' + totime;
+	}
+
+	const getAge = function(dateString) {
+		var dob = dateString;
+		var yy = dob.substr(0, 4);
+		var mo = dob.substr(4, 2);
+		var dd = dob.substr(6, 2);
+		var dobf = yy + '-' + mo + '-' + dd;
+	  var today = new Date();
+	  var birthDate = new Date(dobf);
+	  var age = today.getFullYear() - birthDate.getFullYear();
+	  var ageTime = today.getTime() - birthDate.getTime();
+	  ageTime = new Date(ageTime);
+	  if (age > 0) {
+	  	if ((ageTime.getMonth() > 0) || (ageTime.getDate() > 0)) {
+	  		age = (age + 1) + 'Y';
+	  	} else {
+	  		age = age + 'Y';
+	  	}
+	  } else {
+	  	if (ageTime.getMonth() > 0) {
+	  		age = ageTime.getMonth() + 'M';
+	  	} else if (ageTime.getDate() > 0) {
+	  		age = ageTime.getDate() + 'D';
+	  	}
+	  }
+	  return age;
+	}
+	const formatStudyDate = function(studydateStr){
+		if (studydateStr.length >= 8) {
+			var yy = studydateStr.substr(0, 4);
+			var mo = studydateStr.substr(4, 2);
+			var dd = studydateStr.substr(6, 2);
+			var stddf = yy + '-' + mo + '-' + dd;
+			var stdDate = new Date(stddf);
+			var month = stdDate.toLocaleString('default', { month: 'short' });
+			return Number(dd) + ' ' + month + ' ' + yy;
+		} else {
+			return studydateStr;
+		}
+	}
+	const formatStudyTime = function(studytimeStr){
+		if (studytimeStr.length >= 4) {
+			var hh = studytimeStr.substr(0, 2);
+			var mn = studytimeStr.substr(2, 2);
+			return hh + '.' + mn;
+		} else {
+			return studytimeStr;
+		}
+	}
+	const getDatetimeValue = function(studydateStr, studytimeStr){
+		if ((studydateStr.length >= 8) && (studytimeStr.length >= 6)) {
+			var yy = studydateStr.substr(0, 4);
+			var mo = studydateStr.substr(4, 2);
+			var dd = studydateStr.substr(6, 2);
+			var hh = studytimeStr.substr(0, 2);
+			var mn = studytimeStr.substr(2, 2);
+			var ss = studytimeStr.substr(4, 2);
+			var stddf = yy + '-' + mo + '-' + dd + ' ' + hh + ':' + mn + ':' + ss;
+			var stdDate = new Date(stddf);
+			return stdDate.getTime();
+		}
+	}
+	const formatDateDev = function(dateStr) {
+		if (dateStr.length >= 8) {
+			var yy = dateStr.substr(0, 4);
+			var mo = dateStr.substr(4, 2);
+			var dd = dateStr.substr(6, 2);
+			var stddf = yy + '-' + mo + '-' + dd;
+			return stddf;
+		} else {
+			return;
+		}
+	}
+
+	const invokeGetDisplayMedia = function(success) {
+		if(navigator.mediaDevices.getDisplayMedia) {
+	    navigator.mediaDevices.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
+	  } else {
+	    navigator.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
+	  }
+	}
+
+	const addStreamStopListener = function(stream, callback) {
+		stream.getTracks().forEach(function(track) {
+			track.addEventListener('ended', function() {
+				callback();
+			}, false);
+		});
+	}
+
+	const base64ToBlob = function (base64, mime) {
+		mime = mime || '';
+		var sliceSize = 1024;
+		var byteChars = window.atob(base64);
+		var byteArrays = [];
+
+		for (var offset = 0, len = byteChars.length; offset < len; offset += sliceSize) {
+			var slice = byteChars.slice(offset, offset + sliceSize);
+
+			var byteNumbers = new Array(slice.length);
+			for (var i = 0; i < slice.length; i++) {
+				byteNumbers[i] = slice.charCodeAt(i);
+			}
+
+			var byteArray = new Uint8Array(byteNumbers);
+
+			byteArrays.push(byteArray);
+		}
+
+		return new Blob(byteArrays, {type: mime});
+	}
+
+	const windowMinimize = function (){
+		window.innerWidth = 100;
+		window.innerHeight = 100;
+		window.screenX = screen.width;
+		window.screenY = screen.height;
+		alwaysLowered = true;
+	}
+
+	const windowMaximize = function () {
+		window.innerWidth = screen.width;
+		window.innerHeight = screen.height;
+		window.screenX = 0;
+		window.screenY = 0;
+		alwaysLowered = false;
+	}
+
+	const doConnectWebsocketMaster = function(username, hospitalId, type){
+	  const hostname = window.location.hostname;
+	  const port = window.location.port;
+	  const paths = window.location.pathname.split('/');
+	  const rootname = paths[1];
+
+	  const wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '/' + hospitalId + '?type=' + type;
+	  wsm = new WebSocket(wsUrl);
+		wsm.onopen = function () {
+			//console.log('Master Websocket is connected to the signaling server')
+		};
+
+		wsm.onmessage = function (msgEvt) {
 	    let data = JSON.parse(msgEvt.data);
 	    console.log(data);
 			if (data.type !== 'test') {
-				let localNotify = localStorage.getItem('localnotify');
-		    let LocalNotify = JSON.parse(localNotify);
-		    if (LocalNotify) {
-		      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+				let masterNotify = localStorage.getItem('masternotify');
+		    let MasterNotify = JSON.parse(masterNotify);
+				if (MasterNotify) {
+		      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
 		    } else {
-		      LocalNotify = [];
-		      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+		      MasterNotify = [];
+		      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
 		    }
-		    localStorage.setItem('localnotify', JSON.stringify(LocalNotify));
+		    localStorage.setItem('masternotify', JSON.stringify(MasterNotify));
 			}
 	    if (data.type == 'test') {
 	      $.notify(data.message, "success");
-	    } else if (data.type == 'result') {
-	      $.notify(daata.message, "success");
+	    } else if (data.type == 'trigger') {
+				if (wsl) {
+		      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere};
+		      wsl.send(JSON.stringify(message));
+		      $.notify('The system will be start store dicom to your local.', "success");
+				}
 	    } else if (data.type == 'notify') {
 	      $.notify(data.message, "warnning");
-	    } else if (data.type == 'exec') {
-				//Send result of exec back to websocket server
-	    	wsm.send(JSON.stringify(data.data));
+			} else if (data.type == 'exec') {
+				if (wsl) {
+					wsl.send(JSON.stringify(data));
+				}
+			} else if (data.type == 'cfindresult') {
+				let evtData = { result: data.result, owner: data.owner, hospitalId: data.hospitalId };
+				$("#RemoteDicom").trigger('cfindresult', [evtData]);
 			} else if (data.type == 'move') {
-				wsm.send(JSON.stringify(data.data));
+				if (wsl) {
+					wsl.send(JSON.stringify(data));
+				}
+			} else if (data.type == 'cmoveresult') {
+				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, StudyInstanceUID: data.StudyInstanceUID};
+				$("#RemoteDicom").trigger('cmoveresult', [evtData]);
 			} else if (data.type == 'run') {
-				wsm.send(JSON.stringify(data.data));
-	    }
+				if (wsl) {
+					wsl.send(JSON.stringify(data));
+				}
+			} else if (data.type == 'runresult') {
+				//$('#RemoteDicom').dispatchEvent(new CustomEvent("runresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
+				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId };
+				$("#RemoteDicom").trigger('runresult', [evtData]);
+			} else if (data.type == 'refresh') {
+				let event = new CustomEvent(cityName, {"detail": {eventname: data.section}});
+				document.dispatchEvent(event);
+			}
 	  };
 
-	  wsl.onclose = function(event) {
-			console.log("Local WebSocket is closed now. with  event:=> ", event);
+	  wsm.onclose = function(event) {
+			//console.log("Master WebSocket is closed now. with  event:=> ", event);
 		};
 
-		wsl.onerror = function (err) {
-		   console.log("Local WS Got error", err);
+		wsm.onerror = function (err) {
+		   console.log("Master WS Got error", err);
 		};
 
-		return wsl;
+		return wsm;
+	}
 
-	} catch(error) {
-		console.log('I can not connect to local socket with error message => ' + error);
-		return;
+	const doConnectWebsocketLocal = function(username){
+	  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
+		//let wsl;
+		try {
+			wsl = new WebSocket(wsUrl);
+			wsl.onopen = function () {
+				console.log('Local Websocket is connected to the signaling server')
+			};
+
+			wsl.onmessage = function (msgEvt) {
+		    let data = JSON.parse(msgEvt.data);
+		    console.log(data);
+				if (data.type !== 'test') {
+					let localNotify = localStorage.getItem('localnotify');
+			    let LocalNotify = JSON.parse(localNotify);
+			    if (LocalNotify) {
+			      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+			    } else {
+			      LocalNotify = [];
+			      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+			    }
+			    localStorage.setItem('localnotify', JSON.stringify(LocalNotify));
+				}
+		    if (data.type == 'test') {
+		      $.notify(data.message, "success");
+		    } else if (data.type == 'result') {
+		      $.notify(daata.message, "success");
+		    } else if (data.type == 'notify') {
+		      $.notify(data.message, "warnning");
+		    } else if (data.type == 'exec') {
+					//Send result of exec back to websocket server
+		    	wsm.send(JSON.stringify(data.data));
+				} else if (data.type == 'move') {
+					wsm.send(JSON.stringify(data.data));
+				} else if (data.type == 'run') {
+					wsm.send(JSON.stringify(data.data));
+		    }
+		  };
+
+		  wsl.onclose = function(event) {
+				console.log("Local WebSocket is closed now. with  event:=> ", event);
+			};
+
+			wsl.onerror = function (err) {
+			   console.log("Local WS Got error", err);
+			};
+
+			return wsl;
+
+		} catch(error) {
+			console.log('I can not connect to local socket with error message => ' + error);
+			return;
+		}
+	}
+
+	return {
+		getTodayDevFormat,
+		getToday,
+		getYesterday,
+		getDateLastWeek,
+		getDateLastMonth,
+		getDateLast3Month,
+		getDateLastYear,
+		getFomateDateTime,
+		getAge,
+		formatStudyDate,
+		formatStudyTime,
+		getDatetimeValue,
+		formatDateDev,
+		invokeGetDisplayMedia,
+		addStreamStopListener,
+		base64ToBlob,
+		windowMinimize,
+		windowMaximize,
+		doConnectWebsocketMaster,
+		doConnectWebsocketLocal
 	}
 }
 
@@ -653,20 +675,17 @@ exports.doConnectWebsocketLocal = function(username){
 
 window.$ = window.jQuery = require('jquery');
 
-require('./mod/jquery-ex.js');
-
 const radio = require('./mod/radio.js')($);
 //const doctor = require('./mod/doctor.js')($);
 //const hospital = require('./mod/hospital.js')($);
 //const urgent = require('./mod/urgent.js')($);
 const apiconnector = require('../case/mod/apiconnect.js')($);
-const util = require('../case/mod/utilmod.js');
-
+const util = require('../case/mod/utilmod.js')($);
 /*
 ต
 */
 
-var noti, wsm, wsl;
+var wsm;
 
 $( document ).ready(function() {
 	console.log('page on ready ...');
@@ -798,11 +817,8 @@ function doLoadMainPage(){
 			doUserLogout();
 		});
 
-		//doShowRadio();
 		doShowHospital();
     wsm = util.doConnectWebsocketMaster(userdata.username, userdata.hospitalId, 'remote');
-		util.doAssignWsm(wsm);
-    //util.doConnectWebsocketLocal(userdata.username);
 	});
 }
 
@@ -1109,7 +1125,7 @@ function doCreateCaseDetail(caseItem){
 	});
 }
 
-function doOpenStoneWebViewer(StudyInstanceUID, hospitalId) {
+const doOpenStoneWebViewer = function(StudyInstanceUID, hospitalId) {
 	apiconnector.doGetOrthancPort(hospitalId).then((response) => {
 		const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
 		let orthancwebapplink = orthancStoneWebviewer + StudyInstanceUID;
@@ -1166,7 +1182,7 @@ function doCreateNewStatusCaseAction(caseItem){
 		doChangeCaseStatus(caseItem.case.id, caseItem.case.Case_DESC, newStatus);
 	});
 	$(caseNotAcceptCmd).appendTo($(rowCommand));
-	$(rowCommand).find('input[type="button"]').css(inputStyleClass);
+	$(rowCommand).find('input[type="button"]').css(radio.inputStyleClass);
 
 	$(tableRow).append($(rowCommand));
 
@@ -1271,14 +1287,12 @@ function doCreateSearchCaseForm() {
 			$(form).find('#CaseSearchValue').css('border', '1px solid red');
 		}
 	})
-	$(form).css(inputStyleClass);
-	$(form).find('input[type="text"]').css(inputStyleClass);
-	$(form).find('input[type="button"]').css(inputStyleClass);
-	$(form).find('select').css(inputStyleClass);
+	$(form).css(radio.inputStyleClass);
+	$(form).find('input[type="text"]').css(radio.inputStyleClass);
+	$(form).find('input[type="button"]').css(radio.inputStyleClass);
+	$(form).find('select').css(radio.inputStyleClass);
 	return $(form);
 }
-
-const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
 
 /* Radio Work Schedule */
 
@@ -1343,8 +1357,8 @@ function doCreateHospitalJoinForm(radioId){
 			joins.options.forEach((item, i) => {
 				$(selector).append('<option value="' + item.Value + '">' + item.DisplayText + '</option>');
 			});
-			$(selector).css(inputStyleClass);
-			$(form).css(inputStyleClass);
+			$(selector).css(radio.inputStyleClass);
+			$(form).css(radio.inputStyleClass);
 			resolve($(form));
 		});
 	});
@@ -1370,10 +1384,10 @@ function doCreateJoinConfigurationForm(radioId){
 
 	let availableSelector = $('<select id="AvailableHospital" multiple></select>');
 	$(availableSelector).appendTo($(availableCol));
-	$(availableSelector).css(inputStyleClass);
+	$(availableSelector).css(radio.inputStyleClass);
 	let existSelector = $('<select id="ExistHospital" multiple></select>');
 	$(existSelector).appendTo($(existCol));
-	$(existSelector).css(inputStyleClass);
+	$(existSelector).css(radio.inputStyleClass);
 
 	let availableList = $("#HospitalSelector > option").clone();
 	$(availableSelector).append($(availableList));
@@ -1427,7 +1441,7 @@ function doCreateJoinConfigurationForm(radioId){
 		let eventData = {radioId: radioId};
 		$(cancelCmd).trigger('togglemainform', [eventData]);
 	});
-	$(actionCmdCol).find('input[type="button"]').css(inputStyleClass);
+	$(actionCmdCol).find('input[type="button"]').css(radio.inputStyleClass);
 	return $(form);
 }
 
@@ -1439,84 +1453,30 @@ function doShowTools(radioId) {
 	$('#ToolSection').empty();
 	let toolsTabs = $('<div id="ToolsTabs"><ul><li><a href="#RemoteDicom">Remote Dicom</a></li><li><a href="#Template">Template</a></li><li><a href="#Message">Message</a></li><li><a href="#Other">Other</a></li></ul></div>')
 	let remoteDicomTab = $('<div id="RemoteDicom" class="CaseClassifyContent"></div>');
-	let searchForm = doCreateSearchDicomForm(userdata.username);
-	$(searchForm).find('input[type="text"]').css(inputStyleClass);
-	$(searchForm).find('input[type="button"]').css(inputStyleClass);
-	$(searchForm).find('select').css(inputStyleClass);
+	let searchForm = radio.doCreateSearchDicomForm(userdata.username);
 	$(remoteDicomTab).append($(searchForm));
 	$(remoteDicomTab).appendTo($(toolsTabs));
-	searchForm.on('searchexec',(e, data)=>{
-		$('body').loading('start');
-		wsm.send(JSON.stringify({type: 'exec', data: data}));
-	});
+	searchForm.on('searchexec', radio.doFindExec);
 
-	$(remoteDicomTab).on('cfindresult', (e)=>{
-		let results = e.detail.data;
+	$(remoteDicomTab).on('cfindresult', (e, data)=>{
 		$(remoteDicomTab).find('#CfindResultDiv').remove();
-		let cfindResultDiv = $('<div id="CfindResultDiv" style="margin-top: 10px;"></div>');
-		Object.getOwnPropertyNames(results).forEach((tags) => {
-	    if (results.hasOwnProperty(tags)) {
-        let tagDiv = $('<div style="display: table"></div>');
-				$(tagDiv).appendTo($(cfindResultDiv));
-				let tagRow = $('<div style="display: table-row"></div>');
-				$(tagRow).appendTo($(tagDiv));
-				let tagNameCol = $('<div style="display: table-cell; width: 120px;">' + tags + '</div>');
-				$(tagNameCol).appendTo($(tagRow));
-				let tagDetailCol = $('<div style="display: table-cell;"></div>');
-				let details = results[tags];
-				let detailRow = $('<div style="display: table-row"></div>');
-				$(detailRow).appendTo($(tagDetailCol));
-				Object.getOwnPropertyNames(details).forEach((tag) => {
-					if (tag === 'Name') {
-						let detailNameCol = $('<div style="display: table-cell; width: 200px;">' + details[tag] + '</div>');
-						$(detailNameCol).appendTo($(detailRow));
-					} else if (tag === 'Value') {
-						let detailValueCol = $('<div style="display: table-cell;">' + details[tag] + '</div>');
-						$(detailValueCol).appendTo($(detailRow));
-					}
-				});
-				$(tagDetailCol).appendTo($(tagRow));
-	    }
-		});
-		let cmoveCmdDiv = $('<div style="text-align: center;"></div>');
-		$(cmoveCmdDiv).appendTo($(cfindResultDiv));
-		let cmoveCmd = $('<input type="button" value=" Load to cloud "/>');
-		$(cmoveCmd).css(inputStyleClass);
-		$(cmoveCmd).appendTo($(cfindResultDiv));
-		$(cmoveCmd).click((evt)=>{
-			$('body').loading('start');
-			let socketId = userdata.username;
-			let hospitalTargetId = e.detail.hospitalId;
-			let studyInstanceUID = results['0020,000d'].Value;
-			let moveData = {hospitalId: hospitalTargetId, StudyInstanceUID: studyInstanceUID, owner: socketId};
-			wsm.send(JSON.stringify({type: 'move', data: moveData}));
-		});
-		$(remoteDicomTab).append($(cfindResultDiv));
-		$('body').loading('stop');
+		let result = data.result;
+		let hospitalId = data.hospitalId;
+		radio.doShowFindResult(result, hospitalId, remoteDicomTab);
 	});
 
-	$(remoteDicomTab).on('cmoveresult', (e)=>{
-		let results = e.detail.data;
+	$(remoteDicomTab).on('cmoveresult', (e, data)=>{
 		$(remoteDicomTab).find('#CmoveResultDiv').remove();
-		let cmoveResultDiv = $('<div id="CmoveResultDiv" style="margin-top: 10px;"></div>');
-		let openStoneWebViewerCmd = $('<input type="button" value=" Open "/>');
-		$(openStoneWebViewerCmd).css(inputStyleClass);
-		$(openStoneWebViewerCmd).appendTo($(cmoveResultDiv));
-		$(openStoneWebViewerCmd).click((evt)=>{
-			$('body').loading('start');
-			let studyInstanceUID = results.StudyInstanceUID;
-			console.log(studyInstanceUID);
-			console.log(e.detail.hospitalId);
-			doOpenStoneWebViewer(studyInstanceUID, e.detail.hospitalId);
-			$('body').loading('stop');
-		});
-		$(remoteDicomTab).append($(cmoveResultDiv));
-
-		$('body').loading('stop');
+		let hospitalId = data.hospitalId;
+		let studyInstanceUID = data.StudyInstanceUID;
+		radio.doMoveResult(hospitalId, studyInstanceUID, remoteDicomTab);
 	});
 
 	let templateTab = $('<div id="Template" class="CaseClassifyContent"></div>');
 	$(templateTab).appendTo($(toolsTabs));
+	radio.doCreateTemplate(radioId).then((radioTemplate)=>{
+		$(templateTab).append($(radioTemplate));
+	});
 
 	let messageTab = $('<div id="Message" class="CaseClassifyContent"></div>');
 	$(messageTab).appendTo($(toolsTabs));
@@ -1527,32 +1487,6 @@ function doShowTools(radioId) {
 	$('#ToolSection').append($(toolsTabs).tabs({ collapsible: true }));
 
 	$('body').loading('stop');
-}
-
-function doCreateSearchDicomForm(socketId) {
-	let form = $('<div style="display: table"></div>');
-	$(form).append('<div style="display: table-row"><div style="display: table-cell; width: 150px;"><label>Hospital Target : </label></div><div style="display: table-cell;"><select id="HospitalTarget"></select></div></div>');
-	let hospitalList = $("#HospitalSelector > option").clone();
-	$(form).find('#HospitalTarget').append($(hospitalList));
-	$(form).append('<div style="display: table-row"><div style="display: table-cell; width: 150px;"><label>Dicom Key : </label></div><div style="display: table-cell;"><select id="SearchKey"><option value="PatientName">Patient Name</option><option value="PatientHN">Patient HN</option></select></div></div>');
-	$(form).append('<div style="display: table-row; margin-top: 10px;"><div style="display: table-cell; width: 150px;"><label>Value :</label></div><div style="display: table-cell;"><input type="text" id="SearchValue" size="30"/></div></div>');
-	let searchCmdDiv = $('<div style="text-align: center; margin-top: 10px;"></div>');
-	$(searchCmdDiv).appendTo($(form));
-	let searchExecCmd = $('<input type="button" value=" Search "/>');
-	$(searchCmdDiv).append($(searchExecCmd));
-	$(searchExecCmd).click((e)=>{
-		let hospitalTargetId = $(form).find('#HospitalTarget').val();
-		let searchKey = $(form).find('#SearchKey').val();
-		let searchValue = $(form).find('#SearchValue').val();
-		if (searchValue !== '') {
-			let eventData = {hospitalId: hospitalTargetId, key: searchKey, value: searchValue, owner: socketId};
-			$(searchExecCmd).trigger('searchexec', [eventData]);
-			$(form).find('#SearchValue').css('border', '');
-		} else {
-			$(form).find('#SearchValue').css('border', '1px solid red');
-		}
-	})
-	return $(form);
 }
 
 /*
@@ -1680,86 +1614,24 @@ function doGetUserData(){
   return localStorage.getItem('userdata');
 }
 
+function doGetWsm(){
+	return wsm;
+}
+
 module.exports = {
   doGetToken,
-  doGetUserData
+  doGetUserData,
+	doGetWsm,
+	doOpenStoneWebViewer
 }
 
-},{"../case/mod/apiconnect.js":1,"../case/mod/utilmod.js":2,"./mod/jquery-ex.js":4,"./mod/radio.js":5,"jquery":6}],4:[function(require,module,exports){
-const $ = require('jquery');
-
-$.ajaxSetup({
-  beforeSend: function(xhr) {
-    xhr.setRequestHeader('Authorization', localStorage.getItem('token'));
-  }
-});
-
-$.fn.center = function () {
-  this.css("position","absolute");
-  this.css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 2) + $(window).scrollTop()) + "px");
-  this.css("left", Math.max(0, (($(window).width() - $(this).outerWidth()) / 2) +  $(window).scrollLeft()) + "px");
-  return this;
-}
-
-$.fn.postCORS = function(url, data, func) {
-  if(func == undefined) func = function(){};
-    return $.ajax({
-      type: 'POST',
-      url: url,
-      data: data,
-      dataType: 'json',
-      contentType: 'application/x-www-form-urlencoded',
-      xhrFields: { withCredentials: true },
-      success: function(res) { func(res) },
-      error: function(err) { func({err})
-    }
-  });
-}
-
-$.fn.cachedScript = function( url, options ) {
-  // Allow user to set any option except for dataType, cache, and url
-  options = $.extend( options || {}, {
-    dataType: "script",
-    cache: true,
-    url: url
-  });
-
-  // Use $.ajax() since it is more flexible than $.getScript
-  // Return the jqXHR object so we can chain callbacks
-  return jQuery.ajax( options );
-};
-
-$.fn.doLoadServiceworker = function(noti) {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-      const MAXAGE = 10; // seconds until recheck
-      const HASH = Math.floor(Date.now() / (MAXAGE * 1000)); // or a hash of lib.js
-      const URL = `/sw.js?hash=${HASH}`;
-      navigator.serviceWorker.register('sw.js?hash=' + HASH).then( async reg => {
-        console.log(`Registration:`, reg);
-        if (reg) {
-          //noti = require('./mod/notimod.js')(reg);
-          noti.triggerPush();
-        }
-      });
-      navigator.serviceWorker.addEventListener('message', function(event) {
-        console.log("Got reply from service worker: " + event.data);
-      });
-    });
-  } else {
-    console.error('Service workers are not supported in this browser');
-  }
-}
-
-/*
-  Service Worker on https <type of sign self> of localhost, it 'll ssl's error massage
-  DOMException: Failed to register a ServiceWorker for scope ('https://192.168.1.108:8443/webapp/') with script ('https://192.168.1.108:8443/webapp/sw.js?hash=159800668'): An SSL certificate error occurred when fetching the script.
-*/
-
-},{"jquery":6}],5:[function(require,module,exports){
+},{"../case/mod/apiconnect.js":1,"../case/mod/utilmod.js":2,"./mod/radio.js":4,"jquery":5}],4:[function(require,module,exports){
 module.exports = function ( jq ) {
 	const $ = jq;
+	const main = require('../main.js')
 	const apiconnector = require('../../case/mod/apiconnect.js')($);
+	const util = require('../../case/mod/utilmod.js')($);
+	const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
 
 	$.ajaxSetup({
     beforeSend: function(xhr) {
@@ -1919,7 +1791,299 @@ module.exports = function ( jq ) {
 		});
 	}
 
+	const doCallTemplate = function(radioId){
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/template/list';
+			var params = {userId: radioId};
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+			})
+		});
+	}
+
+	/* Radio Tools Section */
+
+	const doCreateSearchDicomForm = function(socketId) {
+		let form = $('<div style="display: table"></div>');
+		$(form).append('<div style="display: table-row"><div style="display: table-cell; width: 150px;"><label>Hospital Target : </label></div><div style="display: table-cell;"><select id="HospitalTarget"></select></div></div>');
+		let hospitalList = $("#HospitalSelector > option").clone();
+		$(form).find('#HospitalTarget').append($(hospitalList));
+		$(form).append('<div style="display: table-row"><div style="display: table-cell; width: 150px;"><label>Dicom Key : </label></div><div style="display: table-cell;"><select id="SearchKey"><option value="PatientName">Patient Name</option><option value="PatientHN">Patient HN</option></select></div></div>');
+		$(form).append('<div style="display: table-row; margin-top: 10px;"><div style="display: table-cell; width: 150px;"><label>Value :</label></div><div style="display: table-cell;"><input type="text" id="SearchValue" size="30"/></div></div>');
+		let searchCmdDiv = $('<div style="text-align: center; margin-top: 10px;"></div>');
+		$(searchCmdDiv).appendTo($(form));
+		let searchExecCmd = $('<input type="button" value=" Search "/>');
+		$(searchCmdDiv).append($(searchExecCmd));
+		$(searchExecCmd).click((e)=>{
+			let hospitalTargetId = $(form).find('#HospitalTarget').val();
+			let searchKey = $(form).find('#SearchKey').val();
+			let searchValue = $(form).find('#SearchValue').val();
+			if (searchValue !== '') {
+				let eventData = {hospitalId: hospitalTargetId, key: searchKey, value: searchValue, owner: socketId};
+				$(searchExecCmd).trigger('searchexec', [eventData]);
+				$(form).find('#SearchValue').css('border', '');
+			} else {
+				$(form).find('#SearchValue').css('border', '1px solid red');
+			}
+		})
+		$(form).find('input[type="text"]').css(inputStyleClass);
+		$(form).find('input[type="button"]').css(inputStyleClass);
+		$(form).find('select').css(inputStyleClass);
+		return $(form);
+	}
+
+	const doCreateResultCFind = function(results, hospitalId){
+		return new Promise(async function(resolve, reject) {
+			let cfindResultDiv = $('<div id="CfindResultDiv" style="margin-top: 10px;"></div>');
+			let resultTags = Object.getOwnPropertyNames(results);
+			if (resultTags.length > 0) {
+				await resultTags.forEach(async (tags) => {
+			    if (results.hasOwnProperty(tags)) {
+		        let tagDiv = $('<div style="display: table"></div>');
+						$(tagDiv).appendTo($(cfindResultDiv));
+						let tagRow = $('<div style="display: table-row"></div>');
+						$(tagRow).appendTo($(tagDiv));
+						let tagNameCol = $('<div style="display: table-cell; width: 120px;">' + tags + '</div>');
+						$(tagNameCol).appendTo($(tagRow));
+						let tagDetailCol = $('<div style="display: table-cell;"></div>');
+						let details = results[tags];
+						let detailRow = $('<div style="display: table-row"></div>');
+						$(detailRow).appendTo($(tagDetailCol));
+						await Object.getOwnPropertyNames(details).forEach((tag) => {
+							if (tag === 'Name') {
+								let detailNameCol = $('<div style="display: table-cell; width: 200px;">' + details[tag] + '</div>');
+								$(detailNameCol).appendTo($(detailRow));
+							} else if (tag === 'Value') {
+								let detailValueCol = $('<div style="display: table-cell;">' + details[tag] + '</div>');
+								$(detailValueCol).appendTo($(detailRow));
+							}
+						});
+						$(tagDetailCol).appendTo($(tagRow));
+			    }
+				});
+				let main = require('../main.js');
+				let userdata = JSON.parse(main.doGetUserData());
+				let socketId = userdata.username;
+				let studyInstanceUID = results['0020,000d'].Value;
+				let cmoveCmdDiv = doCreateCmoveCmd(socketId, hospitalId, studyInstanceUID);
+				$(cmoveCmdDiv).appendTo($(cfindResultDiv));
+			} else {
+				$(cfindResultDiv).append('<b>Not Found any Reource.</b>');
+			}
+			resolve($(cfindResultDiv));
+		});
+	}
+
+	const doFindExec = function(e, data) {
+		let main = require('../main.js');
+		let myWsm = main.doGetWsm();
+		myWsm.send(JSON.stringify({type: 'exec', data: data}));
+	}
+
+	const doCreateCmoveCmd = function(socketId, hospitalId, studyInstanceUID){
+		let cmoveCmdDiv = $('<div style="text-align: center;"></div>');
+		let cmoveCmd = $('<input type="button" value=" Load to cloud "/>');
+		$(cmoveCmd).css(inputStyleClass);
+		$(cmoveCmd).appendTo($(cmoveCmdDiv));
+		$(cmoveCmd).click((evt)=>{
+			$('body').loading('start');
+			let moveData = {hospitalId: hospitalId, StudyInstanceUID: studyInstanceUID, owner: socketId};
+			let main = require('../main.js');
+			let myWsm = main.doGetWsm();
+			myWsm.send(JSON.stringify({type: 'move', data: moveData}));
+			//$('body').loading('stop');
+		});
+		return $(cmoveCmdDiv);
+	}
+
+	const doShowFindResult = async function(result, hospitalId, tab) {
+		let cfindResultDiv = await doCreateResultCFind(result, hospitalId);
+		$(tab).append($(cfindResultDiv));
+	}
+
+	const doMoveResult = function(hospitalId, studyInstanceUID, tab) {
+		let cmoveResultDiv = $('<div id="CmoveResultDiv" style="margin-top: 10px;"></div>');
+		let openStoneWebViewerCmd = $('<input type="button" value=" Open "/>');
+		$(openStoneWebViewerCmd).css(inputStyleClass);
+		$(openStoneWebViewerCmd).appendTo($(cmoveResultDiv));
+		$(openStoneWebViewerCmd).click((evt)=>{
+			$('body').loading('start');
+			let main = require('../main.js');
+			main.doOpenStoneWebViewer(studyInstanceUID, hospitalId);
+			$('body').loading('stop');
+		});
+		$(tab).append($(cmoveResultDiv));
+		$('body').loading('stop');
+	}
+
+	/*Template section */
+
+	const doCreateTemplate = function(radioId){
+		return new Promise(async function(resolve, reject) {
+			let templateRes = await doCallTemplate(radioId);
+			let templateList = templateRes.Records;
+
+			let templateListDiv = $('<table id="TemplateListDiv" width="100%"></table>');
+			let addTemplateRow = $('<tr style="background-color: green; color: white;"></tr>');
+			$(templateListDiv).append($(addTemplateRow));
+			let titleCell = $('<td align="left" colspan="3"><b>รายการ Template</b></td>');
+			$(addTemplateRow).append($(titleCell));
+			let addTemplateCell = $('<td align="left"></td>');
+			$(addTemplateRow).append($(addTemplateCell));
+			let addTemplateCmd = $('<div id="AddTemplatCmd" style="padding:5px; width: 50px; text-align: center; background-color: white; color: green; float: right; cursor: pointer;">+</div>');
+			$(addTemplateCmd).appendTo($(addTemplateCell));
+			$(addTemplateCmd).click((e)=>{
+				let callAddTemplateUrl = '/api/template/add';
+				let addformRow = doCreateTemplatForm(radioId, callAddTemplateUrl);
+				$(templateListDiv).append($(addformRow));
+			});
+			let headerRow = $('<tr style="background-color: green; color: white;"></tr>');
+			$(templateListDiv).append($(headerRow));
+			let headerCell = $('<td align="center" width="5%">#</td><td align="center" width="20%">Template Name</td><td align="center" width="40%">Template</td><td align="center" width="*">คำสั่ง</td>');
+			$(headerRow).append($(headerCell));
+
+			templateList.forEach((item, i) => {
+				let no = i + 1;
+				let tmName = item.Name;
+				let tmContent = item.Content;
+				let dataRow = $('<tr id="Template-' + item.id + '"></tr>');
+				let dataCell = $('<td align="center">' + no + '</td><td align="left">' + tmName + '</td><td>' + $(tmContent).html() + '</td>');
+				$(dataRow).append($(dataCell));
+				let cmdCell = $('<td align="center"></td>');
+				$(cmdCell).appendTo($(dataRow));
+
+				let updateCmd = $('<input type="button" id="UpdateCmd-'+ item.id + '" value=" แก้ไข "/>');
+				$(updateCmd).appendTo($(cmdCell));
+				let deleteCmd = $('<input type="button" value=" ลบ "/>');
+				$(deleteCmd).appendTo($(cmdCell));
+
+				$(updateCmd).click(async (e)=>{
+					let eventData = {id: item.id, Name: tmName, Content: tmContent};
+					$(updateCmd).trigger('updateitem', [eventData]);
+					$(dataRow).hide();
+				});
+				$(deleteCmd).click(async (e)=>{
+					let eventData = {id: item.id};
+					$(deleteCmd).trigger('deleteitem', [eventData]);
+				});
+				$(dataRow).find('input[type="button"]').css(inputStyleClass);
+				$(templateListDiv).append($(dataRow));
+			});
+
+			$(templateListDiv).on('updateitem', (e, data)=>{
+				let callUpdateTemplateUrl = '/api/template/update';
+				let updateFormRow = doCreateTemplatForm(radioId, callUpdateTemplateUrl, data);
+				$(templateListDiv).append($(updateFormRow));
+			});
+
+			$(templateListDiv).on('deleteitem', async (e, data)=>{
+				let userConfirm = confirm('โปรดยืนยันเพื่อลบรายการนี้ โดยคลิกปุ่ม ตกลง หรือ OK');
+		  	if (userConfirm == true){
+		  		$('body').loading('start');
+					let tmId = data.id;
+					let deleteParams = {id: tmId};
+					let callDeleteTemplateUrl = '/api/template/delete';
+					let tmRes = await doCallApi(callDeleteTemplateUrl, deleteParams);
+					if (tmRes.status.code == 200) {
+						$.notify('ลบข้อมูลได้สำเร็จ', "success");
+						let eventData = {};
+						$(templateListDiv).trigger('updatelist', [eventData]);
+					} else {
+						$.notify('ไม่สามารถลบข้อมูลได้ในขณะนี้', "error");
+					}
+					$('body').loading('stop');
+				}
+			});
+
+			$(templateListDiv).on('releaselock', (e, data)=>{
+				$(templateListDiv).find('#Template-' + data.id).show();
+			});
+
+			$(templateListDiv).on('updatelist', async (e, data)=>{
+				$('#Template').empty();
+				doCreateTemplate(radioId).then((updataTemplate)=>{
+					$('#Template').append($(updataTemplate));
+				});
+		  });
+
+			resolve($(templateListDiv));
+		});
+	}
+
+	function doCreateTemplatForm(radioId, callUrl, data){
+		const tmFormRow = $('<tr id="WHForm" style="background-color: green; color: white;"></tr>');
+		let tmForm;
+		if (data) {
+			tmForm = $('<td align="left">' + data.id + '</td><td align="left"><input type="text" id="TemplateName" size="10"/></td><td align="left"><input type="text" id="Content"/></td><td align="center"><input type="button" id="SaveCmd" value=" บันทึก "/>  <input type="button" id="CancelCmd" value=" ยกเลิก "/></td>');
+			$(tmForm).find('#TemplateName').val(data.Name);
+			//$(tmForm).find('#Content').val(data.Content);
+			//$(tmForm).find('#Content').val(data.Content);
+			$(tmForm).find('#Content').jqte();
+			$(tmForm).find('#Content').jqteVal(data.Content);
+		} else {
+			tmForm = $('<td align="left">#</td><td align="left"><input type="text" id="TemplateName" size="10"/></td><td align="left"><input type="text" id="Content"/></td></td><td align="center"><input type="button" id="SaveCmd" value=" บันทึก "/>  <input type="button" id="CancelCmd" value=" ยกเลิก "/></td>');
+			$(tmForm).find('#Content').jqte();
+		}
+		$(tmForm).find('input[type="text"]').css(inputStyleClass);
+		$(tmForm).find('input[type="button"]').css(inputStyleClass);
+		$(tmFormRow).append($(tmForm));
+		$(tmForm).find('#SaveCmd').click(async (e)=>{
+			let tmParams;
+			if (data) {
+				tmParams = doVerifyTemplateForm(tmForm, radioId, data.id);
+			} else {
+				tmParams = doVerifyTemplateForm(tmForm, radioId);
+			}
+			console.log(tmParams);
+			if (tmParams) {
+				let tmRes = await doCallApi(callUrl, tmParams);
+				if (tmRes.status.code == 200) {
+					$.notify('บันทึกข้อมูลสำเร็จ', "success");
+					let eventData = {};
+					$(tmFormRow).trigger('updatelist', [eventData]);
+					setTimeout(()=>{
+						$(tmFormRow).remove();
+					}, 400);
+				} else {
+					$.notify('ไม่สามารถบันทึกข้อมูลได้ในขณะนี้', "error");
+				}
+			}
+		});
+		$(tmForm).find('#CancelCmd').click((e)=>{
+			$(tmForm).trigger('releaselock', [data]);
+			$(tmFormRow).remove();
+		});
+		return $(tmFormRow);
+	}
+
+	function doVerifyTemplateForm(form, radioId, itemId) {
+		let tmName = $(form).find('#TemplateName').val();
+		let tmContent = $(form).find('#Content').val();
+		if (tmName === '') {
+			$(form).find('#TemplateName').css('border', '1px solid red');
+			return;
+		} else if (tmContent === '') {
+			$(form).find('#TemplateName').css('border', '');
+			$(form).find('#Content').css('border', '1px solid red');
+			return;
+		} else {
+			$(form).find('#Content').css('border', '');
+			if (itemId) {
+				let updateTMParams = {id: itemId, data: {Name: tmName, Content: tmContent}};
+				return updateTMParams;
+			} else {
+				let addTMParams = {userId: radioId, data: {Name: tmName, Content: tmContent}};
+				return addTMParams;
+			}
+		}
+	}
+
+
 	return {
+		inputStyleClass,
+
 		doLoadHospitalList,
 		doLoadRadioList,
 		doLoadCaseList,
@@ -1930,11 +2094,23 @@ module.exports = function ( jq ) {
 		doSaveNewResponse,
 		doCallResponse,
 		doCallHospitalJoinOption,
-		doCallHospitalJoinUpdate
+		doCallHospitalJoinUpdate,
+		doCallTemplate,
+		/* Radio Tools Section */
+		doCreateSearchDicomForm,
+		doCreateResultCFind,
+		doFindExec,
+		doCreateCmoveCmd,
+		doShowFindResult,
+		doMoveResult,
+		/*Template section */
+		doCreateTemplate,
+		doCreateTemplatForm,
+		doVerifyTemplateForm
 	}
 }
 
-},{"../../case/mod/apiconnect.js":1,"../main.js":3}],6:[function(require,module,exports){
+},{"../../case/mod/apiconnect.js":1,"../../case/mod/utilmod.js":2,"../main.js":3}],5:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.5.1
  * https://jquery.com/

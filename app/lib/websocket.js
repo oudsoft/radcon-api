@@ -77,7 +77,7 @@ function RadconWebSocketServer (arg, log) {
 						owner = data.owner;
 						hospitalId = data.hospitalId;
 						let cfindResult = {type: "cfindresult", result: data.data, hospitalId: hospitalId, owner: owner};
-						$this.sendMessage(cfindResult, owner);
+						$this.sendMessage(ws, cfindResult, owner);
 					break;
 					case "move":
 						if (data.data) {
@@ -97,8 +97,8 @@ function RadconWebSocketServer (arg, log) {
 					case "cmoveresult":
 						owner = data.owner;
 						let studyInstanceUID = data.StudyInstanceUID;
-						let cmoveResult = {type: "cmoveresult", result: data.data, StudyInstanceUID: studyInstanceUID, owner: owner};
-						$this.sendMessage(cmoveResult, owner);
+						let cmoveResult = {type: "cmoveresult", result: data.data, StudyInstanceUID: studyInstanceUID, owner: owner, hospitalId: data.hospitalId};
+						$this.sendMessage(ws, cmoveResult, owner);
 					break;
 					case "run":
 						if (data.data) {
@@ -118,7 +118,7 @@ function RadconWebSocketServer (arg, log) {
 					case "runresult":
 						owner = data.owner;
 						let runResult = {type: "runresult", result: data.data, owner: owner};
-						$this.sendMessage(runResult, owner);
+						$this.sendMessage(ws, runResult, owner);
 					break;
 				}
 			} else {
@@ -149,26 +149,26 @@ function RadconWebSocketServer (arg, log) {
 		});
 	}, 85000);
 
-	this.findUserSocket = function(username) {
+	this.findUserSocket = function(fromWs, username) {
 		return new Promise(function(resolve, reject) {
 			let yourSocket = $this.clients.find((ws) =>{
-				if ((ws.id == username) && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
+				if ((ws.id == username) && (ws !== fromWs) && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
 			});
 			resolve(yourSocket);
 		});
 	}
 
 	this.findHospitalLocalSocket = function(hospitalId) {
-		return new Promise(function(resolve, reject) {
-			let yourSocket = $this.clients.find((ws) =>{
+		return new Promise(async function(resolve, reject) {
+			let yourSocket = await $this.clients.find((ws) =>{
 				if ((ws.hospitalId == hospitalId) && (ws.connectType === 'local') && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
 			});
 			resolve(yourSocket);
 		});
 	}
 
-	this.sendMessage = async function(message, sendto) {
-		let userSocket = await $this.findUserSocket(sendto);
+	this.sendMessage = async function(fromWs, message, sendto) {
+		let userSocket = await $this.findUserSocket(fromWs, sendto);
 		if (userSocket) {
 			userSocket.send(JSON.stringify(message));
 			return true;

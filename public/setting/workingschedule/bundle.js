@@ -168,7 +168,7 @@ async function doLoadWorkingHourDesign(hosId){
   let workingHourData = await worksch.doLoadHospitalWorkingHour(hosId);
   $(".main").append($(workingHourData));
   $(workingHourData).on('updatelist', async (e, data)=>{
-    $(workingHourData).remove();
+    $(workingHourData).empty();
     workingHourData = await worksch.doLoadHospitalWorkingHour(hosId);
     $(".main").append($(workingHourData));
   });
@@ -611,8 +611,23 @@ module.exports = function ( jq ) {
 				$(wkHourListDiv).append($(updateFormRow));
 			});
 
-			$(wkHourListDiv).on('deleteitem', (e, data)=>{
-				let whId = data.whId;
+			$(wkHourListDiv).on('deleteitem', async (e, data)=>{
+				let userConfirm = confirm('โปรดยืนยันเพื่อลบรายการนี้ โดยคลิกปุ่ม ตกลง หรือ OK');
+		  	if (userConfirm == true){
+		  		$('body').loading('start');
+					let whId = data.whId;
+					let deleteParams = {id: whId};
+					let callDeleteWHUrl = '/api/workinghour/delete';
+					let wkHourRes = await doCallApi(callDeleteWHUrl, deleteParams);
+					if (wkHourRes.status.code == 200) {
+						$.notify('ลบข้อมูลได้สำเร็จ', "success");
+						let eventData = {};
+						$(wkHourListDiv).trigger('updatelist', [eventData]);
+					} else {
+						$.notify('ไม่สามารถลบข้อมูลได้ในขณะนี้', "error");
+					}
+					$('body').loading('stop');
+				}
 			});
 
 			$(wkHourListDiv).on('releaselock', (e, data)=>{
@@ -629,7 +644,6 @@ module.exports = function ( jq ) {
 		let whForm;
 		if (data) {
 			whForm = $('<td align="left">' + data.id + '</td><td align="left"><input type="text" id="WHName" size="30" /></td><td align="left"><input type="number" id="WHFrom" size="10"/></td><td align="left"><input type="number" id="WHTo" size="10"/></td><td align="center"><input type="button" id="SaveCmd" value=" บันทึก "/>  <input type="button" id="CancelCmd" value=" ยกเลิก "/></td>');
-			console.log(data);
 			let wh = JSON.parse(data.WH);
 			$(whForm).find('#WHName').val(data.WH_Name);
 			$(whForm).find('#WHFrom').val(wh.from);
@@ -651,7 +665,9 @@ module.exports = function ( jq ) {
 					$.notify('บันทึกข้อมูลสำเร็จ', "success");
 					let eventData = {};
 					$(whFormRow).trigger('updatelist', [eventData]);
-					$(whFormRow).remove();
+					setTimeout(()=>{
+						$(whFormRow).remove();
+					}, 400);
 				} else {
 					$.notify('ไม่สามารถบันทึกข้อมูลได้ในขณะนี้', "error");
 				}

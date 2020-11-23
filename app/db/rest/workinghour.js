@@ -41,7 +41,7 @@ app.post('/list', (req, res) => {
       if (ur.length > 0){
         try {
           const hospitalId = req.body.hospitalId;
-          const workingh = await WorkingH.findAll({attributes: excludeColumn, where: {hospitalId: hospitalId}});
+          const workingh = await WorkingH.findAll({attributes: excludeColumn, where: {hospitalId: hospitalId}, order: [['id', 'ASC']]});
           //res.json({status: {code: 200}, types: types});
           //log.info('Result=> ' + JSON.stringify(types));
           res.json({ status: {code: 200}, Records: workingh});
@@ -94,8 +94,8 @@ app.post('/update', (req, res) => {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
         try {
-          let upWorkingH = req.body.data;
-          await WorkingH.update(upWorkingH, { where: { id: req.body.id } });
+          let updateWorkingH = {WH_Name: req.body.data.WHName, WH: JSON.stringify(req.body.data.WH)};
+          await WorkingH.update(updateWorkingH, { where: { id: req.body.id } });
           res.json({status: {code: 200}});
         } catch(error) {
       		log.error(error);

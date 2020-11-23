@@ -67,6 +67,7 @@ module.exports = function (app) {
 
 		}).catch((err) => {
 			console.log('err: 500 >>', err);
+      res.status(500).send({status: {code: 500}, error: ree});
 		});
 	});
 
