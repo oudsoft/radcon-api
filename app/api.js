@@ -52,6 +52,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	const pdfconvertor = require('./lib/pdfconvertor.js')(apiApp, webSocketServer);
 	const taskCase = require('./lib/casetask.js')(webSocketServer, db, log);
 	const taskApp = require('./lib/taskapp.js')(taskCase, db, log);
+	const zoomApp = require('./lib/zoom.js')(db, log);
 
 	const users = require('./db/rest/users.js')(db, log);
 	const user = require('./db/rest/user.js')(db, log);
@@ -97,6 +98,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	apiApp.use('/caseresponse', caseresponse);
 	apiApp.use('/casereport', casereport);
 	apiApp.use('/tasks', taskApp);
+	apiApp.use('/zoom', zoomApp);
 
 	const publicDir = path.normalize(__dirname + '/..' + '/public');
 	const internalHTTP = 'http-server ' + publicDir;

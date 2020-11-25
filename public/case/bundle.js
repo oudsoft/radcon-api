@@ -1379,7 +1379,8 @@ module.exports = function ( jq ) {
 			await doPrepareOptionForm(defualtValue);
 
 			let dicomImgCount = 0;
-			let seriesParam = {method: 'get', username: main.doGetUserData().username};
+			let userdata = main.doGetUserData();
+			let seriesParam = {method: 'get', username: userdata.username, hospitalId: userdata.hospitalId};
 			var promiseList = new Promise(function(resolve, reject){
 				seriesList.forEach((srs) => {
 					seriesParam.uri = '/series/' + srs;

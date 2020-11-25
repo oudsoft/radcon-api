@@ -55,13 +55,13 @@ function RadconWebSocketServer (arg, log) {
           break;
 					case "notify":
 						if (data.sendto === ws.id) {
-							ws.send(JSON.stringify({type: 'notify', message: data.notify}));
+							ws.send(JSON.stringify({type: 'notify', message: data.notify, statusId: data.statusId, caseId: data.caseId}));
 						}
 					break;
 					case "exec":
 						if (data.data) {
 							hospitalId = data.data.hospitalId;
-							let localSocket = await $this.findHospitalLocalSocket(hospitalId);
+							let localSocket = await $this.findHospitalLocalSocket(ws, hospitalId);
 							if (localSocket) {
 								if ((localSocket.readyState == 0) || (localSocket.readyState == 1)) {
 									localSocket.send(JSON.stringify(data));
@@ -82,7 +82,7 @@ function RadconWebSocketServer (arg, log) {
 					case "move":
 						if (data.data) {
 							hospitalId = data.data.hospitalId;
-							let localSocket = await $this.findHospitalLocalSocket(hospitalId);
+							let localSocket = await $this.findHospitalLocalSocket(ws, hospitalId);
 							if (localSocket) {
 								if ((localSocket.readyState == 0) || (localSocket.readyState == 1)) {
 									localSocket.send(JSON.stringify(data));
@@ -103,7 +103,7 @@ function RadconWebSocketServer (arg, log) {
 					case "run":
 						if (data.data) {
 							hospitalId = data.data.hospitalId;
-							let localSocket = await $this.findHospitalLocalSocket(hospitalId);
+							let localSocket = await $this.findHospitalLocalSocket(ws, hospitalId);
 							if (localSocket) {
 								if ((localSocket.readyState == 0) || (localSocket.readyState == 1)) {
 									localSocket.send(JSON.stringify(data));
@@ -158,10 +158,10 @@ function RadconWebSocketServer (arg, log) {
 		});
 	}
 
-	this.findHospitalLocalSocket = function(hospitalId) {
+	this.findHospitalLocalSocket = function(fromWs, hospitalId) {
 		return new Promise(async function(resolve, reject) {
 			let yourSocket = await $this.clients.find((ws) =>{
-				if ((ws.hospitalId == hospitalId) && (ws.connectType === 'local') && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
+				if ((ws.hospitalId == hospitalId)  && (ws !== fromWs) && (ws.connectType === 'local') && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
 			});
 			resolve(yourSocket);
 		});

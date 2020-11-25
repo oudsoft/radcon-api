@@ -64,26 +64,29 @@ app.post('/find', function(req, res) {
 	log.info('rqBody=>' + rqBody)
 	let hospitalId = req.body.hospitalId;
 	log.info('hospitalId =>' + hospitalId);
-	doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
-		let username = req.body.username;
-		let method = req.body.method;
-		let cloud = JSON.parse(orthanc.Orthanc_Cloud)
-		let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
-		var command;
-		if (method.toLowerCase() == 'post') {
-			command = 'curl -X POST --user ' + cloud.user + ':' + cloud.pass + ' -H "user: ' + cloud.user + '" -H "Content-Type: application/json" ' + orthancUrl + req.body.uri + ' -d \'' + rqBody + '\'';
-		} else if (method.toLowerCase() == 'get') {
-			command = 'curl -X GET --user ' + cloud.user + ':' + cloud.pass + ' ' + orthancUrl + req.body.uri + '?user=' + cloud.user;
-		}
+	if (hospitalId) {
+		doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
+			let username = req.body.username;
+			let method = req.body.method;
+			let cloud = JSON.parse(orthanc.Orthanc_Cloud)
+			let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
+			var command;
+			if (method.toLowerCase() == 'post') {
+				command = 'curl -X POST --user ' + cloud.user + ':' + cloud.pass + ' -H "user: ' + cloud.user + '" -H "Content-Type: application/json" ' + orthancUrl + req.body.uri + ' -d \'' + rqBody + '\'';
+			} else if (method.toLowerCase() == 'get') {
+				command = 'curl -X GET --user ' + cloud.user + ':' + cloud.pass + ' ' + orthancUrl + req.body.uri + '?user=' + cloud.user;
+			}
 
-		log.info('Find Dicom with command >>', command);
+			log.info('Find Dicom with command >>', command);
 
-		runcommand(command).then((stdout) => {
-			let studyObj = JSON.parse(stdout);
-			res.status(200).send(studyObj);
+			runcommand(command).then((stdout) => {
+				let studyObj = JSON.parse(stdout);
+				res.status(200).send(studyObj);
+			});
 		});
-
-	});
+	} else {
+		res.status(300).send({status: {code: 300}, error: 'Your hospitalId is incurrect. Please verify.'});
+	}
 });
 
 app.get('/find', function(req, res) {
