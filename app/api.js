@@ -66,7 +66,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	const dicomtransferlog = require('./db/rest/dicomtransferlog.js')(webSocketServer, db, log);
 	const patient = require('./db/rest/patient.js')(db, log);
 	const casestatus = require('./db/rest/casestatus.js')(db, log);
-	const cases = require('./db/rest/cases.js')(db, taskCase, log);
+	const cases = require('./db/rest/cases.js')(db, taskCase, log, webSocketServer);
 	const hospitalreport = require('./db/rest/hospitalreport.js')(db, log);
 	const radiologist = require('./db/rest/radiologist.js')(db, log);
 	const workinghour = require('./db/rest/workinghour.js')(db, log);

@@ -111,7 +111,7 @@ function formatStartTimeStr() {
     dd = '' + d.getDate();
   }
   if (d.getHours() < 10) {
-    hh = '0' + getHours();
+    hh = '0' + d.getHours();
   } else {
 	   hh = '' + d.getHours();
   }
@@ -135,6 +135,7 @@ function doCallMeeting() {
   doCallApi(reqUrl, reqParams).then((zoomUserRes)=>{
     console.log(zoomUserRes);
     let zoomUserId = zoomUserRes.response.users[0].id; //"vwrjK4N4Tt284J2xw-V1ew"
+    //let zoomUserId = 'ptR7CIrxTgKFrSiLBmBOLw';
     reqUrl = '/api/zoom/meeting';
     reqParams.zoomUserId = zoomUserId;
     let joinPassword = "RAD1234";

@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-var db, tasks, Case, log, auth;
+var db, tasks, Case, log, auth, socket;
 
 const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 
@@ -652,11 +652,12 @@ app.get('/description/(:caseId)', (req, res) => {
   });
 });
 
-module.exports = ( dbconn, caseTask, monitor ) => {
+module.exports = ( dbconn, caseTask, monitor, websocket ) => {
   db = dbconn;
   tasks = caseTask;
   log = monitor;
   auth = require('./auth.js')(db, log);
+  socket = websocket;
   Case = db.cases;
   return app;
 }

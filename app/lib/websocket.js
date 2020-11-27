@@ -96,8 +96,9 @@ function RadconWebSocketServer (arg, log) {
 					break;
 					case "cmoveresult":
 						owner = data.owner;
+						hospitalId = data.hospitalId;
 						let studyInstanceUID = data.StudyInstanceUID;
-						let cmoveResult = {type: "cmoveresult", result: data.data, StudyInstanceUID: studyInstanceUID, owner: owner, hospitalId: data.hospitalId};
+						let cmoveResult = {type: "cmoveresult", result: data.data, StudyInstanceUID: studyInstanceUID, owner: owner, hospitalId: hospitalId};
 						$this.sendMessage(ws, cmoveResult, owner);
 					break;
 					case "run":

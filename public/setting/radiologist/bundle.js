@@ -1127,8 +1127,10 @@ function doCreateCaseDetail(caseItem){
 
 const doOpenStoneWebViewer = function(StudyInstanceUID, hospitalId) {
 	apiconnector.doGetOrthancPort(hospitalId).then((response) => {
+		console.log(response);
 		const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
 		let orthancwebapplink = orthancStoneWebviewer + StudyInstanceUID;
+		console.log('orthancwebapplink=', orthancwebapplink);
 		window.open(orthancwebapplink, '_blank');
 	});
 }
@@ -1466,6 +1468,7 @@ function doShowTools(radioId) {
 	});
 
 	$(remoteDicomTab).on('cmoveresult', (e, data)=>{
+		console.log(data);
 		$(remoteDicomTab).find('#CmoveResultDiv').remove();
 		let hospitalId = data.hospitalId;
 		let studyInstanceUID = data.StudyInstanceUID;
