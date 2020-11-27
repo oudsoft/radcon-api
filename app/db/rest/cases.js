@@ -555,7 +555,7 @@ app.post('/add', (req, res) => {
           let setupCaseTo = { hospitalId: req.body.hospitalId, patientId: req.body.patientId, userId: req.body.userId, cliamerightId: req.body.cliamerightId, urgenttypeId: req.body.urgenttypeId};
           await Case.update(setupCaseTo, { where: { id: adCase.id } });
           await adCase.setCasestatus(newcaseStatus[0]);
-          let refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: adCase.id};
+          let refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: newcaseStatus[0].id, caseId: adCase.id};
           socket.sendMessage(refreshNewCase, ur[0].username);
           let urgents = await db.urgenttypes.findAll({ attributes: ['UGType_AcceptStep'], where: {id: req.body.urgenttypeId}});
           let triggerParam = JSON.parse(urgents[0].UGType_AcceptStep);

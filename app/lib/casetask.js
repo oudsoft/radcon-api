@@ -6,14 +6,14 @@ function RadconCaseTask (socket, db, log) {
 
 	this.caseTasks = [];
 
-/*
-  1. new case สร้าง task เพื่อจับเวลาการ accept
-  2. ถ้า accept ทันเวลา เปลี่ยนสถานะเป็น รอผลอ่าน ลบ task ข้อ 1 แล้วสร้าง task ใหม่เพื่อจับเวลา working
-  3. ภ้าส่งผลอ่านทันเวลา เปลี่ยนสถานะเป็น ได้ผลอ่านแล้ว ลบ task ข้อ 2 ลบ task ข้อ 1
-  4. ถ้่า accept ไม่ทันเวลา เปลี่ยนสถานะเป็น expired ลบ task ข้อ 1
-  5. ถ้าส่งผลอ่านไม่ทันเวลา เปลี่ยนสถานะเป็น expired ลบ task ข้อ 2
-  tasks Model {caseId, statusId, triggerAt: datetime, task<cron.schedule>}
-*/
+  /*
+    1. new case สร้าง task เพื่อจับเวลาการ accept
+    2. ถ้า accept ทันเวลา เปลี่ยนสถานะเป็น รอผลอ่าน ลบ task ข้อ 1 แล้วสร้าง task ใหม่เพื่อจับเวลา working
+    3. ภ้าส่งผลอ่านทันเวลา เปลี่ยนสถานะเป็น ได้ผลอ่านแล้ว ลบ task ข้อ 2 ลบ task ข้อ 1
+    4. ถ้่า accept ไม่ทันเวลา เปลี่ยนสถานะเป็น expired ลบ task ข้อ 1
+    5. ถ้าส่งผลอ่านไม่ทันเวลา เปลี่ยนสถานะเป็น expired ลบ task ข้อ 2
+    tasks Model {caseId, statusId, triggerAt: datetime, task<cron.schedule>}
+  */
 
   this.doCreateNewTask = async function (caseId, username, triggerParam, radioUsername, hospitalId, cb) {
     const startDate = new Date();

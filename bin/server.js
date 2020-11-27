@@ -51,6 +51,7 @@ mainApp.use('/', express.static(__dirname + '/../public'));
   const app = require(__dirname + '/../app/app.js')(webSocketServer, log);
   mainApp.use('/api', api);
   mainApp.use('/app', app);
+  
   /*
   log.info('hosted=>' + JSON.stringify(rootUri));
   rootUri.forEach((item)=>{
