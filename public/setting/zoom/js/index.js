@@ -22,6 +22,29 @@ const meetConfig = {
     passWord: '5s3aJp'
 };
 
+const zoomUserId = 'vwrjK4N4Tt284J2xw-V1ew';
+
+const meetingConfig ={
+  host_video: false,
+  participant_video: true,
+  cn_meeting: false,
+  in_meeting: false,
+  join_before_host: true,
+  mute_upon_entry: false,
+  watermark: false,
+  use_pmi: false,
+  waiting_room: false,
+  approval_type: 0, // 0, 1, 2
+  registration_type: 1, // 1, 2, 3
+  audio: "both",
+  auto_recording: "none",
+  alternative_hosts: "",
+  close_registration: true,
+  //global_dial_in_countries: true,
+  registrants_email_notification: false,
+  meeting_authentication: false,
+}
+
 const doCallApi = function (apiurl, params) {
   return new Promise(function(resolve, reject) {
     $.post(apiurl, params, function(data){
@@ -132,11 +155,12 @@ function formatStartTimeStr() {
 function doCallMeeting() {
   let reqParams = {};
   let reqUrl = '/api/zoom/zoomuser';
-  doCallApi(reqUrl, reqParams).then((zoomUserRes)=>{
-    console.log(zoomUserRes);
-    let zoomUserId = zoomUserRes.response.users[0].id; //"vwrjK4N4Tt284J2xw-V1ew"
+  //doCallApi(reqUrl, reqParams).then((zoomUserRes)=>{
+    //console.log(zoomUserRes);
+    //let zoomUserId = zoomUserRes.response.users[0].id; //"vwrjK4N4Tt284J2xw-V1ew"
     //let zoomUserId = 'ptR7CIrxTgKFrSiLBmBOLw';
-    reqUrl = '/api/zoom/meeting';
+    //let zoomUserId = 'vwrjK4N4Tt284J2xw-V1ew';
+    reqUrl = '/api/zoom/createmeeting';
     reqParams.zoomUserId = zoomUserId;
     let joinPassword = "RAD1234";
     //let joinTopic = "Conference รพ.$hos_name เคส $inc_patient";
@@ -155,31 +179,72 @@ function doCallMeeting() {
       password: joinPassword,
       agenda: agenda
     };
-    let meetingConfig ={
-      host_video: false,
-  		participant_video: true,
-  		cn_meeting: false,
-  		in_meeting: false,
-  		join_before_host: true,
-  		mute_upon_entry: false,
-  		watermark: false,
-  		use_pmi: false,
-  		waiting_room: false,
-  		approval_type: 0, // 0, 1, 2
-  		registration_type: 1, // 0, 1, 2
-  		audio: "both",
-  		auto_recording: "none",
-  		alternative_hosts: "",
-  		cloase_registration: true,
-  		//global_dial_in_countries: true,
-  		registrants_email_notification: false,
-  		meeting_authentication: false,
-    }
     zoomParams.settings = meetingConfig;
     reqParams.params = zoomParams;
     console.log(reqParams);
+    doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
+      console.log(meetingsRes);
+      reqUrl = '/api/zoom/getmeeting';
+      reqParams = {};
+      reqParams.meetingId = meetingsRes.meetings[0].id;
+      doCallApi(reqUrl, reqParams).then((meetingRes)=>{
+        console.log(meetingRes);
+      });
+    });
+  //});
+}
+
+function doListMeeting() {
+  let reqParams = {};
+  reqParams.zoomUserId = zoomUserId;
+  let reqUrl = '/api/zoom/listmeeting';
+  doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
+    console.log(meetingsRes);
+    reqUrl = '/api/zoom/getmeeting';
+    reqParams = {};
+    reqParams.meetingId = meetingsRes.response.meetings[0].id;
     doCallApi(reqUrl, reqParams).then((meetingRes)=>{
       console.log(meetingRes);
+    });
+  });
+}
+
+function doUpdateMeeting(){
+  let reqParams = {};
+  reqParams.zoomUserId = zoomUserId;
+  let reqUrl = '/api/zoom/listmeeting';
+  doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
+    console.log(meetingsRes);
+    let meetingId = meetingsRes.response.meetings[0].id;
+    reqUrl = '/api/zoom/updatemeeting';
+    let joinPassword = "RAD1234";
+    let joinTopic = "Test Conference";
+    let meetingType = 2; // 1, 2, 3, 8
+    let totalMinute = 15;
+    let meetingTimeZone = "Asia/Bangkok";
+    let agenda = "RADConnext";
+    let startTime = formatStartTimeStr();
+    let zoomParams = {
+      topic: joinTopic,
+      type: meetingType,
+      start_time: startTime,
+      duration: totalMinute,
+      timezone: meetingTimeZone,
+      password: joinPassword,
+      agenda: agenda
+    };
+    zoomParams.settings = meetingConfig;
+    reqParams.params = zoomParams;
+    console.log(reqParams);
+    reqParams.meetingId = meetingId;
+    doCallApi(reqUrl, reqParams).then((meetingRes)=>{
+      reqUrl = '/api/zoom/getmeeting';
+      reqParams = {};
+      reqParams.meetingId = meetingId;
+      doCallApi(reqUrl, reqParams).then((meetingRes)=>{
+        console.log(meetingRes);
+      });
+
     });
   });
 }
@@ -189,6 +254,8 @@ setTimeout(()=>{
   doAppendReactModalPortal();
   console.log(JSON.stringify(ZoomMtg.checkSystemRequirements()));
   doCallSignature();
-  */
   doCallMeeting();
+  doListMeeting();
+  */
+  doUpdateMeeting();
 },2000)

@@ -1127,7 +1127,6 @@ function doCreateCaseDetail(caseItem){
 
 const doOpenStoneWebViewer = function(StudyInstanceUID, hospitalId) {
 	apiconnector.doGetOrthancPort(hospitalId).then((response) => {
-		console.log(response);
 		const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
 		let orthancwebapplink = orthancStoneWebviewer + StudyInstanceUID;
 		console.log('orthancwebapplink=', orthancwebapplink);
@@ -1468,7 +1467,6 @@ function doShowTools(radioId) {
 	});
 
 	$(remoteDicomTab).on('cmoveresult', (e, data)=>{
-		console.log(data);
 		$(remoteDicomTab).find('#CmoveResultDiv').remove();
 		let hospitalId = data.hospitalId;
 		let studyInstanceUID = data.StudyInstanceUID;
@@ -2016,6 +2014,11 @@ module.exports = function ( jq ) {
 	}
 
 	function doCreateTemplatForm(radioId, callUrl, data){
+		let jqtePluginStyleUrl = '../../lib/jqte/jquery-te-1.4.0.css';
+		$('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
+		let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
+		$('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
+	
 		const tmFormRow = $('<tr id="WHForm" style="background-color: green; color: white;"></tr>');
 		let tmForm;
 		if (data) {

@@ -53,11 +53,12 @@ function nextExpired() {
   return d;
 }
 
-function requestZoomApi(url, params){
+function requestZoomApi(url, params, method){
   return new Promise(function(resolve, reject) {
     let zoomToken = zoomApiJWTToken();
     let options = {
       uri: url,
+      method: method,
       qs: {
         status: 'active' // -> uri + '?status=active'
       },
@@ -98,7 +99,8 @@ app.post('/zoomuser', async(req, res) => {
   try {
     let zoomUrl = 'https://api.zoom.us/v2/users';
     let params = req.body.params;
-    let zoomRes = await requestZoomApi(zoomUrl, params)
+    let method = 'POST';
+    let zoomRes = await requestZoomApi(zoomUrl, params, method)
     res.json({status: {code: 200}, response: zoomRes});
   } catch(error) {
     log.error(error);
@@ -106,14 +108,69 @@ app.post('/zoomuser', async(req, res) => {
   }
 });
 
-app.post('/meeting', async(req, res) => {
+app.post('/createmeeting', async(req, res) => {
   try {
-    log.info('Zoom Request =>' + JSON.stringify(req.body));
     let zoomUserId = req.body.zoomUserId;
     let zoomParams = req.body.params;
     let zoomUrl = 'https://api.zoom.us/v2/users/' + zoomUserId + '/meetings';
-    let zoomRes = await requestZoomApi(zoomUrl, zoomParams);
-    log.info('Zoom Response =>' + JSON.stringify(zoomRes));
+    let method = 'POST';
+    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+    res.json({status: {code: 200}, response: zoomRes});
+  } catch(error) {
+    log.error(error);
+    res.json({status: {code: 500}, error: error});
+  }
+});
+
+app.post('/listmeeting', async(req, res) => {
+  try {
+    let zoomUserId = req.body.zoomUserId;
+    let zoomParams = req.body.params;
+    let zoomUrl = 'https://api.zoom.us/v2/users/' + zoomUserId + '/meetings';
+    let method = 'GET';
+    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+    res.json({status: {code: 200}, response: zoomRes});
+  } catch(error) {
+    log.error(error);
+    res.json({status: {code: 500}, error: error});
+  }
+});
+
+app.post('/getmeeting', async(req, res) => {
+  try {
+    let meetingId = req.body.meetingId;
+    let zoomParams = req.body.params;
+    let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
+    let method = 'GET';
+    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+    res.json({status: {code: 200}, response: zoomRes});
+  } catch(error) {
+    log.error(error);
+    res.json({status: {code: 500}, error: error});
+  }
+});
+
+app.post('/updatemeeting', async(req, res) => {
+  try {
+    let meetingId = req.body.meetingId;
+    let zoomParams = req.body.params;
+    let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
+    let method = 'PATCH';
+    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+    res.json({status: {code: 200}, response: zoomRes});
+  } catch(error) {
+    log.error(error);
+    res.json({status: {code: 500}, error: error});
+  }
+});
+
+app.post('/deletemeeting', async(req, res) => {
+  try {
+    let meetingId = req.body.meetingId;
+    let zoomParams = req.body.params;
+    let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
+    let method = 'DELETE';
+    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
     res.json({status: {code: 200}, response: zoomRes});
   } catch(error) {
     log.error(error);

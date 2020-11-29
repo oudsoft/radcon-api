@@ -18,7 +18,6 @@ app.post('/list', (req, res) => {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
         try {
-
           res.json({Result: "OK", Records: Task.caseTasks});
         } catch(error) {
           log.error(error);

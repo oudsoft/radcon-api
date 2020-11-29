@@ -163,9 +163,11 @@ app.post('/filter/hospital', (req, res) => {
             cases.forEach(async (item, i) => {
               const radUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RadiologistId}});
               const rades = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: radUser[0].userinfoId}});
+              const Radiologist = {id: item.Case_RadiologistId, User_NameTH: rades[0].User_NameTH, User_LastNameTH: rades[0].User_LastNameTH};
               const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
               const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
-              casesFormat.push({case: item, Radiologist: rades[0], Refferal: refes[0]});
+              const Refferal = {id: item.Case_RefferalId, User_NameTH: refes[0].User_NameTH, User_LastNameTH: refes[0].User_LastNameTH};
+              casesFormat.push({case: item, Radiologist: Radiologist, Refferal: Refferal});
             });
             setTimeout(()=> {
               resolve(casesFormat);
@@ -548,7 +550,6 @@ app.post('/add', (req, res) => {
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
         doCallCaseStatusByName('New').then(async (newcaseStatus) => {
           let newCase = req.body.data;
           let adCase = await Case.create(newCase);
@@ -600,7 +601,6 @@ app.post('/update', (req, res) => {
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
         let updateCase = req.body.data;
         await Case.update(updateCase, { where: { id: req.body.id } });
         let setupCaseTo = { cliamerightId: req.body.cliamerightId, urgenttypeId: req.body.urgenttypeId};
@@ -650,6 +650,14 @@ app.get('/description/(:caseId)', (req, res) => {
   doGetCaseDescription(caseId).then((result) => {
     res.json(result);
   });
+});
+
+app.post('/radio/socket/(:radioId)', async (req, res) => {
+  const radioId = req.params.radioId;
+  const radUser = await db.users.findAll({ attributes: ['username'], where: {id: radioId}});
+  const radioUsername = radUser[0].username;
+  const radioSockets = await socket.filterUserSocket(radioUsername);
+  res.json(radioSockets);
 });
 
 module.exports = ( dbconn, caseTask, monitor, websocket ) => {

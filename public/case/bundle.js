@@ -529,6 +529,115 @@ module.exports = function ( jq ) {
     });
   }
 
+  /* Zoom API Connection */
+  const leaveUrl = '/case/index.html';
+  const meetingNumber = 88311164881;
+  const role = 0;
+  const userName = 'Prasert Sian-Sura';
+  const userEmail = 'oudsoft@gmail.com';
+
+  const meetConfig = {
+      leaveUrl: leaveUrl,
+      meetingNumber: meetingNumber,
+      role: role,
+      userName: userName,
+      userEmail: userEmail,
+      passWord: '5s3aJp'
+  };
+
+  const zoomUserId = 'vwrjK4N4Tt284J2xw-V1ew';
+
+  const meetingConfig ={
+    host_video: false,
+    participant_video: true,
+    cn_meeting: false,
+    in_meeting: false,
+    join_before_host: true,
+    mute_upon_entry: false,
+    watermark: false,
+    use_pmi: false,
+    waiting_room: false,
+    approval_type: 0, // 0, 1, 2
+    registration_type: 1, // 1, 2, 3
+    audio: "both",
+    auto_recording: "none",
+    alternative_hosts: "",
+    close_registration: true,
+    //global_dial_in_countries: true,
+    registrants_email_notification: false,
+    meeting_authentication: false,
+  }
+
+  const doGetZoomMeeting = function(incidents, startMeetingTime) {
+    return new Promise(function(resolve, reject) {
+      let reqParams = {};
+      reqParams.zoomUserId = zoomUserId;
+      let reqUrl = '/api/zoom/listmeeting';
+      doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
+        //console.log(meetingsRes);
+        reqUrl = '/api/zoom/getmeeting';
+        reqParams = {};
+        let meetings = meetingsRes.response.meetings;
+        let readyMeetings = [];
+        var promiseList = new Promise(async function(inResolve, inReject){
+          await meetings.forEach(async (item, i) => {
+            reqParams.meetingId = item.id;
+            let meetingRes = await doCallApi(reqUrl, reqParams);
+            console.log(meetingRes);
+            if (meetingRes.response.status === 'waiting') {
+              readyMeetings.push(item);
+              return;
+            } else if (meetingRes.response.status === 'end') {
+              reqUl = '/api/zoom/deletemeeting';
+              meetingRes = await doCallApi(reqUrl, reqParams);
+              console.log(meetingRes);
+            }
+          });
+          setTimeout(()=> {
+            inResolve(readyMeetings);
+          }, 1200);
+        });
+        Promise.all([promiseList]).then(async (ob)=>{
+          if (ob[0].length >= 1) {
+            let readyMeeting = ob[0][0];
+            console.log('readyMeeting =>', readyMeeting);
+            console.log('case dtail =>', incidents);
+            //update meeting for user
+            let patientFulNameEN = incidents.case.patient.Patient_NameEN + ' ' + incidents.case.patient.Patient_LastNameEN;
+            let joinPassword = "RAD1234";
+            let joinTopic = patientFulNameEN;
+            let meetingType = 2; // 1, 2, 3, 8
+            let totalMinute = 15;
+            let meetingTimeZone = "Asia/Bangkok";
+            let agenda = "RADConnext";
+            let startTime = startMeetingTime;
+            let zoomParams = {
+              topic: joinTopic,
+              type: meetingType,
+              start_time: startTime,
+              duration: totalMinute,
+              timezone: meetingTimeZone,
+              password: joinPassword,
+              agenda: agenda
+            };
+            zoomParams.settings = meetingConfig;
+            reqParams.params = zoomParams;
+            reqUrl = '/api/zoom/updatemeeting';
+            let meetingRes = await doCallApi(reqUrl, reqParams);
+            console.log('update result=>', meetingRes);
+            reqUrl = '/api/zoom/getmeeting';
+            reqParams = {meetingId: readyMeeting.id};
+            meetingRes = await doCallApi(reqUrl, reqParams);
+            console.log('updated result=>', meetingRes);
+            resolve(meetingRes.response);
+          } else {
+            //create new meeting
+          }
+        });
+      });
+    });
+  }
+
 	return {
 		/* const */
 		apiExt,
@@ -562,7 +671,8 @@ module.exports = function ( jq ) {
     doGetOrthancPort,
     doConvertPageToPdf,
     doDownloadResult,
-    doConvertPdfToDicom
+    doConvertPdfToDicom,
+    doGetZoomMeeting
 	}
 }
 
@@ -923,6 +1033,12 @@ module.exports = function ( jq ) {
 					});
 					$(convertResultButton).appendTo($(operationCmdBox));
 				}
+
+				let zoomCallButton = $('<img class="pacs-command-dd" data-toggle="tooltip" src="/images/zoom-black-icon.png" title="Call Radiologist by zoom app."/>');
+				$(zoomCallButton).click(function() {
+					doZoomCallRadio(incidents[i]);
+				});
+				$(zoomCallButton).appendTo($(operationCmdBox));
 
 				let deleteCaseButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/delete-icon.png" title="Delete Case."/>');
 				$(deleteCaseButton).click(function() {
@@ -1481,330 +1597,7 @@ module.exports = function ( jq ) {
 			});
 		});
   }
-/*
-  function doOpenSelectFile(){
-		let fileBrowser = $('<input type="file"/>');
-		$(fileBrowser).attr("id", 'fileupload');
-		$(fileBrowser).attr("name", 'patienthistory');
-		$(fileBrowser).attr("multiple", true);
-		$(fileBrowser).css('display', 'none');
-		$(fileBrowser).on('change', function(e) {
-			const defSize = 10000000;
-			var fileSize = e.currentTarget.files[0].size;
-			var fileType = e.currentTarget.files[0].type;
-			if (fileSize <= defSize) {
-				$('#magic-box').empty();
-				$('#magic-box').show();
-				var uploadUrl = apiconnector.proxyRootUri + "/uploadpatienthistory";
-				$('#fileupload').simpleUpload(uploadUrl, {
-					start: function(file){
-						$('#magic-box').html('<div>' + file.type +' : ' + file.name + ' : ' + file.size + '</div>');
-					},
-					progress: function(progress){
-						console.log("ดำเนินการได้ : " + Math.round(progress) + "%");
-						$('#magic-box').html('<div>' + 'ดำเนินการได้ : ' + Math.round(progress) + '%' + '</div>');
-					},
-					success: function(data){
-						console.log('Uploaded.', data);
-						var imageUrl = data.link;
-						$('#magic-box').show();
-						$('#magic-box').html('<div>อัพโหลดสำเร็จ</div>');
-						setTimeout(() => {
-							$('#magic-box').html('');
-							$('#magic-box').hide();
-							doAddHistory(imageUrl);
-							doRenderHistoryPreview();
-							$(fileBrowser).remove();
-							$("#sub-dialog").empty();
-						}, 1200);
-					},
-					error: function(error){
-						$('#magic-box').html('<div>' + "Failure! " + error.name + ": " + error.message + '</div>');
-						$("#sub-dialog").empty();
-					}
-				});
 
-			} else {
-				alert('File not excess ' + defSize + ' Byte.');
-			}
-		});
-		$(fileBrowser).appendTo($("#sub-dialog"));
-		$(fileBrowser).click();
-  }
-*/
-
-/*
-  function doAddHistory(newHs){
-  	let allHs = $('#patient-history').val();
-  	allHs = allHs + ',' + newHs;
-  	$('#patient-history').val(allHs);
-  }
-*/
-/*
-  function doRemoveHistory(index){
-		if (index > -1) {
-	  	let allHs = $('#patient-history').val();
-	  	let hss = allHs.split(',');
-  		hss.splice(index, 1);
-  		allHs = hss.join(',');
-  		$('#patient-history').val(allHs);
-	  } else {
-	  	console.log('index out of bound.')
-	  }
-  }
-*/
-/*
-  function doAppendNewHistoryImage(imgBox, imgUrl, ind) {
-		//const imgURL = 'https://radconnext.com/radconnext/inc_files/' + imgFileName;
-		//const imgURL = '/img/usr/upload/' + imgFileName;
-
-		let imgDiv = document.createElement('div');
-		imgDiv.style.float = 'left';
-		let removeLink = document.createElement('a');
-		removeLink.classList.add('remove');
-		removeLink.addEventListener("click", function(e){
-			doRemoveHsImage(ind);
-		});
-		imgDiv.appendChild(removeLink);
-		let hsImage = document.createElement('img');
-		hsImage.style.width = '100px';
-		hsImage.style.height = 'auto';
-		hsImage.style.border = '1px solid red';
-		hsImage.style.cursor = 'pointer';
-		hsImage.src = imgUrl;
-		hsImage.addEventListener("click", function(e){
-			window.open(imgUrl, '_blank');
-		});
-		imgDiv.appendChild(hsImage);
-		imgBox.appendChild(imgDiv);
-		imgBox.style.display = 'block';
-  }
-*/
-/*
-  function doRenderHistoryPreview() {
-		let imagesBox = document.getElementById('images');
-		imagesBox.innerHTML = '';
-  	let allHs = $('#patient-history').val();
-  	let hss = allHs.split(',');
-		hss.forEach((url, ind) => {
-			if (url !== '') {
-				doAppendNewHistoryImage(imagesBox, url, ind);
-			}
-		});
-  }
-*/
-/*
-  function doRemoveHsImage(index){
-  	doRemoveHistory(index);
-  	doRenderHistoryPreview();
-  }
-*/
-/*
-  function doOpenScaner(){
-		//let scanerPluginUrl = "https://asprise.azureedge.net/scannerjs/scanner.js";
-		let scanerPluginUrl = "scanner/driver/scanner.js";
-		$.cachedScript( scanerPluginUrl ).done(function( script, textStatus ) {
-		  console.log( textStatus );
-      scanner.scan(displayImagesOnPage, {
-					"use_asprise_dialog": false,
-          "output_settings": [
-            {
-              "type": "return-base64",
-              "format": "jpg"
-            }
-          ]
-        }
-      );
-		});
-  }
-*/
-/*
-  function doUploadSacanedImage() {
-  	let imageData = imagesScanned[imagesScanned.length - 1].src;
-  	let params = {image: imageData};
-    let uploadImageUrl = apiconnector.proxyRootUri + "/scannerupload";
-		$.post(uploadImageUrl, params, function(data){
-			var imageUrl = data.link;
-			/*
-			var imageUrlArgs = imageUrl.split('/');
-			var imageFileName =  imageUrlArgs[(imageUrlArgs.length - 1)];
-			apiconnector.doCallTransferHistory(imageFileName).then((transferRef) => {
-				//doAddHistory(transferRef.cloud.link);
-				doAddHistory(imageFileName);
-				doRenderHistoryPreview();
-			});
-			*/
-			/*
-			doAddHistory(imageUrl);
-			doRenderHistoryPreview();
-		}).fail(function(error) {
-			console.log(error);
-			alert('Error:' + error);
-		});
-  }
-	*/
-	/*
-  function doOpenScreenCapture() {
-  	$('#CaptureCanvasDiv').append($('<canvas id="CaptureCanvas" width="100%"" height="auto"/>'));
-		let canvas = document.getElementById('CaptureCanvas');
-		let video = document.getElementById('CaptureVideo');
-		let ctx =  canvas.getContext('2d');
-		let vw, vh;
-		$('#myModal').hide();
-		util.invokeGetDisplayMedia(function(screen) {
-			util.addStreamStopListener(screen, function() {
-				console.log('Stop Stream.');
-			});
-			video.addEventListener( "loadedmetadata", function (e) {
-				console.log(this.videoWidth, this.videoHeight);
-				vw = this.videoWidth;
-				vh = this.videoHeight;
-				video.width = vw;
-				video,height = vh;
-
-				ctx.canvas.width = vw;
-				ctx.canvas.height = vh;
-			}, false );
-
-			video.srcObject = screen;
-			setTimeout(() => {
-				$('#sub-dialog').show();
-				$('#SaveEdit-Cmd').hide();
-
-				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-				doUploadCaptureImage(canvas);
-
-				setTimeout(() => {
-					doClearStream(video);
-				}, 500);
-			}, 500);
-    });
-    //util.windowMinimize();
-    //window.resizeTo(250, 250);
-  }
-	*/
-	/*
-	function doClearStream(video){
-		if (video.srcObject){
-			video.srcObject.getTracks().forEach(function(track) {
-				track.stop();
-			});
-			video.srcObject = null;
-		}
-	}
-	*/
-	/*
-	function doUploadCaptureImage(canvas){
-		var paths = window.location.pathname.split('/');
-		var url = "/api/captureupload";
-		var dataURL = canvas.toDataURL("image/jpeg", 1.0);
-		var base64ImageContent = dataURL.replace(/^data:image\/(png|jpg|jpeg);base64,/, "");
-		var blob = util.base64ToBlob(base64ImageContent, 'image/jpg');
-		var formData = new FormData();
-		formData.append('picture', blob);
-
-		$.ajax({
-			url: url,
-			type: "POST",
-			cache: false,
-			contentType: false,
-			processData: false,
-			data: formData}).done(function(e){
-				//console.log(e);
-				let tuiImageEditorCssUrl = "/lib/tui-image-editor.min.css";
-				$('head').append('<link rel="stylesheet" href="' + tuiImageEditorCssUrl + '" type="text/css" />');
-				let tuiColorPickerCssUrl = "/lib/tui-color-picker.css";
-				$('head').append('<link rel="stylesheet" href="' + tuiColorPickerCssUrl + '" type="text/css" />');
-
-				let event = new CustomEvent("EditImageCmd", { "detail": {boxId: 'CaptureCanvasDiv', link: e.link, width: canvas.width, height: canvas.height}});
-				document.dispatchEvent(event);
-
-			}
-		);
-	}
-	*/
-	/*
-	const editorOption = {
-		includeUI: {
-			loadImage: {
-				path: 'img/usr/upload/' ,
-				name: 'SampleImage'
-			},
-			menu: [/*'undo', 'redo', 'reset',*//* 'crop', 'rotate', 'draw', 'shape', 'icon', 'text'],
-			initMenu: 'text',
-			menuBarPosition: 'bottom'
-		},
-		cssMaxWidth: 700,
-		cssMaxHeight: 700,
-		selectionStyle: {
-			cornerSize: 20,
-			rotatingPointOffset: 70
-		}
-	};
-*/
-/*
-	function openImageEditor(evt) {
-		let boxId = evt.detail.boxId;
-		let link = evt.detail.link;
-		console.log(link);
-		editorOption.includeUI.loadImage.path = link;
-		let imageEditor = new ImageEditor(boxId);
-		setTimeout(() => {
-			$('.tui-image-editor-header').hide();
-			var tuiCanvas = imageEditor.editor._graphics.getCanvas();
-			$('#CaptureCanvasDiv').css('height', Number(tuiCanvas.height) + 120);
-		},500);
-		//require('fabric');
-		let saveImageClickCount = 0;
-		$('#SaveEdit-Cmd').show();
-		$('#SaveEdit-Cmd').click(function(){
-			console.log(saveImageClickCount);
-			if (saveImageClickCount == 0) {
-				saveImageClickCount++;
-				console.log('Krai Click?');
-				var paths = window.location.pathname.split('/');
-				var rootname = paths[1];
-				var url = "/api/editionupload";
-				var tuiCanvas = imageEditor.editor._graphics.getCanvas();
-
-				var dataURL = tuiCanvas.toDataURL("image/jpeg", 1.0);
-
-				var base64ImageContent = dataURL.replace(/^data:image\/(png|jpg|jpeg);base64,/, "");
-				var blob = util.base64ToBlob(base64ImageContent, 'image/jpg');
-
-				var formData = new FormData();
-				formData.append('picture', blob);
-				$.ajax({
-					url: url,
-					type: "POST",
-					cache: false,
-					contentType: false,
-					processData: false,
-					data: formData}).done(function(response){
-						console.log(response);
-						let context = tuiCanvas.getContext('2d');
-						//context.setTransform(1, 0, 0, 1, 0, 0);
-						context.clearRect(0, 0, tuiCanvas.width, tuiCanvas.height);
-						//context.restore();
-
-						$('#CaptureCanvasDiv').empty();
-						$('#SaveEdit-Cmd').hide();
-						doCloseSubModal();
-						var imageUrl = response.link;
-						doAddHistory(imageUrl);
-						doRenderHistoryPreview();
-					}
-				);
-			}
-		});
-	}
-	*/
-	/*
-	const ImageEditor = function(boxId) {
-		var TuiImageEditor = require('tui-image-editor');
-		this.editor = new TuiImageEditor(document.querySelector('#' + boxId), editorOption);
-	}
-	*/
 	function doPrepareOptionForm(defualtValue){
 		return new Promise(async function(resolve, reject) {
 			const main = require('../main.js');
@@ -2367,6 +2160,19 @@ module.exports = function ( jq ) {
 		}
   }
 
+	async function doZoomCallRadio(incidents) {
+		$('body').loading('start');
+		let startMeetingTime = util.formatStartTimeStr();
+		let zoomMeeting = await apiconnector.doGetZoomMeeting(incidents, startMeetingTime);
+		//find radio socketId
+		let radioId = incidents.case.Case_RadiologistId;
+		let callSocketUrl = '/api/cases/radio/socket/' + radioId;
+		let rqParams = {};
+		let radioSockets = await doCallApi(callSocketUrl, rqParams);
+		console.log('radioSockets=>', radioSockets);
+		$('body').loading('stop');
+	}
+
 	return {
 		doLoadCasePage,
 		doEventManagment,
@@ -2646,6 +2452,40 @@ module.exports = function ( jq ) {
 		}
 	}
 
+	const formatStartTimeStr = function(){
+		let d = new Date().getTime() + (5*60*1000);
+	  d = new Date(d);
+		var yy, mm, dd, hh, mn, ss;
+	  yy = d.getFullYear();
+	  if (d.getMonth() + 1 < 10) {
+	    mm = '0' + (d.getMonth() + 1);
+	  } else {
+	    mm = '' + (d.getMonth() + 1);
+	  }
+	  if (d.getDate() < 10) {
+	    dd = '0' + d.getDate();
+	  } else {
+	    dd = '' + d.getDate();
+	  }
+	  if (d.getHours() < 10) {
+	    hh = '0' + d.getHours();
+	  } else {
+		   hh = '' + d.getHours();
+	  }
+	  if (d.getMinutes() < 10){
+		   mn = '0' + d.getMinutes();
+	  } else {
+	    mn = '' + d.getMinutes();
+	  }
+	  if (d.getSeconds() < 10) {
+		   ss = '0' + d.getSeconds();
+	  } else {
+	    ss = '' + d.getSeconds();
+	  }
+		var td = `${yy}-${mm}-${dd}T${hh}:${mn}:${ss}`;
+		return td;
+	}
+
 	const invokeGetDisplayMedia = function(success) {
 		if(navigator.mediaDevices.getDisplayMedia) {
 	    navigator.mediaDevices.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
@@ -2844,6 +2684,7 @@ module.exports = function ( jq ) {
 		formatStudyTime,
 		getDatetimeValue,
 		formatDateDev,
+		formatStartTimeStr,
 		invokeGetDisplayMedia,
 		addStreamStopListener,
 		base64ToBlob,

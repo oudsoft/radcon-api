@@ -77,7 +77,7 @@ function RadconWebSocketServer (arg, log) {
 						owner = data.owner;
 						hospitalId = data.hospitalId;
 						let cfindResult = {type: "cfindresult", result: data.data, hospitalId: hospitalId, owner: owner};
-						$this.sendMessage(ws, cfindResult, owner);
+						$this.selfSendMessage(ws, cfindResult, owner);
 					break;
 					case "move":
 						if (data.data) {
@@ -99,7 +99,7 @@ function RadconWebSocketServer (arg, log) {
 						hospitalId = data.hospitalId;
 						let studyInstanceUID = data.StudyInstanceUID;
 						let cmoveResult = {type: "cmoveresult", result: data.data, StudyInstanceUID: studyInstanceUID, owner: owner, hospitalId: hospitalId};
-						$this.sendMessage(ws, cmoveResult, owner);
+						$this.selfSendMessage(ws, cmoveResult, owner);
 					break;
 					case "run":
 						if (data.data) {
@@ -119,7 +119,7 @@ function RadconWebSocketServer (arg, log) {
 					case "runresult":
 						owner = data.owner;
 						let runResult = {type: "runresult", result: data.data, owner: owner};
-						$this.sendMessage(ws, runResult, owner);
+						$this.selfSendMessage(ws, runResult, owner);
 					break;
 				}
 			} else {
@@ -159,6 +159,17 @@ function RadconWebSocketServer (arg, log) {
 		});
 	}
 
+	this.filterUserSocket = function(username) {
+		return new Promise(function(resolve, reject) {
+			let targetSocket = $this.clients.filter((ws) =>{
+				if ((ws.id == username) && ((ws.readyState == 0) || (ws.readyState == 1))) {
+					return ws;
+				}
+			});
+			resolve(targetSocket);
+		});
+	}
+
 	this.findHospitalLocalSocket = function(fromWs, hospitalId) {
 		return new Promise(async function(resolve, reject) {
 			let yourSocket = await $this.clients.find((ws) =>{
@@ -168,7 +179,7 @@ function RadconWebSocketServer (arg, log) {
 		});
 	}
 
-	this.sendMessage = async function(fromWs, message, sendto) {
+	this.selfSendMessage = async function(fromWs, message, sendto) {
 		let userSocket = await $this.findUserSocket(fromWs, sendto);
 		if (userSocket) {
 			userSocket.send(JSON.stringify(message));
@@ -176,6 +187,13 @@ function RadconWebSocketServer (arg, log) {
 		} else {
 			return false;
 		}
+	}
+
+	this.sendMessage = async function(message, sendto) {
+		let userSockets = await $this.filterUserSocket(sendto);
+		userSockets.forEach((socket, i) => {
+			socket.send(JSON.stringify(message));
+		});
 	}
 
 	this.runCommand = function (command) {
