@@ -298,9 +298,14 @@ function doGetUserData(){
   return localStorage.getItem('userdata');
 }
 
+function doGetWsm(){
+	return wsm;
+}
+
 module.exports = {
   doGetToken,
-  doGetUserData
+  doGetUserData,
+	doGetWsm
 }
 
 },{"./mod/apiconnect.js":2,"./mod/case.js":3,"./mod/jquery-ex.js":4,"./mod/utilmod.js":5,"jquery":6}],2:[function(require,module,exports){
@@ -2170,6 +2175,18 @@ module.exports = function ( jq ) {
 		let rqParams = {};
 		let radioSockets = await doCallApi(callSocketUrl, rqParams);
 		console.log('radioSockets=>', radioSockets);
+		if (radioSockets.length > 0) {
+			//radio online
+			const main = require('../main.js');
+			let userdata = JSON.parse(main.doGetUserData());
+			console.log(userdata);
+			let callZoomMsg = {type: 'callzoom', to: radioSockets[0].id, openurl: zoomMeeting.join_url, password: zoomMeeting.password, topic: zoomMeeting.topic}
+			let myWsm = main.doGetWsm();
+			myWsm.send(JSON.stringify(callZoomMsg));
+			window.open(zoomMeeting.start_url, '_blank');
+		} else {
+			//radio offline
+		}
 		$('body').loading('stop');
 	}
 
@@ -2599,7 +2616,7 @@ module.exports = function ( jq ) {
 				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId };
 				$("#RemoteDicom").trigger('runresult', [evtData]);
 			} else if (data.type == 'refresh') {
-				let event = new CustomEvent(cityName, {"detail": {eventname: data.section}});
+				let event = new CustomEvent(data.section, {"detail": {eventname: data.section, stausId: data.statusId, caseId: data.caseId}});
 				document.dispatchEvent(event);
 			}
 	  };

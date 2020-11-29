@@ -576,6 +576,8 @@ app.post('/add', (req, res) => {
                 msg = 'Your a new Case was expired by schedule';
                 notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: adCase.id};
                 socket.sendMessage(notify, ur[0].username);
+                refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: adCase.id};
+                socket.sendMessage(refreshNewCase, ur[0].username);
               });
             } else {
               log.info('caseId ' + caseId + ' was released by schedule.');
