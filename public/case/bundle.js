@@ -535,22 +535,14 @@ module.exports = function ( jq ) {
   }
 
   /* Zoom API Connection */
-  const leaveUrl = '/case/index.html';
-  const meetingNumber = 88311164881;
-  const role = 0;
-  const userName = 'Prasert Sian-Sura';
-  const userEmail = 'oudsoft@gmail.com';
-
-  const meetConfig = {
-      leaveUrl: leaveUrl,
-      meetingNumber: meetingNumber,
-      role: role,
-      userName: userName,
-      userEmail: userEmail,
-      passWord: '5s3aJp'
-  };
 
   const zoomUserId = 'vwrjK4N4Tt284J2xw-V1ew';
+
+  const meetingType = 2; // 1, 2, 3, 8
+  const totalMinute = 15;
+  const meetingTimeZone = "Asia/Bangkok";
+  const agenda = "RADConnext";
+  const joinPassword = "RAD1234";
 
   const meetingConfig ={
     host_video: false,
@@ -573,7 +565,7 @@ module.exports = function ( jq ) {
     meeting_authentication: false,
   }
 
-  const doGetZoomMeeting = function(incidents, startMeetingTime) {
+  const doGetZoomMeeting = function(incident, startMeetingTime, hospitalName) {
     return new Promise(function(resolve, reject) {
       let reqParams = {};
       reqParams.zoomUserId = zoomUserId;
@@ -588,14 +580,12 @@ module.exports = function ( jq ) {
           await meetings.forEach(async (item, i) => {
             reqParams.meetingId = item.id;
             let meetingRes = await doCallApi(reqUrl, reqParams);
-            console.log(meetingRes);
             if (meetingRes.response.status === 'waiting') {
               readyMeetings.push(item);
               return;
             } else if (meetingRes.response.status === 'end') {
               reqUl = '/api/zoom/deletemeeting';
               meetingRes = await doCallApi(reqUrl, reqParams);
-              console.log(meetingRes);
             }
           });
           setTimeout(()=> {
@@ -603,18 +593,13 @@ module.exports = function ( jq ) {
           }, 1200);
         });
         Promise.all([promiseList]).then(async (ob)=>{
+          let patientFullNameEN = incident.case.patient.Patient_NameEN + ' ' + incident.case.patient.Patient_LastNameEN;
           if (ob[0].length >= 1) {
             let readyMeeting = ob[0][0];
             console.log('readyMeeting =>', readyMeeting);
-            console.log('case dtail =>', incidents);
+            console.log('case dtail =>', incident);
             //update meeting for user
-            let patientFulNameEN = incidents.case.patient.Patient_NameEN + ' ' + incidents.case.patient.Patient_LastNameEN;
-            let joinPassword = "RAD1234";
-            let joinTopic = patientFulNameEN;
-            let meetingType = 2; // 1, 2, 3, 8
-            let totalMinute = 15;
-            let meetingTimeZone = "Asia/Bangkok";
-            let agenda = "RADConnext";
+            let joinTopic = 'โรงพยาบาล' + hospitalName + ' ผู้ป่วยชื่อ ' + patientFullNameEN;
             let startTime = startMeetingTime;
             let zoomParams = {
               topic: joinTopic,
@@ -637,6 +622,32 @@ module.exports = function ( jq ) {
             resolve(meetingRes.response);
           } else {
             //create new meeting
+            reqUrl = '/api/zoom/createmeeting';
+            reqParams.zoomUserId = zoomUserId;
+            let joinTopic =  'โรงพยาบาล' + hospitalName + ' ผู้ป่วยชื่อ ' + patientFullNameEN;
+            let startTime = startMeetingTime;
+            let zoomParams = {
+              topic: joinTopic,
+              type: meetingType,
+              start_time: startTime,
+              duration: totalMinute,
+              timezone: meetingTimeZone,
+              password: joinPassword,
+              agenda: agenda
+            };
+            zoomParams.settings = meetingConfig;
+            reqParams.params = zoomParams;
+            doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
+              console.log('create meetingsRes=>', meetingsRes);
+              let meetingsSize = meetingsRes.meetings.length;
+              reqUrl = '/api/zoom/getmeeting';
+              reqParams = {};
+              reqParams.meetingId = meetingsRes.meetings[meetingsSize-1].id;
+              doCallApi(reqUrl, reqParams).then((meetingRes)=>{
+                console.log('create meetingRes=>', meetingRes);
+                resolve(meetingRes.response);
+              });
+            });
           }
         });
       });
@@ -745,6 +756,7 @@ module.exports = function ( jq ) {
 		document.addEventListener("ReadSuccessDiv", openCaseList);
 		document.addEventListener("AllCasesDiv", openCaseList);
 		//document.addEventListener("EditImageCmd", openImageEditor);
+		document.addEventListener("stopzoominterrupt", doStopInterruptEvt);
 	}
 
 	const evtMng = function(e) {
@@ -2167,25 +2179,56 @@ module.exports = function ( jq ) {
 
 	async function doZoomCallRadio(incidents) {
 		$('body').loading('start');
+		const main = require('../main.js');
+		let userdata = JSON.parse(main.doGetUserData());
 		let startMeetingTime = util.formatStartTimeStr();
-		let zoomMeeting = await apiconnector.doGetZoomMeeting(incidents, startMeetingTime);
+		let hospName = userdata.hospital.Hos_Name;
+		let zoomMeeting = await apiconnector.doGetZoomMeeting(incidents, startMeetingTime, hospName);
 		//find radio socketId
 		let radioId = incidents.case.Case_RadiologistId;
 		let callSocketUrl = '/api/cases/radio/socket/' + radioId;
 		let rqParams = {};
 		let radioSockets = await doCallApi(callSocketUrl, rqParams);
-		console.log('radioSockets=>', radioSockets);
 		if (radioSockets.length > 0) {
 			//radio online
-			const main = require('../main.js');
-			let userdata = JSON.parse(main.doGetUserData());
-			console.log(userdata);
-			let callZoomMsg = {type: 'callzoom', to: radioSockets[0].id, openurl: zoomMeeting.join_url, password: zoomMeeting.password, topic: zoomMeeting.topic}
+			let callZoomMsg = {type: 'callzoom', sendTo: radioSockets[0].id, openurl: zoomMeeting.join_url, password: zoomMeeting.password, topic: zoomMeeting.topic, sender: userdata.username}
 			let myWsm = main.doGetWsm();
 			myWsm.send(JSON.stringify(callZoomMsg));
 			window.open(zoomMeeting.start_url, '_blank');
 		} else {
 			//radio offline
+			let userConfirm = confirm('ระบบไม่สามารถติดต่อไปยังปลายทางของคุณได้ในขณะนี้\nตุณต้องการส่งข้อมูล conference ไปให้ปลายทางผ่านช่องทางอื่น เช่น อีเมล์ ไลน์ หรทอไม่\nคลิกตกลงหรือ OK ถ้าต้องการ');
+			if (userConfirm) {
+				$('#HistoryDialogBox').empty();
+				let dataBox = $('<div></div>');
+				$(dataBox).append('<div><div><b>ลิงค์สำหรับเข้าร่วม Conference</b></div><div>' + zoomMeeting.join_url + '</div></div>');
+				$(dataBox).append('<div><div><b>Password เข้าร่วม Conference</b></div><div>' + zoomMeeting.password + '</div></div>');
+				$(dataBox).append('<div><div><b>ชื่อหัวข้อ Conference</b></div><div>' + zoomMeeting.topic + '</div></div>');
+				$('#HistoryDialogBox').append($(dataBox));
+				let cmdBox = $('<div></div>');
+		 		$(cmdBox).css('width','100%');
+				$(cmdBox).css('padding','3px');
+				$(cmdBox).css('clear','left');
+		 		$(cmdBox).css('text-align','center');
+		  	let closeCmdBtn = $('<button>ปิด</button>');
+		  	$(closeCmdBtn).click(()=>{
+		  		$('#HistoryDialogBox').dialog('close');
+		  	});
+		  	$(closeCmdBtn).appendTo($(cmdBox));
+		  	$('#HistoryDialogBox').append($(cmdBox));
+		  	$('#HistoryDialogBox').dialog('option', 'title', 'ข้อมูล conference');
+		  	$('#HistoryDialogBox').dialog('open');
+			}
+			$('body').loading('stop');
+		}
+	}
+
+	function doStopInterruptEvt(e) {
+		let stopData = e.detail.data;
+		if (stopData.result === 1) {
+			alert('ปลายทางตอบตกลงเข้าร่วม Conference โปรดเปิดสัญญาญภาพจากกล้องวิดีโอของคุณและรอสักครู่');
+		} else {
+			alert('ปลายทางปฏิเสธการเข้าร่วม Conference');
 		}
 		$('body').loading('stop');
 	}
@@ -2587,7 +2630,7 @@ module.exports = function ( jq ) {
 	      $.notify(data.message, "success");
 	    } else if (data.type == 'trigger') {
 				if (wsl) {
-		      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere};
+		      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere, hostname: data.hostname};
 		      wsl.send(JSON.stringify(message));
 		      $.notify('The system will be start store dicom to your local.', "success");
 				}
@@ -2617,6 +2660,16 @@ module.exports = function ( jq ) {
 				$("#RemoteDicom").trigger('runresult', [evtData]);
 			} else if (data.type == 'refresh') {
 				let event = new CustomEvent(data.section, {"detail": {eventname: data.section, stausId: data.statusId, caseId: data.caseId}});
+				document.dispatchEvent(event);
+			} else if (data.type == 'callzoom') {
+				let eventName = 'callzoominterrupt';
+				let callData = {openurl: data.openurl, password: data.password, topic: data.topic, sender: data.sender};
+				let event = new CustomEvent(eventName, {"detail": {eventname: eventName, data: callData}});
+				document.dispatchEvent(event);
+			} else if (data.type == 'callzoomback') {
+				let eventName = 'stopzoominterrupt';
+				let evtData = {result: data.result};
+				let event = new CustomEvent(eventName, {"detail": {eventname: eventName, data: evtData}});
 				document.dispatchEvent(event);
 			}
 	  };
@@ -2658,7 +2711,7 @@ module.exports = function ( jq ) {
 		    if (data.type == 'test') {
 		      $.notify(data.message, "success");
 		    } else if (data.type == 'result') {
-		      $.notify(daata.message, "success");
+		      $.notify(data.message, "success");
 		    } else if (data.type == 'notify') {
 		      $.notify(data.message, "warnning");
 		    } else if (data.type == 'exec') {

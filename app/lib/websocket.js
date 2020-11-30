@@ -121,6 +121,16 @@ function RadconWebSocketServer (arg, log) {
 						let runResult = {type: "runresult", result: data.data, owner: owner};
 						$this.selfSendMessage(ws, runResult, owner);
 					break;
+					case "callzoom":
+						let sendTo = data.sendTo;
+						let callData = {type: 'callzoom', openurl: data.openurl, password: data.password, topic: data.topic, sender: data.sender};
+						$this.selfSendMessage(ws, callData, sendTo);
+					break;
+					case "callzoomback":
+						let sendBackTo = data.sendTo;
+						let resultData = {type: 'callzoomback', result: data.result};
+						$this.selfSendMessage(ws, resultData, sendBackTo);
+					break;
 				}
 			} else {
 				ws.send(JSON.stringify({type: 'error', message: 'Your command invalid type.'}));

@@ -140,6 +140,7 @@ module.exports = function (app, wssocket) {
     console.log(command);
     runcommand(command).then((stdout) => {
       console.log(stdout);
+      let studyInstanceUID;
       let studyObj = JSON.parse(stdout);
 			let mainTags = Object.keys(studyObj.MainDicomTags);
 			let patientMainTags = Object.keys(studyObj.PatientMainDicomTags);
@@ -154,6 +155,9 @@ module.exports = function (app, wssocket) {
       command += ' && img2dcm -i BMP ' + fileCode + '.bmp' + ' ' + dcmFile;
       mainTags.forEach((tag, i) => {
         command += parseStr(' -k "%s=%s"', tag, Object.values(studyObj.MainDicomTags)[i]);
+        if (tag === 'StudyInstanceUID') {
+          studyInstanceUID = Object.values(studyObj.MainDicomTags)[i];
+        }
       });
       patientMainTags.forEach((tag, i) => {
         if (tag !== 'OtherPatientIDs')	{
@@ -177,7 +181,8 @@ module.exports = function (app, wssocket) {
         let cwss = wssocket.socket.clients;
         cwss.forEach((wc) => {
           if (wc.id == body.username) {
-            let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: body.studyID, dcmname: dcmFile};
+            log.info('hostname=>' + req.hostname);
+            let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: body.studyID, dcmname: dcmFile, hostname: req.hostname, StudyInstanceUID: studyInstanceUID};
             wc.send(JSON.stringify(socketTrigger));
           }
         });

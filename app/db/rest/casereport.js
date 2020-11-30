@@ -432,7 +432,7 @@ app.post('/convert', (req, res) => {
 					log.info('wc.id=> ' + wc.id);
 					log.info('ur[0].username=> ' + ur[0].username);
 					if (wc.id == ur[0].username) {
-						let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: studyID, dcmname: dicom.dcmname, studyInstanceUID: studyInstanceUID, owner: ur[0].username};
+						let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: studyID, dcmname: dicom.dcmname, studyInstanceUID: studyInstanceUID, owner: ur[0].username, hostname: req.hostname + ':' + process.env.SERVER_PORT};
 						wc.send(JSON.stringify(socketTrigger));
 					}
 				});

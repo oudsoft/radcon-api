@@ -224,6 +224,126 @@ module.exports = function ( jq ) {
     });
   }
 
+  /* Zoom API Connection */
+
+  const zoomUserId = 'vwrjK4N4Tt284J2xw-V1ew';
+
+  const meetingType = 2; // 1, 2, 3, 8
+  const totalMinute = 15;
+  const meetingTimeZone = "Asia/Bangkok";
+  const agenda = "RADConnext";
+  const joinPassword = "RAD1234";
+
+  const meetingConfig ={
+    host_video: false,
+    participant_video: true,
+    cn_meeting: false,
+    in_meeting: false,
+    join_before_host: true,
+    mute_upon_entry: false,
+    watermark: false,
+    use_pmi: false,
+    waiting_room: false,
+    approval_type: 0, // 0, 1, 2
+    registration_type: 1, // 1, 2, 3
+    audio: "both",
+    auto_recording: "none",
+    alternative_hosts: "",
+    close_registration: true,
+    //global_dial_in_countries: true,
+    registrants_email_notification: false,
+    meeting_authentication: false,
+  }
+
+  const doGetZoomMeeting = function(incident, startMeetingTime, hospitalName) {
+    return new Promise(function(resolve, reject) {
+      let reqParams = {};
+      reqParams.zoomUserId = zoomUserId;
+      let reqUrl = '/api/zoom/listmeeting';
+      doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
+        //console.log(meetingsRes);
+        reqUrl = '/api/zoom/getmeeting';
+        reqParams = {};
+        let meetings = meetingsRes.response.meetings;
+        let readyMeetings = [];
+        var promiseList = new Promise(async function(inResolve, inReject){
+          await meetings.forEach(async (item, i) => {
+            reqParams.meetingId = item.id;
+            let meetingRes = await doCallApi(reqUrl, reqParams);
+            if (meetingRes.response.status === 'waiting') {
+              readyMeetings.push(item);
+              return;
+            } else if (meetingRes.response.status === 'end') {
+              reqUl = '/api/zoom/deletemeeting';
+              meetingRes = await doCallApi(reqUrl, reqParams);
+            }
+          });
+          setTimeout(()=> {
+            inResolve(readyMeetings);
+          }, 1200);
+        });
+        Promise.all([promiseList]).then(async (ob)=>{
+          let patientFullNameEN = incident.case.patient.Patient_NameEN + ' ' + incident.case.patient.Patient_LastNameEN;
+          if (ob[0].length >= 1) {
+            let readyMeeting = ob[0][0];
+            console.log('readyMeeting =>', readyMeeting);
+            console.log('case dtail =>', incident);
+            //update meeting for user
+            let joinTopic = 'โรงพยาบาล' + hospitalName + ' ผู้ป่วยชื่อ ' + patientFullNameEN;
+            let startTime = startMeetingTime;
+            let zoomParams = {
+              topic: joinTopic,
+              type: meetingType,
+              start_time: startTime,
+              duration: totalMinute,
+              timezone: meetingTimeZone,
+              password: joinPassword,
+              agenda: agenda
+            };
+            zoomParams.settings = meetingConfig;
+            reqParams.params = zoomParams;
+            reqUrl = '/api/zoom/updatemeeting';
+            let meetingRes = await doCallApi(reqUrl, reqParams);
+            console.log('update result=>', meetingRes);
+            reqUrl = '/api/zoom/getmeeting';
+            reqParams = {meetingId: readyMeeting.id};
+            meetingRes = await doCallApi(reqUrl, reqParams);
+            console.log('updated result=>', meetingRes);
+            resolve(meetingRes.response);
+          } else {
+            //create new meeting
+            reqUrl = '/api/zoom/createmeeting';
+            reqParams.zoomUserId = zoomUserId;
+            let joinTopic =  'โรงพยาบาล' + hospitalName + ' ผู้ป่วยชื่อ ' + patientFullNameEN;
+            let startTime = startMeetingTime;
+            let zoomParams = {
+              topic: joinTopic,
+              type: meetingType,
+              start_time: startTime,
+              duration: totalMinute,
+              timezone: meetingTimeZone,
+              password: joinPassword,
+              agenda: agenda
+            };
+            zoomParams.settings = meetingConfig;
+            reqParams.params = zoomParams;
+            doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
+              console.log('create meetingsRes=>', meetingsRes);
+              let meetingsSize = meetingsRes.meetings.length;
+              reqUrl = '/api/zoom/getmeeting';
+              reqParams = {};
+              reqParams.meetingId = meetingsRes.meetings[meetingsSize-1].id;
+              doCallApi(reqUrl, reqParams).then((meetingRes)=>{
+                console.log('create meetingRes=>', meetingRes);
+                resolve(meetingRes.response);
+              });
+            });
+          }
+        });
+      });
+    });
+  }
+
 	return {
 		/* const */
 		apiExt,
@@ -257,7 +377,8 @@ module.exports = function ( jq ) {
     doGetOrthancPort,
     doConvertPageToPdf,
     doDownloadResult,
-    doConvertPdfToDicom
+    doConvertPdfToDicom,
+    doGetZoomMeeting
 	}
 }
 
@@ -462,6 +583,40 @@ module.exports = function ( jq ) {
 		}
 	}
 
+	const formatStartTimeStr = function(){
+		let d = new Date().getTime() + (5*60*1000);
+	  d = new Date(d);
+		var yy, mm, dd, hh, mn, ss;
+	  yy = d.getFullYear();
+	  if (d.getMonth() + 1 < 10) {
+	    mm = '0' + (d.getMonth() + 1);
+	  } else {
+	    mm = '' + (d.getMonth() + 1);
+	  }
+	  if (d.getDate() < 10) {
+	    dd = '0' + d.getDate();
+	  } else {
+	    dd = '' + d.getDate();
+	  }
+	  if (d.getHours() < 10) {
+	    hh = '0' + d.getHours();
+	  } else {
+		   hh = '' + d.getHours();
+	  }
+	  if (d.getMinutes() < 10){
+		   mn = '0' + d.getMinutes();
+	  } else {
+	    mn = '' + d.getMinutes();
+	  }
+	  if (d.getSeconds() < 10) {
+		   ss = '0' + d.getSeconds();
+	  } else {
+	    ss = '' + d.getSeconds();
+	  }
+		var td = `${yy}-${mm}-${dd}T${hh}:${mn}:${ss}`;
+		return td;
+	}
+
 	const invokeGetDisplayMedia = function(success) {
 		if(navigator.mediaDevices.getDisplayMedia) {
 	    navigator.mediaDevices.getDisplayMedia(videoConstraints).then(success).catch(doGetScreenSignalError);
@@ -546,7 +701,7 @@ module.exports = function ( jq ) {
 	      $.notify(data.message, "success");
 	    } else if (data.type == 'trigger') {
 				if (wsl) {
-		      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere};
+		      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere, hostname: data.hostname};
 		      wsl.send(JSON.stringify(message));
 		      $.notify('The system will be start store dicom to your local.', "success");
 				}
@@ -575,7 +730,17 @@ module.exports = function ( jq ) {
 				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId };
 				$("#RemoteDicom").trigger('runresult', [evtData]);
 			} else if (data.type == 'refresh') {
-				let event = new CustomEvent(cityName, {"detail": {eventname: data.section}});
+				let event = new CustomEvent(data.section, {"detail": {eventname: data.section, stausId: data.statusId, caseId: data.caseId}});
+				document.dispatchEvent(event);
+			} else if (data.type == 'callzoom') {
+				let eventName = 'callzoominterrupt';
+				let callData = {openurl: data.openurl, password: data.password, topic: data.topic, sender: data.sender};
+				let event = new CustomEvent(eventName, {"detail": {eventname: eventName, data: callData}});
+				document.dispatchEvent(event);
+			} else if (data.type == 'callzoomback') {
+				let eventName = 'stopzoominterrupt';
+				let evtData = {result: data.result};
+				let event = new CustomEvent(eventName, {"detail": {eventname: eventName, data: evtData}});
 				document.dispatchEvent(event);
 			}
 	  };
@@ -617,7 +782,7 @@ module.exports = function ( jq ) {
 		    if (data.type == 'test') {
 		      $.notify(data.message, "success");
 		    } else if (data.type == 'result') {
-		      $.notify(daata.message, "success");
+		      $.notify(data.message, "success");
 		    } else if (data.type == 'notify') {
 		      $.notify(data.message, "warnning");
 		    } else if (data.type == 'exec') {
@@ -660,6 +825,7 @@ module.exports = function ( jq ) {
 		formatStudyTime,
 		getDatetimeValue,
 		formatDateDev,
+		formatStartTimeStr,
 		invokeGetDisplayMedia,
 		addStreamStopListener,
 		base64ToBlob,
@@ -785,6 +951,8 @@ function doLoadMainPage(){
   $('#HistoryDialogBox').dialog({
     modal: true, autoOpen: false, width: 350, resizable: false, title: 'ประวัติผู้ป่วย'
   });
+
+	document.addEventListener("callzoominterrupt", doInterruptZoomCallEvt);
 
   let userdata = JSON.parse(doGetUserData());
 
@@ -1490,6 +1658,25 @@ function doShowTools(radioId) {
 	$('body').loading('stop');
 }
 
+function doInterruptZoomCallEvt(e) {
+	$('body').loading('start');
+	let userConfirm = confirm('คุณมีสายเรียกเข้าเพื่อ Conference ทาง Zoom\nคลิก ตกลง หรือ OK เพื่อรับสายและเปิด Zoom Conference หรือ คลิก ยกเลิก หรือ Cancel เพื่อปฏิเสธการรับสาย');
+	let myWsm = doGetWsm();
+	if (userConfirm) {
+		let callData = e.detail.data;
+		alert('Password ในการเข้าร่วม Conference ของคุณคิอ ' + callData.password + '\n');
+		window.open(callData.openurl, '_blank');
+		//Say yes back to caller
+		let callZoomMsg = {type: 'callzoomback', sendTo: callData.sender, result: 1};
+		myWsm.send(JSON.stringify(callZoomMsg));
+		$('body').loading('stop');
+	} else {
+		//Say no back to caller
+		let callZoomMsg = {type: 'callzoomback', sendTo: callData.sender, result: 0};
+		myWsm.send(JSON.stringify(callZoomMsg));
+		$('body').loading('stop');		
+	}
+}
 /*
 function doShowMainDoctor(){
 	$(".row").show();

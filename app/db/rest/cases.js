@@ -347,6 +347,8 @@ app.post('/status/(:caseId)', async (req, res) => {
                     msg = 'Your a new Case was expired by schedule';
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     socket.sendMessage(notify, ur[0].username);
+                    refreshAcceptCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
+                    socket.sendMessage(refreshNewCase, ur[0].username);
                   });
                 }
               });
@@ -390,6 +392,8 @@ app.post('/status/(:caseId)', async (req, res) => {
                     msg = 'Your a new Case was expired by schedule';
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     socket.sendMessage(notify, ur[0].username);
+                    let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
+                    socket.sendMessage(refreshNewCase, ur[0].username);
                   });
                 }
               });
@@ -430,6 +434,8 @@ app.post('/status/(:caseId)', async (req, res) => {
                     msg = 'Your a new Case was expired by schedule';
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     socket.sendMessage(notify, ur[0].username);
+                    let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
+                    socket.sendMessage(refreshNewCase, ur[0].username);
                   });
                 }
               });
