@@ -166,10 +166,13 @@ const reportCreator = function(elements, variable, pdfFileName){
 	});
 }
 
-const dicomConvertor = function(studyID, modality, fileCode) {
+const dicomConvertor = function(studyID, modality, fileCode, hospitalId) {
 	return new Promise(async function(resolve, reject) {
-		const ORTHANC_URL =  'http://' + process.env.ORTHANC_DOMAIN + ':' + process.env.ORTHANC_REST_PORT;
-		const USERPASS = process.env.ORTHANC_USER + ':' + process.env.ORTHANC_PASSWORD;
+		const orthancs = await db.orthancs.findAll({ attributes: excludeColumn, where: {hospitalId: hospitalId}});
+		//ip: "202.28.68.28", httpport: "8042", dicomport: "4242", user: "demo", pass: "demo", portex : "8042"};
+		const cloud = JSON.parse(orthancs[0].Orthanc_Cloud)
+		const ORTHANC_URL =  'http://' + cloud.ip + ':' + cloud.httpport;
+		const USERPASS = cloud.user + ':' + cloud.pass;
 		const publicDir = path.normalize(__dirname + '/../../../public');
 		const USRPDF_PATH = process.env.USRPDF_PATH;
 		const pdfFileName = fileCode + '.pdf';
@@ -201,7 +204,7 @@ const dicomConvertor = function(studyID, modality, fileCode) {
 			command += parseStr(' -k "Modality=%s" -v', modality);
 
 			command += ' && storescu';
-			command += parseStr(' %s %s', process.env.ORTHANC_DOMAIN, process.env.ORTHANC_DICOM_PORT);
+			command += parseStr(' %s %s', cloud.ip, cloud.dicomport);
 			command +=  ' ' + dcmFile;
 			command +=  ' -v';
 
@@ -424,7 +427,7 @@ app.post('/convert', (req, res) => {
 
 				let report = await reportCreator(reportElements, reportVar, pdfFileName);
 
-				let dicom = await dicomConvertor(studyID, modality, pdfFileName);
+				let dicom = await dicomConvertor(studyID, modality, pdfFileName, hospitalId);
 
 				log.info('If you are => ' + ur[0].username + ', you will be recieve notity for trigger on local ORTHANC.')
 				let cwss = websocket.socket.clients;
@@ -432,7 +435,7 @@ app.post('/convert', (req, res) => {
 					log.info('wc.id=> ' + wc.id);
 					log.info('ur[0].username=> ' + ur[0].username);
 					if (wc.id == ur[0].username) {
-						let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: studyID, dcmname: dicom.dcmname, studyInstanceUID: studyInstanceUID, owner: ur[0].username, hostname: req.hostname + ':' + process.env.SERVER_PORT};
+						let socketTrigger = {type: 'trigger', message: 'Please tell your orthanc update', studyid: studyID, dcmname: dicom.dcmname, studyInstanceUID: studyInstanceUID, owner: ur[0].username, hostname: req.hostname + ':4443'};
 						wc.send(JSON.stringify(socketTrigger));
 					}
 				});

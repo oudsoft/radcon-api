@@ -2205,7 +2205,7 @@ module.exports = function ( jq ) {
 		$('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
 		let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
 		$('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
-	
+
 		const tmFormRow = $('<tr id="WHForm" style="background-color: green; color: white;"></tr>');
 		let tmForm;
 		if (data) {

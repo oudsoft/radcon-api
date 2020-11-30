@@ -163,7 +163,7 @@ function RadconWebSocketServer (arg, log) {
 	this.findUserSocket = function(fromWs, username) {
 		return new Promise(function(resolve, reject) {
 			let yourSocket = $this.clients.find((ws) =>{
-				if ((ws.id == username) && (ws !== fromWs) && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
+				if ((ws.id == username) /*&& (ws !== fromWs)*/ && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
 			});
 			resolve(yourSocket);
 		});
