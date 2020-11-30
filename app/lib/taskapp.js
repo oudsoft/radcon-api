@@ -34,6 +34,34 @@ app.post('/list', (req, res) => {
   }
 });
 
+app.post('/select/(:caseId)', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          let castId = req.body.caseId;
+          let taskByCases = await Task.caseTasks.filter((task, i) => {
+            if (task.caseId === caseId) {
+              return task;
+            }
+          });
+          res.json({Result: "OK", Records: askByCases});
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
 module.exports = ( taskCase, dbconn, monitor ) => {
   db = dbconn;
   log = monitor;
