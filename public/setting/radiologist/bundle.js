@@ -1189,8 +1189,21 @@ function doCreateCaseDetail(caseItem){
 		let casedate = util.formatStudyDate(casedateSegment);
 		let casetime = util.formatStudyTime(casedatetime[1].split(':').join(''));
 
+		let lastUpdDateTime = new Date(caseItem.case.updatedAt);
+		let lastUpdDatetimeFormat = util.getFomateDateTime(lastUpdDateTime);
+		let lastUpddatetime = lastUpdDatetimeFormat.split('T');
+
+		let lastUpddateSegment = lastUpddatetime[0].split('-');
+		lastUpddateSegment = lastUpddateSegment.join('');
+		let lastUpddate = util.formatStudyDate(lastUpddateSegment);
+		let lastUpdtime = util.formatStudyTime(lastUpddatetime[1].split(':').join(''));
+
 		let tableRow = $('<div style="display: table-row"></div>');
-		let rowDetail = $('<div style="display: table-cell; width: 200px;"><b>วันที่เวลา</b></div><div style="display: table-cell"><div style="float: left;">' + casedate + '</div><div class="CaseTime">' + casetime + '</div></div>');
+		let rowDetail = $('<div style="display: table-cell; width: 200px;"><b>ส่งเคสเมื่อวันที่/เวลา</b></div><div style="display: table-cell"><div style="float: left;">' + casedate + '</div><div class="CaseTime">' + casetime + '</div></div>');
+		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
+
+		tableRow = $('<div style="display: table-row"></div>');
+		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>แก้ไขล่าสุดเมื่อวันที่/เวลา</b></div><div style="display: table-cell"><div style="float: left;">' + lastUpddate + '</div><div class="CaseTime">' + lastUpdtime + '</div></div>');
 		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
 
 		tableRow = $('<div style="display: table-row"></div>');
@@ -1198,7 +1211,7 @@ function doCreateCaseDetail(caseItem){
 		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
 
 		tableRow = $('<div style="display: table-row"></div>');
-		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>สถานะเคส</b></div><div style="display: table-cell">' + caseItem.case.casestatus.CS_Name_EN + '</div>');
+		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>สถานะเคส</b></div><div style="display: table-cell"><div class="CaseTime">' + caseItem.case.casestatus.CS_Name_EN + '</div></div>');
 		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
 
 		tableRow = $('<div style="display: table-row"></div>');
@@ -1289,6 +1302,10 @@ function doCreateCaseDetail(caseItem){
 		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>รายละเอียดเคส</b></div><div style="display: table-cell">' + caseItem.case.Case_DESC + '</div>');
 		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
 
+		tableRow = $('<div style="display: table-row"></div>');
+		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>ผู้ส่ง</b></div><div style="display: table-cell">' + caseItem.owner.User_NameTH + ' ' + caseItem.owner.User_LastNameTH + '</div>');
+		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
+
 		resolve($(tableCaseDetail));
 	});
 }
@@ -1334,7 +1351,7 @@ function doChangeCaseStatus(caseId, caseDesc, newStatus){
 }
 
 function doCreateNewStatusCaseAction(caseItem){
-	let tableRow = $('<div style="display: table-row"></div>');
+	let tableRow = $('<div style="display: table-row" class="CaseTime"></div>');
 	let rowDetail = $('<div style="display: table-cell; width: 200px;"><b>Your Action</b></div>');
 	$(tableRow).append($(rowDetail));
 	let rowCommand = $('<div style="display: table-cell"></div>');
@@ -1392,7 +1409,6 @@ function doCreateAcceptStatusCaseAction(caseItem){
 			$(sendResponseCmd).css({'font-family': 'THSarabunNew', 'font-size': '24px'});
 			$(sendResponseCmd).click(async (e)=>{
 				let responseHTML = $('#SimpleEditor').val();
-				console.log(responseHTML);
 				let saveData = {Response_Text: responseHTML};
 				let result = await radio.doSaveNewResponse(caseItem.case.id, radioId, saveData);
 				console.log(result);
@@ -1417,7 +1433,6 @@ function doCreateAcceptStatusCaseAction(caseItem){
 function doCallResponse(caseId) {
 	return new Promise(async function(resolve, reject){
 		let result = await radio.doCallResponse(caseId);
-
 		let tableLine = $('<div style="display: table"></div>');
 		let tableRow = $('<div style="display: table-row"></div>');
 		let rowResponse = $('<div style="display: table-cell; width: 100%;"></div>');
@@ -1674,7 +1689,7 @@ function doInterruptZoomCallEvt(e) {
 		//Say no back to caller
 		let callZoomMsg = {type: 'callzoomback', sendTo: callData.sender, result: 0};
 		myWsm.send(JSON.stringify(callZoomMsg));
-		$('body').loading('stop');		
+		$('body').loading('stop');
 	}
 }
 /*
@@ -2012,6 +2027,7 @@ module.exports = function ( jq ) {
 				let eventData = {hospitalId: hospitalTargetId, key: searchKey, value: searchValue, owner: socketId};
 				$(searchExecCmd).trigger('searchexec', [eventData]);
 				$(form).find('#SearchValue').css('border', '');
+				$('body').loading('start');
 			} else {
 				$(form).find('#SearchValue').css('border', '1px solid red');
 			}
@@ -2057,8 +2073,10 @@ module.exports = function ( jq ) {
 				let studyInstanceUID = results['0020,000d'].Value;
 				let cmoveCmdDiv = doCreateCmoveCmd(socketId, hospitalId, studyInstanceUID);
 				$(cmoveCmdDiv).appendTo($(cfindResultDiv));
+				$('body').loading('stop');
 			} else {
 				$(cfindResultDiv).append('<b>Not Found any Reource.</b>');
+				$('body').loading('stop');
 			}
 			resolve($(cfindResultDiv));
 		});

@@ -206,52 +206,57 @@ app.post('/filter/radio', (req, res) => {
           const raduserId = req.body.userId;
           const userInclude = [{model: db.userinfoes, attributes: ['id', 'User_NameEN', 'User_LastNameEN', 'User_NameTH', 'User_LastNameTH', 'User_Hospitals']}];
           const radusers = await db.users.findAll({include: userInclude, attributes: ['id', 'username'], where: {	id: raduserId}});
-          const hospitals = JSON.parse(radusers[0].userinfo.User_Hospitals);
-          const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
-          const casesFormat = [];
-          const promiseList = new Promise(function(resolve, reject) {
-            hospitals.forEach(async (item, i) => {
-              let whereClous;
-              if (filterDate) {
-                let startDate = new Date(filterDate.from);
-                whereClous = {hospitalId: item.id, userId: raduserId, casestatusId: { [db.Op.in]: statusId }, createdAt: { [db.Op.gte]: startDate}};
-              } else {
-                whereClous = {hospitalId: item.id, Case_RadiologistId: raduserId, casestatusId: { [db.Op.in]: statusId }}
-              }
-              const cases = await Case.findAll({include: caseInclude, where: whereClous});
-              cases.forEach((cas, i) => {
-                casesFormat.push(cas)
-              });
+          if (radusers[0].userinfo.User_Hospitals) {
+            const hospitals = JSON.parse(radusers[0].userinfo.User_Hospitals);
+            const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
+            const casesFormat = [];
+            const promiseList = new Promise(function(resolve, reject) {
+              hospitals.forEach(async (item, i) => {
+                let whereClous;
+                if (filterDate) {
+                  let startDate = new Date(filterDate.from);
+                  whereClous = {hospitalId: item.id, userId: raduserId, casestatusId: { [db.Op.in]: statusId }, createdAt: { [db.Op.gte]: startDate}};
+                } else {
+                  whereClous = {hospitalId: item.id, Case_RadiologistId: raduserId, casestatusId: { [db.Op.in]: statusId }}
+                }
+                let orderby = [['createdAt', 'DESC']];
+                const cases = await Case.findAll({include: caseInclude, where: whereClous, order: orderby});
+                cases.forEach((cas, i) => {
+                  casesFormat.push(cas)
+                });
 
-            });
-            setTimeout(()=> {
-              resolve(casesFormat);
-            },1500);
-          });
-          Promise.all([promiseList]).then((ob)=> {
-            const finalCases = [];
-            const allCases = ob[0];
-            const promiseListRef = new Promise(function(resolve, reject) {
-              allCases.forEach(async (item, i) => {
-                const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
-                const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
-                finalCases.push({case: item, reff: refes[0]});
               });
               setTimeout(()=> {
-                resolve(finalCases);
-              },500);
+                resolve(casesFormat);
+              },1500);
             });
-            Promise.all([promiseListRef]).then((obb)=> {
-              log.info('obb[0]=>' + JSON.stringify(obb[0]));
-              res.json({status: {code: 200}, Records: obb[0]});
+            Promise.all([promiseList]).then((ob)=> {
+              const finalCases = [];
+              const allCases = ob[0];
+              const promiseListRef = new Promise(function(resolve, reject) {
+                allCases.forEach(async (item, i) => {
+                  const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
+                  const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
+                  const ownerUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.userId}});
+                  const owners = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: ownerUser[0].userinfoId}});
+                  finalCases.push({case: item, reff: refes[0], owner: owners[0]});
+                });
+                setTimeout(()=> {
+                  resolve(finalCases);
+                },500);
+              });
+              Promise.all([promiseListRef]).then((obb)=> {
+                log.info('obb[0]=>' + JSON.stringify(obb[0]));
+                res.json({status: {code: 200}, Records: obb[0]});
+              }).catch((err)=>{
+                log.error('Error=>' + JSON.stringify(err));
+                reject(err);
+              });
             }).catch((err)=>{
               log.error('Error=>' + JSON.stringify(err));
-              reject(err);
+              res.json({status: {code: 500}, error: err});
             });
-          }).catch((err)=>{
-            log.error('Error=>' + JSON.stringify(err));
-            res.json({status: {code: 500}, error: err});
-          });
+          }
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});

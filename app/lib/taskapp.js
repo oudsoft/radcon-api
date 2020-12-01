@@ -40,13 +40,16 @@ app.post('/select/(:caseId)', (req, res) => {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
         try {
-          let castId = req.body.caseId;
+          let caseId = req.params.caseId;
           let taskByCases = await Task.caseTasks.filter((task, i) => {
+            /*
             if (task.caseId === caseId) {
               return task;
             }
+            */
+            return (task.caseId === caseId);
           });
-          res.json({Result: "OK", Records: askByCases});
+          res.json({Result: "OK", Records: taskByCases});
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});

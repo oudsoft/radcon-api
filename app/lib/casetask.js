@@ -34,14 +34,14 @@ function RadconCaseTask (socket, db, log) {
     let newTask = {caseId: caseId, username: username, radioUsername: radioUsername, triggerAt: endDate/*, task: task*/};
     $this.caseTasks.push(newTask);
     let msg = 'You have a new Case on ' + hoses[0].Hos_Name + '. This your case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
-    let notify = {type: 'notify', message: msg};
+    let notify = {type: 'notify', message: msg, caseId: caseId};
     let canSend = socket.sendMessage(notify, radioUsername);
     if (canSend) {
       msg = 'The Radiologist of your new case can recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
     } else {
       msg = 'The Radiologist of your new case can not recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
     }
-    notify = {type: 'notify', message: msg};
+    notify = {type: 'notify', message: msg, caseId: caseId};
     socket.sendMessage(notify, username);
   }
 
