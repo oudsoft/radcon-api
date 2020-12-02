@@ -712,14 +712,14 @@ module.exports = function ( jq ) {
 					wsl.send(JSON.stringify(data));
 				}
 			} else if (data.type == 'cfindresult') {
-				let evtData = { result: data.result, owner: data.owner, hospitalId: data.hospitalId };
+				let evtData = { result: data.result, owner: data.owner, hospitalId: data.hospitalId, queryPath: data.queryPath};
 				$("#RemoteDicom").trigger('cfindresult', [evtData]);
 			} else if (data.type == 'move') {
 				if (wsl) {
 					wsl.send(JSON.stringify(data));
 				}
 			} else if (data.type == 'cmoveresult') {
-				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, StudyInstanceUID: data.StudyInstanceUID};
+				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, patientID: data.patientID};
 				$("#RemoteDicom").trigger('cmoveresult', [evtData]);
 			} else if (data.type == 'run') {
 				if (wsl) {
@@ -1312,7 +1312,9 @@ function doCreateCaseDetail(caseItem){
 
 const doOpenStoneWebViewer = function(StudyInstanceUID, hospitalId) {
 	apiconnector.doGetOrthancPort(hospitalId).then((response) => {
-		const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
+		console.log(response);
+		//const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
+		const orthancStoneWebviewer = 'http://'+ response.ip + ':' + response.port + '/stone-webviewer/index.html?study=';
 		let orthancwebapplink = orthancStoneWebviewer + StudyInstanceUID;
 		console.log('orthancwebapplink=', orthancwebapplink);
 		window.open(orthancwebapplink, '_blank');
@@ -1646,14 +1648,15 @@ function doShowTools(radioId) {
 		$(remoteDicomTab).find('#CfindResultDiv').remove();
 		let result = data.result;
 		let hospitalId = data.hospitalId;
-		radio.doShowFindResult(result, hospitalId, remoteDicomTab);
+		let queryPath = data.queryPath;
+		radio.doShowFindResult(result, hospitalId, remoteDicomTab, queryPath);
 	});
 
 	$(remoteDicomTab).on('cmoveresult', (e, data)=>{
 		$(remoteDicomTab).find('#CmoveResultDiv').remove();
 		let hospitalId = data.hospitalId;
-		let studyInstanceUID = data.StudyInstanceUID;
-		radio.doMoveResult(hospitalId, studyInstanceUID, remoteDicomTab);
+		let patientID = data.patientID;
+		radio.doMoveResult(hospitalId, patientID, remoteDicomTab);
 	});
 
 	let templateTab = $('<div id="Template" class="CaseClassifyContent"></div>');
@@ -2038,7 +2041,7 @@ module.exports = function ( jq ) {
 		return $(form);
 	}
 
-	const doCreateResultCFind = function(results, hospitalId){
+	const doCreateResultCFind = function(results, hospitalId, queryPath){
 		return new Promise(async function(resolve, reject) {
 			let cfindResultDiv = $('<div id="CfindResultDiv" style="margin-top: 10px;"></div>');
 			let resultTags = Object.getOwnPropertyNames(results);
@@ -2070,8 +2073,11 @@ module.exports = function ( jq ) {
 				let main = require('../main.js');
 				let userdata = JSON.parse(main.doGetUserData());
 				let socketId = userdata.username;
-				let studyInstanceUID = results['0020,000d'].Value;
-				let cmoveCmdDiv = doCreateCmoveCmd(socketId, hospitalId, studyInstanceUID);
+				let patientID = '';
+				if (results['0010,0020']) {
+					patientID = results['0010,0020'].Value;
+				}
+				let cmoveCmdDiv = doCreateCmoveCmd(socketId, hospitalId, patientID, queryPath);
 				$(cmoveCmdDiv).appendTo($(cfindResultDiv));
 				$('body').loading('stop');
 			} else {
@@ -2088,14 +2094,14 @@ module.exports = function ( jq ) {
 		myWsm.send(JSON.stringify({type: 'exec', data: data}));
 	}
 
-	const doCreateCmoveCmd = function(socketId, hospitalId, studyInstanceUID){
+	const doCreateCmoveCmd = function(socketId, hospitalId, patientID, queryPath){
 		let cmoveCmdDiv = $('<div style="text-align: center;"></div>');
 		let cmoveCmd = $('<input type="button" value=" Load to cloud "/>');
 		$(cmoveCmd).css(inputStyleClass);
 		$(cmoveCmd).appendTo($(cmoveCmdDiv));
 		$(cmoveCmd).click((evt)=>{
 			$('body').loading('start');
-			let moveData = {hospitalId: hospitalId, StudyInstanceUID: studyInstanceUID, owner: socketId};
+			let moveData = {hospitalId: hospitalId, patientID: patientID, owner: socketId, queryPath: queryPath};
 			let main = require('../main.js');
 			let myWsm = main.doGetWsm();
 			myWsm.send(JSON.stringify({type: 'move', data: moveData}));
@@ -2104,24 +2110,46 @@ module.exports = function ( jq ) {
 		return $(cmoveCmdDiv);
 	}
 
-	const doShowFindResult = async function(result, hospitalId, tab) {
-		let cfindResultDiv = await doCreateResultCFind(result, hospitalId);
+	const doShowFindResult = async function(result, hospitalId, tab, queryPath) {
+		let cfindResultDiv = await doCreateResultCFind(result, hospitalId, queryPath);
 		$(tab).append($(cfindResultDiv));
 	}
 
-	const doMoveResult = function(hospitalId, studyInstanceUID, tab) {
-		let cmoveResultDiv = $('<div id="CmoveResultDiv" style="margin-top: 10px;"></div>');
-		let openStoneWebViewerCmd = $('<input type="button" value=" Open "/>');
-		$(openStoneWebViewerCmd).css(inputStyleClass);
-		$(openStoneWebViewerCmd).appendTo($(cmoveResultDiv));
-		$(openStoneWebViewerCmd).click((evt)=>{
-			$('body').loading('start');
-			let main = require('../main.js');
-			main.doOpenStoneWebViewer(studyInstanceUID, hospitalId);
-			$('body').loading('stop');
+	const doMoveResult = function(hospitalId, patientID, tab) {
+		return new Promise(function(resolve, reject) {
+			const main = require('../main.js');
+			const userdata = JSON.parse(main.doGetUserData());
+			let query = '{"Level":"Study","Query":{"PatientID":"' + patientID + '"},"Expand":true}';
+			let orthancUri = '/tools/find';
+			let params = {method: 'post', uri: orthancUri, body: query, hospitalId: hospitalId};
+			apiconnector.doCallOrthancApiByProxy(params).then((studies) =>{
+				console.log(studies);
+				if (studies.length == 0){
+					let userConfirm = confirm('ยังไม่พบ Dicom ของผู้ป่วยบนเซอร์ฟเวอร์\nเป็นไปได้ว่าข้อมูลยัง Move ไม่สมบูรณ์ คุณต้องการตวจสอบซ้ำหรือไม่?');
+					if (userConfirm) {
+						doMoveResult(hospitalId, patientID, tab);
+					}
+				} else {
+					let cmoveResultDiv = $('<div id="CmoveResultDiv" style="margin-top: 10px;"></div>');
+					$(cmoveResultDiv).appendTo($(tab));
+
+					studies.forEach((study, i) => {
+						let studyDescription = study.MainDicomTags.StudyDescription;
+						let studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
+						let openStoneWebViewerCmd = $('<input type="button" value=" ' + studyDescription + ' "/>');
+						$(openStoneWebViewerCmd).appendTo($(cmoveResultDiv));
+						$(openStoneWebViewerCmd).css(inputStyleClass);
+						$(openStoneWebViewerCmd).click((evt)=>{
+							$('body').loading('start');
+							main.doOpenStoneWebViewer(studyInstanceUID, hospitalId);
+							$('body').loading('stop');
+						});
+						$(cmoveResultDiv).append('<span>  </span>');
+					});
+				}
+				$('body').loading('stop');
+			});
 		});
-		$(tab).append($(cmoveResultDiv));
-		$('body').loading('stop');
 	}
 
 	/*Template section */

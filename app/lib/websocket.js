@@ -76,7 +76,8 @@ function RadconWebSocketServer (arg, log) {
 					case "cfindresult":
 						owner = data.owner;
 						hospitalId = data.hospitalId;
-						let cfindResult = {type: "cfindresult", result: data.data, hospitalId: hospitalId, owner: owner};
+						queryPath = data.queryPath;
+						let cfindResult = {type: "cfindresult", result: data.data, hospitalId: hospitalId, owner: owner, queryPath: queryPath};
 						$this.selfSendMessage(ws, cfindResult, owner);
 					break;
 					case "move":
@@ -97,8 +98,8 @@ function RadconWebSocketServer (arg, log) {
 					case "cmoveresult":
 						owner = data.owner;
 						hospitalId = data.hospitalId;
-						let studyInstanceUID = data.StudyInstanceUID;
-						let cmoveResult = {type: "cmoveresult", result: data.data, StudyInstanceUID: studyInstanceUID, owner: owner, hospitalId: hospitalId};
+						let patientID = data.PatientID;
+						let cmoveResult = {type: "cmoveresult", result: data.data, patientID: patientID, owner: owner, hospitalId: hospitalId};
 						$this.selfSendMessage(ws, cmoveResult, owner);
 					break;
 					case "run":

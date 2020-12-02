@@ -36,15 +36,12 @@ const doLoadOrthancTarget = function(hospitalId, hostname){
 	return new Promise(async function(resolve, reject) {
 		//log.info('hostname => ' + hostname);
 		if ((hostname === 'localhost') || (hostname.indexOf('192.168') >= 0)){
-			let myCloud = {os: "docker-linux", ip: "202.28.68.28", httpport: "8042", dicomport: "4242", user: "demo", pass: "demo", portex : "8042"};
+			let myCloud = {os: "docker-linux", ip: "202.28.68.28", httpport: "8042", dicomport: "4242", user: "demo", pass: "demo", portex : "8042", ipex: "202.28.68.28"};
 			let localOrthanc = [{id: 0, Orthanc_Local: {}, Orthanc_Cloud: JSON.stringify(myCloud)}];
-			log.info('localOrthanc => ' + JSON.stringify(localOrthanc));
 			resolve(localOrthanc[0]);
 		} else {
 			const orthancs = await Orthanc.findAll({ attributes: excludeColumn, where: {hospitalId: hospitalId}});
 			if (orthancs.length > 0) {
-				log.info('orthancs[0] => ' + JSON.stringify(orthancs[0]));
-				//{"id":1,"Orthanc_Local":"[{os:windows500, ip: 192.168.1.133, httpport: 8042, dicomport: 4242}]","Orthanc_Cloud":"{\"os\": \"docker-linux\", \"ip\": \"172.17.0.8\", \"httpport\": \"8042\", \"dicomport\": \"4242\", \"user\": \"demo\", \"pass\": \"demo\", \"portex\" : \"9043\"}","Orthanc_Remark":"Try It.","hospitalId":1}
 				resolve(orthancs[0]);
 			} else {
 				reject({error: 'Not found your orthanc in database'});
@@ -159,9 +156,10 @@ app.get('/orthancexternalport', function(req, res) {
 	let hostname = req.hostname;
 	doLoadOrthancTarget(hospitalId, hostname).then((orthanc) => {
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud);
-		res.status(200).send({port: cloud.portex});
+		res.status(200).send({ip: cloud.ipex, port: cloud.portex});
 	});
 });
+
 module.exports = ( dbconn, monitor ) => {
   db = dbconn;
   log = monitor;
