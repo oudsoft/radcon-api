@@ -333,7 +333,7 @@ app.post('/status/(:caseId)', async (req, res) => {
             if (newCaseStatusId == 2) {
               await Case.update(caseStatusChange, { where: { id: caseId } });
               let refreshAcceptCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: newCaseStatusId, caseId: caseId};
-              socket.sendMessage(refreshAcceptCase, ur[0].username);
+              await socket.sendMessage(refreshAcceptCase, ur[0].username);
               let urgents = await db.urgenttypes.findAll({ attributes: ['UGType_WorkingStep'], where: {id: targetCases[0].urgenttypeId}});
               let triggerParam = JSON.parse(urgents[0].UGType_WorkingStep);
               let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: targetCases[0].Case_RadiologistId}});
@@ -348,12 +348,12 @@ app.post('/status/(:caseId)', async (req, res) => {
                     let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
                     let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                     let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
-                    let canSend = socket.sendMessage(notify, radioUsername);
+                    let canSend = await socket.sendMessage(notify, radioUsername);
                     msg = 'Your a new Case was expired by schedule';
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
-                    socket.sendMessage(notify, ur[0].username);
+                    await socket.sendMessage(notify, ur[0].username);
                     refreshAcceptCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
-                    socket.sendMessage(refreshNewCase, ur[0].username);
+                    await socket.sendMessage(refreshNewCase, ur[0].username);
                   });
                 }
               });
@@ -370,7 +370,7 @@ app.post('/status/(:caseId)', async (req, res) => {
               tasks.removeTaskByCaseId(caseId);
               if (newCaseStatusId == 5) {
                 let refreshSuccessCase = {type: 'refresh', section: 'ReadSuccessDiv', statusId: newCaseStatusId, caseId: caseId};
-                socket.sendMessage(refreshSuccessCase, ur[0].username);
+                await socket.sendMessage(refreshSuccessCase, ur[0].username);
               }
             }
             res.json({Result: "OK", status: {code: 200}});
@@ -393,12 +393,12 @@ app.post('/status/(:caseId)', async (req, res) => {
                     let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
                     let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                     let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
-                    let canSend = socket.sendMessage(notify, radioUsername);
+                    let canSend = await socket.sendMessage(notify, radioUsername);
                     msg = 'Your a new Case was expired by schedule';
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
-                    socket.sendMessage(notify, ur[0].username);
+                    await socket.sendMessage(notify, ur[0].username);
                     let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
-                    socket.sendMessage(refreshNewCase, ur[0].username);
+                    await socket.sendMessage(refreshNewCase, ur[0].username);
                   });
                 }
               });
@@ -435,12 +435,12 @@ app.post('/status/(:caseId)', async (req, res) => {
                     let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
                     let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                     let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
-                    let canSend = socket.sendMessage(notify, radioUsername);
+                    let canSend = await socket.sendMessage(notify, radioUsername);
                     msg = 'Your a new Case was expired by schedule';
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
-                    socket.sendMessage(notify, ur[0].username);
+                    await socket.sendMessage(notify, ur[0].username);
                     let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
-                    socket.sendMessage(refreshNewCase, ur[0].username);
+                    await socket.sendMessage(refreshNewCase, ur[0].username);
                   });
                 }
               });
@@ -568,7 +568,7 @@ app.post('/add', (req, res) => {
           await Case.update(setupCaseTo, { where: { id: adCase.id } });
           await adCase.setCasestatus(newcaseStatus[0]);
           let refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: newcaseStatus[0].id, caseId: adCase.id};
-          socket.sendMessage(refreshNewCase, ur[0].username);
+          await socket.sendMessage(refreshNewCase, ur[0].username);
           let urgents = await db.urgenttypes.findAll({ attributes: ['UGType_AcceptStep'], where: {id: req.body.urgenttypeId}});
           let triggerParam = JSON.parse(urgents[0].UGType_AcceptStep);
           let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: req.body.data.Case_RadiologistId}});
@@ -583,12 +583,12 @@ app.post('/add', (req, res) => {
                 let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
                 let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                 let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: adCase.id};
-                let canSend = socket.sendMessage(notify, radioUsername);
+                let canSend = await socket.sendMessage(notify, radioUsername);
                 msg = 'Your a new Case was expired by schedule';
                 notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: adCase.id};
-                socket.sendMessage(notify, ur[0].username);
+                await socket.sendMessage(notify, ur[0].username);
                 refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: adCase.id};
-                socket.sendMessage(refreshNewCase, ur[0].username);
+                await socket.sendMessage(refreshNewCase, ur[0].username);
               });
             } else {
               log.info('caseId ' + caseId + ' was released by schedule.');

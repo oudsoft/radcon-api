@@ -1000,13 +1000,7 @@ module.exports = function ( jq ) {
 
 				let operationCmdBox = $('<div></div>');
 				$(operationCmdBox).appendTo($(operationCol));
-				/*
-				let historyButton = $('<img class="pacs-command" data-toggle="tooltip" src="images/history-icon.png" title="Open Patient History."/>');
-				$(historyButton).click(function() {
-					doShowPopupHistory(incidents[i].pn_history);
-				});
-				$(historyButton).appendTo($(operationCmdBox));
-				*/
+
 				let downlodDicomButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/zip-icon.png" title="Download Dicom in zip file."/>');
 				$(downlodDicomButton).click(function() {
 					let patientNameEN = incidents[i].case.patient.Patient_NameEN;
@@ -1066,45 +1060,6 @@ module.exports = function ( jq ) {
 			}
 			resolve($(rwTable));
 		});
-  }
-
-  function doShowPopupHistory(allUrl){
-  	$('#HistoryDialogBox').empty();
-  	let files = allUrl.split(',');
-  	files.forEach((file) => {
-  		if (file !== '') {
-	  		let hsBox = $('<div></div>');
-	  		$(hsBox).css('padding','3px');
-	  		//$(hsBox).css('border','1px solid red');
-	  		$(hsBox).css('width','100px');
-	  		$(hsBox).css('height', 'auto');
-				$(hsBox).css('float', 'left');
-	  		let hsImg = $('<img/>');
-	  		$(hsImg).css('width','94px');
-	  		$(hsImg).css('height', 'auto');
-	  		$(hsImg).css('cursor', 'pointer');
-				let imgLink = 'https://radconnext.com/radconnext/inc_files/' + file;
-	  		$(hsImg).attr('src', imgLink);
-	  		$(hsImg).click(()=>{
-	  			window.open(imgLink, '_blank');
-	  		})
-	  		$(hsImg).appendTo($(hsBox));
-	  		$('#HistoryDialogBox').append($(hsBox));
-	  	}
-  	});
-		let cmdBox = $('<div></div>');
- 		$(cmdBox).css('width','100%');
-		$(cmdBox).css('padding','3px');
-		$(cmdBox).css('clear','left');
- 		$(cmdBox).css('text-align','center');
-  	let closeCmdBtn = $('<button>ปิด</button>');
-  	$(closeCmdBtn).click(()=>{
-  		$('#HistoryDialogBox').dialog('close');
-  	});
-  	$(closeCmdBtn).appendTo($(cmdBox));
-  	$('#HistoryDialogBox').append($(cmdBox));
-  	$('#HistoryDialogBox').dialog('option', 'title', 'ประวัติผู้ป่วย');
-  	$('#HistoryDialogBox').dialog('open');
   }
 
   async function doCallEditCase(caseid) {
@@ -1194,10 +1149,10 @@ module.exports = function ( jq ) {
 
   const doCallSearhOrthanc = function(query) {
   	return new Promise(function(resolve, reject) {
-			console.log(query);
+			//console.log(query);
 			const main = require('../main.js');
 			const userdata = JSON.parse(main.doGetUserData());
-			console.log(userdata);
+			//console.log(userdata);
 	  	let orthancUri = '/tools/find';
 	  	let params = {method: 'post', uri: orthancUri, body: query, hospitalId: userdata.hospitalId};
 	  	apiconnector.doCallOrthancApiByProxy(params).then((response) =>{
@@ -1547,7 +1502,8 @@ module.exports = function ( jq ) {
 			const hospitalId = userdata.hospitalId;
 			apiconnector.doCallDeleteDicom(studyID, hospitalId).then((response) => {
 				console.log(response);
-				if (response.status.code == 200) {
+				//if (response.status.code == 200) {
+				if (response) {
 					$('#CurrentPage').remove();
 					alert('เดำเนินการลบข้อมูลเรียบร้อยแล้ว');
 					doSearchOrthanc();
@@ -2641,14 +2597,14 @@ module.exports = function ( jq ) {
 					wsl.send(JSON.stringify(data));
 				}
 			} else if (data.type == 'cfindresult') {
-				let evtData = { result: data.result, owner: data.owner, hospitalId: data.hospitalId };
+				let evtData = { result: data.result, owner: data.owner, hospitalId: data.hospitalId, queryPath: data.queryPath};
 				$("#RemoteDicom").trigger('cfindresult', [evtData]);
 			} else if (data.type == 'move') {
 				if (wsl) {
 					wsl.send(JSON.stringify(data));
 				}
 			} else if (data.type == 'cmoveresult') {
-				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, StudyInstanceUID: data.StudyInstanceUID};
+				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, patientID: data.patientID};
 				$("#RemoteDicom").trigger('cmoveresult', [evtData]);
 			} else if (data.type == 'run') {
 				if (wsl) {

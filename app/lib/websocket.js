@@ -162,8 +162,8 @@ function RadconWebSocketServer (arg, log) {
 	}, 85000);
 
 	this.findUserSocket = function(fromWs, username) {
-		return new Promise(function(resolve, reject) {
-			let yourSocket = $this.clients.find((ws) =>{
+		return new Promise(async function(resolve, reject) {
+			let yourSocket = await $this.clients.find((ws) =>{
 				if ((ws.id == username) /*&& (ws !== fromWs)*/ && ((ws.readyState == 0) || (ws.readyState == 1))) return ws;
 			});
 			resolve(yourSocket);
@@ -171,8 +171,8 @@ function RadconWebSocketServer (arg, log) {
 	}
 
 	this.filterUserSocket = function(username) {
-		return new Promise(function(resolve, reject) {
-			let targetSocket = $this.clients.filter((ws) =>{
+		return new Promise(async function(resolve, reject) {
+			let targetSocket =await $this.clients.filter((ws) =>{
 				if ((ws.id == username) && ((ws.readyState == 0) || (ws.readyState == 1))) {
 					return ws;
 				}
@@ -196,14 +196,23 @@ function RadconWebSocketServer (arg, log) {
 			userSocket.send(JSON.stringify(message));
 			return true;
 		} else {
+			log.error('selfSendMessage::Can not find socket of ' + sendto);
 			return false;
 		}
 	}
 
-	this.sendMessage = async function(message, sendto) {
-		let userSockets = await $this.filterUserSocket(sendto);
-		userSockets.forEach((socket, i) => {
-			socket.send(JSON.stringify(message));
+	this.sendMessage = function(message, sendto) {
+		return new Promise(async function(resolve, reject) {
+			let userSockets = await $this.filterUserSocket(sendto);
+			if (userSockets.length > 0) {
+				await userSockets.forEach((socket, i) => {
+					socket.send(JSON.stringify(message));
+				});
+				resolve(true);
+			} else {
+				log.error('sendMessage::Can not find socket of ' + sendto);
+				resolve(false);
+			}
 		});
 	}
 

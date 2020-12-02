@@ -37,19 +37,24 @@ app.post('/list', (req, res) => {
 app.post('/select/(:caseId)', (req, res) => {
   let token = req.headers.authorization;
   if (token) {
-    auth.doDecodeToken(token).then(async (ur) => {
+    auth.doDecodeToken(token).then((ur) => {
       if (ur.length > 0){
         try {
           let caseId = req.params.caseId;
-          let taskByCases = await Task.caseTasks.filter((task, i) => {
-            /*
-            if (task.caseId === caseId) {
-              return task;
-            }
-            */
-            return (task.caseId === caseId);
+          const promiseList = new Promise(async function(resolve, reject) {
+            let taskByCases = Task.caseTasks.filter((task, i) => {
+              return (task.caseId == caseId);
+            });
+            setTimeout(()=>{
+              resolve(taskByCases);
+            }, 500);
           });
-          res.json({Result: "OK", Records: taskByCases});
+          Promise.all([promiseList]).then((ob)=> {
+            res.json({status: {code: 200}, Records: ob[0]});
+          }).catch((err)=>{
+            reject(err);
+            res.json({status: {code: 500}, error: err});
+          });
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});

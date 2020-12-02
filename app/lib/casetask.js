@@ -35,26 +35,23 @@ function RadconCaseTask (socket, db, log) {
     $this.caseTasks.push(newTask);
     let msg = 'You have a new Case on ' + hoses[0].Hos_Name + '. This your case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
     let notify = {type: 'notify', message: msg, caseId: caseId};
-    let canSend = socket.sendMessage(notify, radioUsername);
+    let canSend = await socket.sendMessage(notify, radioUsername);
     if (canSend) {
       msg = 'The Radiologist of your new case can recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
     } else {
       msg = 'The Radiologist of your new case can not recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
     }
     notify = {type: 'notify', message: msg, caseId: caseId};
-    socket.sendMessage(notify, username);
+    await socket.sendMessage(notify, username);
   }
 
   this.removeTaskByCaseId = async function (caseId) {
-    log.info('$this.caseTasks==> ' + JSON.stringify($this.caseTasks));
     let anotherTasks = await $this.caseTasks.filter((task)=>{
-      if (task.caseId !== caseId) {
+      if (task.caseId != caseId) {
         return task;
       }
     });
-    log.info('anotherTasks==> ' + JSON.stringify(anotherTasks));
     $this.caseTasks = anotherTasks;
-    log.info('$this.caseTasks==> ' + JSON.stringify($this.caseTasks));
   }
 
   this.getTasks = function(){
