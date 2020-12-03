@@ -47,7 +47,7 @@ app.post('/select/(:caseId)', (req, res) => {
             });
             setTimeout(()=>{
               resolve(taskByCases);
-            }, 500);
+            }, 100);
           });
           Promise.all([promiseList]).then((ob)=> {
             res.json({status: {code: 200}, Records: ob[0]});

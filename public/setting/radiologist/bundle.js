@@ -720,7 +720,9 @@ module.exports = function ( jq ) {
 				}
 			} else if (data.type == 'cmoveresult') {
 				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, patientID: data.patientID};
-				$("#RemoteDicom").trigger('cmoveresult', [evtData]);
+				setTimeout(()=>{
+					$("#RemoteDicom").trigger('cmoveresult', [evtData]);
+				}, 5000);
 			} else if (data.type == 'run') {
 				if (wsl) {
 					wsl.send(JSON.stringify(data));
@@ -1646,6 +1648,7 @@ function doShowTools(radioId) {
 
 	$(remoteDicomTab).on('cfindresult', (e, data)=>{
 		$(remoteDicomTab).find('#CfindResultDiv').remove();
+		$(remoteDicomTab).find('#CmoveResultDiv').remove();
 		let result = data.result;
 		let hospitalId = data.hospitalId;
 		let queryPath = data.queryPath;
@@ -1665,9 +1668,10 @@ function doShowTools(radioId) {
 		$(templateTab).append($(radioTemplate));
 	});
 
+	$(toolsTabs).find('#Message').empty();
 	let messageTab = $('<div id="Message" class="CaseClassifyContent"></div>');
 	$(messageTab).appendTo($(toolsTabs));
-	radio.doShowMessage(radioId).then((radioMessage)=>{
+	radio.doShowMessage(radioId, messageTab).then((radioMessage)=>{
 		$(messageTab).append($(radioMessage));
 	});
 
@@ -2019,7 +2023,7 @@ module.exports = function ( jq ) {
 		$(form).append('<div style="display: table-row"><div style="display: table-cell; width: 150px;"><label>Hospital Target : </label></div><div style="display: table-cell;"><select id="HospitalTarget"></select></div></div>');
 		let hospitalList = $("#HospitalSelector > option").clone();
 		$(form).find('#HospitalTarget').append($(hospitalList));
-		$(form).append('<div style="display: table-row"><div style="display: table-cell; width: 150px;"><label>Dicom Key : </label></div><div style="display: table-cell;"><select id="SearchKey"><option value="PatientName">Patient Name</option><option value="PatientHN">Patient HN</option></select></div></div>');
+		$(form).append('<div style="display: table-row"><div style="display: table-cell; width: 150px;"><label>Dicom Key : </label></div><div style="display: table-cell;"><select id="SearchKey"><option value="PatientHN">Patient HN</option><option value="PatientName">Patient Name</option></select></div></div>');
 		$(form).append('<div style="display: table-row; margin-top: 10px;"><div style="display: table-cell; width: 150px;"><label>Value :</label></div><div style="display: table-cell;"><input type="text" id="SearchValue" size="30"/></div></div>');
 		let searchCmdDiv = $('<div style="text-align: center; margin-top: 10px;"></div>');
 		$(searchCmdDiv).appendTo($(form));
@@ -2135,11 +2139,15 @@ module.exports = function ( jq ) {
 				} else {
 					let cmoveResultDiv = $('<div id="CmoveResultDiv" style="margin-top: 10px;"></div>');
 					$(cmoveResultDiv).appendTo($(tab));
-
 					studies.forEach((study, i) => {
-						let studyDescription = study.MainDicomTags.StudyDescription;
+						let title = 'Default';
+						if (study.MainDicomTags.StudyDescription) {
+							title = study.MainDicomTags.StudyDescription;
+						} else if (study.MainDicomTags.AccessionNumber) {
+							title = study.MainDicomTags.AccessionNumber;
+						}
 						let studyInstanceUID = study.MainDicomTags.StudyInstanceUID;
-						let openStoneWebViewerCmd = $('<input type="button" value=" ' + studyDescription + ' "/>');
+						let openStoneWebViewerCmd = $('<input type="button" value=" ' + title + ' "/>');
 						$(openStoneWebViewerCmd).appendTo($(cmoveResultDiv));
 						$(openStoneWebViewerCmd).css(inputStyleClass);
 						$(openStoneWebViewerCmd).click((evt)=>{
@@ -2324,7 +2332,7 @@ module.exports = function ( jq ) {
 
 	/*Message section */
 
-	const doShowMessage = function(radioId){
+	const doShowMessage = function(radioId, tab){
 		return new Promise(async function(resolve, reject) {
 			const masterNotifyDiv = $("<div id='MasterNotifyDiv'><ul></ul></div>");
 			const masterNotify = JSON.parse(localStorage.getItem('masternotify'));
@@ -2339,13 +2347,25 @@ module.exports = function ( jq ) {
 					}
 				});
 
+				let reloadCmd = $("<input type='button' value=' Re-Load ' />");
+				$(reloadCmd).on('click',()=>{
+					$(tab).find('#MasterNotifyDiv').remove();
+					doShowMessage(radioId, tab).then((msgDiv)=>{
+						$(tab).append($(msgDiv));
+					});
+				});
+				$(reloadCmd).appendTo($(masterNotifyDiv));
+
 				masterNotify.forEach((item, i) => {
 					let masterItem = $("<li>" + JSON.stringify(item) + "</li>");
 					let openCmd = $("<input type='button' value=' Open ' />");
 					$(openCmd).on('click',async ()=>{
 						item.status = 'Read';
 						localStorage.setItem('masternotify', JSON.stringify(masterNotify));
-						await doShowMessage(radioId);
+						$(tab).find('#MasterNotifyDiv').remove();
+						doShowMessage(radioId, tab).then((msgDiv)=>{
+							$(tab).append($(msgDiv));
+						});
 					})
 					$(openCmd).appendTo($(masterItem));
 
@@ -2353,7 +2373,10 @@ module.exports = function ( jq ) {
 					$(removeCmd).on('click',async()=>{
 						masterNotify.splice(i, 1);
 						localStorage.setItem('masternotify', JSON.stringify(masterNotify));
-						await doShowMessage(radioId);
+						$(tab).find('#MasterNotifyDiv').remove();
+						doShowMessage(radioId, tab).then((msgDiv)=>{
+							$(tab).append($(msgDiv));
+						});
 					})
 					$(removeCmd).appendTo($(masterItem));
 					$(masterItem).appendTo($(masterNotifyDiv));
@@ -2364,7 +2387,10 @@ module.exports = function ( jq ) {
 						let userConfirm = confirm('โปรดยืนยันเพื่อล้างราบการข้อความออกไปทั้งหมด้ โดยคลิกปุ่ม ตกลง หรือ OK');
 						if (userConfirm){
 							localStorage.removeItem('masternotify');
-							await doShowMessage(radioId);
+							$(tab).find('#MasterNotifyDiv').remove();
+							doShowMessage(radioId, tab).then((msgDiv)=>{
+								$(tab).append($(msgDiv));
+							});
 							$.notify('ล้างรายการข้อมูลทั้งหมดสำเร็จ', "success");
 						}
 					});
