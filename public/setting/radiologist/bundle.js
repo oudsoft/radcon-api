@@ -926,6 +926,7 @@ function doLoadLogin() {
 
 function doUserLogout() {
   localStorage.removeItem('token');
+	localStorage.removeItem('masternotify');
   $('#LogoutCommand').hide();
   let url = '/';
   window.location.replace(url);
@@ -1312,7 +1313,6 @@ function doCreateCaseDetail(caseItem){
 
 const doOpenStoneWebViewer = function(StudyInstanceUID, hospitalId) {
 	apiconnector.doGetOrthancPort(hospitalId).then((response) => {
-		console.log(response);
 		//const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
 		const orthancStoneWebviewer = 'http://'+ response.ip + ':' + response.port + '/stone-webviewer/index.html?study=';
 		let orthancwebapplink = orthancStoneWebviewer + StudyInstanceUID;
@@ -1667,6 +1667,9 @@ function doShowTools(radioId) {
 
 	let messageTab = $('<div id="Message" class="CaseClassifyContent"></div>');
 	$(messageTab).appendTo($(toolsTabs));
+	radio.doShowMessage(radioId).then((radioMessage)=>{
+		$(messageTab).append($(radioMessage));
+	});
 
 	let otherTab = $('<div id="Other" class="CaseClassifyContent"></div>');
 	$(otherTab).appendTo($(toolsTabs));
@@ -2319,6 +2322,60 @@ module.exports = function ( jq ) {
 		}
 	}
 
+	/*Message section */
+
+	const doShowMessage = function(radioId){
+		return new Promise(async function(resolve, reject) {
+			const masterNotifyDiv = $("<div id='MasterNotifyDiv'><ul></ul></div>");
+			const masterNotify = JSON.parse(localStorage.getItem('masternotify'));
+			if (masterNotify) {
+				await masterNotify.sort((a,b) => {
+					let av = new Date(a.datetime);
+					let bv = new Date(b.datetime);
+					if (av && bv) {
+						return bv - av;
+					} else {
+						return 0;
+					}
+				});
+
+				masterNotify.forEach((item, i) => {
+					let masterItem = $("<li>" + JSON.stringify(item) + "</li>");
+					let openCmd = $("<input type='button' value=' Open ' />");
+					$(openCmd).on('click',async ()=>{
+						item.status = 'Read';
+						localStorage.setItem('masternotify', JSON.stringify(masterNotify));
+						await doShowMessage(radioId);
+					})
+					$(openCmd).appendTo($(masterItem));
+
+					let removeCmd = $("<input type='button' value=' Remove ' />");
+					$(removeCmd).on('click',async()=>{
+						masterNotify.splice(i, 1);
+						localStorage.setItem('masternotify', JSON.stringify(masterNotify));
+						await doShowMessage(radioId);
+					})
+					$(removeCmd).appendTo($(masterItem));
+					$(masterItem).appendTo($(masterNotifyDiv));
+				});
+				if (masterNotify.length > 0){
+					let clearAllCmd = $("<input type='button' value=' Clear ' />");
+					$(clearAllCmd).on('click',async ()=>{
+						let userConfirm = confirm('โปรดยืนยันเพื่อล้างราบการข้อความออกไปทั้งหมด้ โดยคลิกปุ่ม ตกลง หรือ OK');
+						if (userConfirm){
+							localStorage.removeItem('masternotify');
+							await doShowMessage(radioId);
+							$.notify('ล้างรายการข้อมูลทั้งหมดสำเร็จ', "success");
+						}
+					});
+					$(clearAllCmd).appendTo($(masterNotifyDiv));
+				}
+
+				$(masterNotifyDiv).find('input[type="button"]').css(inputStyleClass);
+			}
+			resolve($(masterNotifyDiv));
+		});
+	}
 
 	return {
 		inputStyleClass,
@@ -2345,7 +2402,9 @@ module.exports = function ( jq ) {
 		/*Template section */
 		doCreateTemplate,
 		doCreateTemplatForm,
-		doVerifyTemplateForm
+		doVerifyTemplateForm,
+		/*Message section */
+		doShowMessage
 	}
 }
 
