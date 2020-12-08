@@ -14,6 +14,8 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 ///////////////////////////////////////////////////////
 
+const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
+
 app.get('/', async function(req, res) {
   const hostname = req.headers.host;
 	const rootname = req.originalUrl.split('/')[1];
@@ -27,7 +29,6 @@ app.get('/', async function(req, res) {
 	}
 });
 app.get('/select/(:userId)', async (req, res) => {
-  const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 	const userId = req.params.userId;
   const userInclude = [{ model: db.hospitals, attributes: excludeColumn}, {model: db.usertypes, attributes: excludeColumn}, {model: db.userstatuses, attributes: excludeColumn}, {model: db.userinfoes, attributes: excludeColumn}];
 	try {
@@ -38,7 +39,6 @@ app.get('/select/(:userId)', async (req, res) => {
 	}
 });
 app.get('/searchusername/(:username)', async (req, res) => {
-  const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 	const username = req.params.username;
   //const userInclude = [db.hospitals, db.usertypes, db.userstatuses, db.userinfoes];
   const userInclude = [{ model: db.hospitals, attributes: excludeColumn}, {model: db.usertypes, attributes: excludeColumn}, {model: db.userstatuses, attributes: excludeColumn}, {model: db.userinfoes, attributes: excludeColumn}];

@@ -2562,7 +2562,8 @@ module.exports = function ( jq ) {
 	  const paths = window.location.pathname.split('/');
 	  const rootname = paths[1];
 
-	  const wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '/' + hospitalId + '?type=' + type;
+	  //const wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '/' + hospitalId + '?type=' + type;
+		const wsUrl = 'wss://' + hostname + ':' + port + '/' + username + '/' + hospitalId + '?type=' + type;
 	  wsm = new WebSocket(wsUrl);
 		wsm.onopen = function () {
 			//console.log('Master Websocket is connected to the signaling server')
@@ -2605,7 +2606,9 @@ module.exports = function ( jq ) {
 				}
 			} else if (data.type == 'cmoveresult') {
 				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, patientID: data.patientID};
-				$("#RemoteDicom").trigger('cmoveresult', [evtData]);
+				setTimeout(()=>{
+					$("#RemoteDicom").trigger('cmoveresult', [evtData]);
+				}, 5000);
 			} else if (data.type == 'run') {
 				if (wsl) {
 					wsl.send(JSON.stringify(data));

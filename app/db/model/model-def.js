@@ -348,6 +348,13 @@ const RadCaseReportDef = {
 			}
 		};
 
+//User_ID <- usertype 2/4
+const RadLineUserDef = {
+			UserId : {
+				type: Sequelize.STRING(60)
+			}
+		};
+
 module.exports = {
 	RadUserTypeDef,
 	RadUserStatusDef,
@@ -367,5 +374,6 @@ module.exports = {
 	RadTemplateDef,
 	RadCaseDef,
 	RadCaseResponseDef,
-	RadCaseReportDef
+	RadCaseReportDef,
+	RadLineUserDef
 }

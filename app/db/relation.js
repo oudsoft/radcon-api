@@ -112,6 +112,8 @@ const casereports = sequelize.define('casereports', Def.RadCaseReportDef);
 casereports.belongsTo(users);
 casereports.belongsTo(cases);
 
+const lineusers = sequelize.define('casereports', Def.RadLineUserDef);
+lineusers.belongsTo(users);
 
 module.exports =  {
   sequelize,
@@ -135,5 +137,6 @@ module.exports =  {
   templates,
   cases,
   caseresponses,
-  casereports
+  casereports,
+  lineusers
 }
