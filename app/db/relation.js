@@ -112,7 +112,7 @@ const casereports = sequelize.define('casereports', Def.RadCaseReportDef);
 casereports.belongsTo(users);
 casereports.belongsTo(cases);
 
-const lineusers = sequelize.define('casereports', Def.RadLineUserDef);
+const lineusers = sequelize.define('lineusers', Def.RadLineUserDef);
 lineusers.belongsTo(users);
 
 module.exports =  {

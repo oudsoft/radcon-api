@@ -37,7 +37,6 @@ const doEncodeToken = function(username) {
 		iat: new Date().getTime(), //มาจากคำว่า issued at time (สร้างเมื่อ)
 	};
 	const payloadEncode = jwt.encode(payload, process.env.SECRET_KAY);
-	log.info('payloadEncode => ' + payloadEncode);
   return payloadEncode;
 };
 

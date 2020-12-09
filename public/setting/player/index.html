@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="../icon.png" rel="shortcut icon" type="image/x-icon"/>
+    <title>Your MP4 Player</title>
+  </head>
+  <style>
+  	#YourControlDiv{width: 100%; min-height: 50px; background-color: gray; padding: 4px; text-align: center;}
+    #YourVideoDiv {text-align: center; /*background-color: yellow; */}
+    #ControlClipPlayList, #SourceFile, #SourceFileList, #TargetCommand {padding: 5px; text-align: center; width: 100%;}
+  	#SourceFile, #SourceFileList, #TargetCommand {margin-top: 10px;}
+  </style>
+  <body>
+  	<div id="YourVideoDiv">
+      <!-- <video id="YourVideo" playsinline></video> -->
+  	</div>
+    <div id="YourControlDiv">
+  		<!--<button id="OpenLocalFile-Cmd">Open</button>    -->
+  	</div>
+
+    <div id="ControlClipPlayList">
+    	<div id="SourceFile">
+    		<label>เปิดคลิปไฟล์วิดีโอ</label>
+    		<div id="video-file-message"></div>
+    		<input id="LocalClipFile" type="file" multiple accept="video/*" />
+    	</div>
+    	<div id="SourceFileList">
+    		<select id="filelist" multiple size="10" style="height: 100%; width: 400px;"></select>
+    	</div>
+    	<div id='TargetCommand'>
+    		<input type='button' id='PlayClipCommand' value=' Play ' onclick='doPlayClip()'/>
+    		<input type='button' id='StopClipCommand' value=' Stop ' onclick='doStopClip()'/>
+    	</div>
+    </div>
+    <script src="runner.js"></script>
+  </body>
+</html>

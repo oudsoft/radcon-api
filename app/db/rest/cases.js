@@ -9,8 +9,9 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-var db, tasks, Case, log, auth, socket;
+var db, tasks, Case, log, auth, socket, lineApi;
 
+const uti = require('../../lib/mod/util.js');
 const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 
 const doSearchRadioForHospital = function(hospitalId) {
@@ -326,7 +327,7 @@ app.post('/status/(:caseId)', async (req, res) => {
         let caseStatusChange = { casestatusId: reqCaseStatusId, Case_DESC: req.body.caseDescription};
         let newCaseStatusId = Number(reqCaseStatusId);
         //log.info('Body of Request=> ' + JSON.stringify(req.body));
-        let targetCases = await Case.findAll({ attributes: ['id', 'casestatusId', 'urgenttypeId', 'Case_RadiologistId'], where: {id: caseId}});
+        let targetCases = await Case.findAll({ attributes: ['id', 'casestatusId', 'urgenttypeId', 'Case_RadiologistId', 'userId'], where: {id: caseId}});
         let currentStatus = targetCases[0].casestatusId;
         switch (currentStatus) {
           case 1: //New -> 2, 3, 4, 7
@@ -338,6 +339,9 @@ app.post('/status/(:caseId)', async (req, res) => {
               let triggerParam = JSON.parse(urgents[0].UGType_WorkingStep);
               let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: targetCases[0].Case_RadiologistId}});
               let radioUsername = radioUsers[0].username;
+              let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	id: targetCases[0].userId}});
+              let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: targetCases[0].patientId}});
+              let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
               tasks.doCreateNewTask(caseId, ur[0].username, triggerParam, radioUsername, ur[0].hospitalId, async (caseId, socket)=>{
                 let nowcaseStatus = await Case.findAll({ attributes: ['casestatusId'], where: {id: caseId}});
                 if (nowcaseStatus[0].casestatusId === newCaseStatusId) {
@@ -357,10 +361,28 @@ app.post('/status/(:caseId)', async (req, res) => {
                   });
                 }
               });
+              if (techUserLines.length == 0) {
+                let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้รับการตอบรับจากรังสีแพทย์เรียบร้อยแล้วครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
+                let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
+                let lineUserId = techUserLines[0].UserId;
+                let lineMsg = { type: "text",	text: lineCaseMsg };
+                await lineApi.pushConnect(lineUserId, lineMsg);
+              }
             } else if ([3, 4, 7].indexOf(newCaseStatusId) >= 0) {
-              log.info('test');
               await Case.update(caseStatusChange, { where: { id: caseId } });
               tasks.removeTaskByCaseId(caseId);
+              if (newCaseStatusId == 3) {
+                let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	id: targetCases[0].userId}});
+                if (techUserLines.length == 0) {
+                  let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: targetCases[0].patientId}});
+                  let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
+                  let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้รับการปฏิเสธจากรังสีแพทย์ครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
+                  let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
+                  let lineUserId = techUserLines[0].UserId;
+                  let lineMsg = { type: "text",	text: lineCaseMsg };
+                  await lineApi.pushConnect(lineUserId, lineMsg);
+                }
+              }
             }
             res.json({Result: "OK", status: {code: 200}});
           break;
@@ -573,6 +595,11 @@ app.post('/add', (req, res) => {
           let triggerParam = JSON.parse(urgents[0].UGType_AcceptStep);
           let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: req.body.data.Case_RadiologistId}});
           let radioUsername = radioUsers[0].username;
+          let radioUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	id: req.body.data.Case_RadiologistId}});
+          let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
+          let hospitalName = hoses[0].Hos_Name;
+          let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: req.body.patientId}});
+          let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
           tasks.doCreateNewTask(adCase.id, ur[0].username, triggerParam, radioUsername, req.body.hospitalId, async (caseId, socket)=>{
             let nowcaseStatus = await Case.findAll({ attributes: ['casestatusId'], where: {id: adCase.id}});
             if (nowcaseStatus[0].casestatusId === newcaseStatus[0].id) {
@@ -580,7 +607,6 @@ app.post('/add', (req, res) => {
                 await adCase.setCasestatus(expiredStatus[0]);
                 tasks.removeTaskByCaseId(caseId);
                 log.info('caseId ' + caseId + ' was expired by schedule.');
-                let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
                 let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                 let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: adCase.id};
                 let canSend = await socket.sendMessage(notify, radioUsername);
@@ -595,6 +621,15 @@ app.post('/add', (req, res) => {
               tasks.removeTaskByCaseId(caseId);
             }
           });
+          if (radioUserLines.length == 0) {
+            let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nคุณสมารถตอบรับหรือปฏิเสธเคสนี้ได้โดยเลือกจากเมนูด้นล่างครับ';
+            let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+            let lineUserId = radioUserLines[0].UserId;
+            let action = 'quick';
+            let actionQuickReply = acceptActionMenu =  [{id: 'x401', name: 'รับ', data: adCase.id}, {id: 'x402', name: 'ไม่รับ', data: adCase.id}];
+            let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, action, actionQuickReply);
+            await lineApi.pushConnect(lineUserId, menuQuickReply);
+          }
           res.json({Result: "OK", status: {code: 200}, Record: adCase});
         });
       } else {
@@ -678,6 +713,7 @@ module.exports = ( dbconn, caseTask, monitor, websocket ) => {
   tasks = caseTask;
   log = monitor;
   auth = require('./auth.js')(db, log);
+  lineApi = require('../../lib/mod/lineapi.js')(db, log);
   socket = websocket;
   Case = db.cases;
   return app;

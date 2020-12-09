@@ -16,16 +16,10 @@ const proxyRequest = function(rqParam) {
 			/* json: true, */
 			method: rqParam.method,
 			url: rqParam.uri,
-			if (rqParam.auth) {
-				auth: rqParam.auth,
-			}
-
+			auth: rqParam.auth,
 			headers: {
 				'Content-Type': 'application/json',
-				if (rqParam.Authorization) {
-				/* 'Authorization': 'Bearer Y9OoNebK+kdDnb3vHQE/jUkKHbelE23So7HZ3PacUwb4YzwJZi+0iriPjj7lRw5hYR6B8y65kqgsZS2143lHC7CTlUY7fZZfXMgAfqf5DdDlivD49f42embGQaM/pv68YH6Aq3L7lzaTjC3HdqNWaAdB04t89/1O/w1cDnyilFU=' */
-					'Authorization': rqParam.Authorization
-				}
+				'Authorization': rqParam.Authorization
 			},
 			body: rqBody
 		}, (err, res, body) => {
