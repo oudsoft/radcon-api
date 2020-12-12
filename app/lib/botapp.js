@@ -16,7 +16,7 @@ let sessionHandleStorages = [];
   {userId, content: {mode, }}
 */
 
-var db, Task, log, auth, lineApi;
+var db, Task, log, auth, lineApi, uti;
 
 const doFindSessionHandle = (userId)=>{
   return new Promise(async function(resolve, reject) {
@@ -71,7 +71,7 @@ const doCreateRadconToken = (userId) => {
     const userLines = await db.lineusers.findAll({ attributes: ['id', 'userId'], where: {	UserId: userId}});
     const users = await db.users.findAll({ attributes: ['id', 'username'], where: {	id: userLines[0].userId}});
     let yourToken = auth.doEncodeToken(users[0].username);
-    resolve(yourToken);
+    resolve({userId: users[0].id, token: yourToken});
   });
 }
 
@@ -79,7 +79,6 @@ const postbackMessageHandle = (userId, replyToken, cmds)=>{
   return new Promise(async function(resolve, reject) {
     /* ob.action.data = "action=" + action + "&itemid=" + item.id + "&data=" + item.id, */
     /* var cmds = userEvent.postback.data.split("&"); */
-    const util = require('./mod/util.js');
     var action = (cmds[0].split("="))[1];
   	var cmdCode = (cmds[1].split("="))[1];
   	var data = (cmds[2].split("="))[1];
@@ -90,6 +89,7 @@ const postbackMessageHandle = (userId, replyToken, cmds)=>{
         var lineMessage;
         var yourToken;
         var rqParams;
+        var rqBody;
         var caseRes;
         var actionReturnText;
         switch (cmdCode) {
@@ -164,13 +164,14 @@ const postbackMessageHandle = (userId, replyToken, cmds)=>{
           case 'x401':
             /* radio accept new cse*/
             yourToken = await doCreateRadconToken(userId);
+            rqBody = { userId: yourToken.userId, caseId: data, casestatusId: 2, caseDescription: 'Accept by Line Bot'};
             rqParams = {
               method: 'post',
-              uri: '/api/cases/status/' + data,
-              Authorization: yourToken,
-              body: {casestatusId: 2}
+              uri: 'https://' + process.env.DOMAIN_NAME + '/api/cases/status/' + data,
+              Authorization: yourToken.token,
+              body: rqBody
             }
-            caseRes = util.proxyRequest(rqParams);
+            caseRes = uti.proxyRequest(rqParams);
             log.info('your Accept caseRes => ' + JSON.stringify(caseRes));
             actionReturnText = 'ดำเนินการตอบรับเคสใหม่ไปเรียบร้อยแล้ว\nหากต้องการใช้บริการอื่นๆ โปรดเลือกจากเมนูครับ';
             action = 'quick';
@@ -180,13 +181,14 @@ const postbackMessageHandle = (userId, replyToken, cmds)=>{
           case 'x402':
             /* radio not accept new cse*/
             yourToken = await doCreateRadconToken(userId);
+            rqBody = { userId: yourToken.userId, caseId: data, casestatusId: 3, caseDescription: 'Not Accept by Line Bot'};
             rqParams = {
               method: 'post',
-              uri: '/api/cases/status/' + data,
-              Authorization: yourToken,
-              body: {casestatusId: 3}
+              uri: 'https://' + process.env.DOMAIN_NAME + '/api/cases/status/' + data,
+              Authorization: yourToken.token,
+              body: rqBody
             }
-            caseRes = util.proxyRequest(rqParams);
+            caseRes = uti.proxyRequest(rqParams);
             log.info('your Not Accept caseRes => ' + JSON.stringify(caseRes));
             actionReturnText = 'ดำเนินการปฏิเสธรับเคสใหม่ไปเรียบร้อยแล้ว\nหากต้องการใช้บริการอื่นๆ โปรดเลือกจากเมนูครับ';
             action = 'quick';
@@ -324,6 +326,7 @@ module.exports = ( taskCase, dbconn, monitor ) => {
   log = monitor;
   auth = require('../db/rest/auth.js')(db, log);
   lineApi = require('./mod/lineapi.js')(db, log);
+  uti = require('./mod/util.js')(log);
   Task = taskCase;
   return app;
 }

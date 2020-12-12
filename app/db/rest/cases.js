@@ -9,9 +9,8 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-var db, tasks, Case, log, auth, socket, lineApi;
+var db, tasks, Case, log, auth, socket, lineApi, uti;
 
-const uti = require('../../lib/mod/util.js');
 const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 
 const doSearchRadioForHospital = function(hospitalId) {
@@ -327,8 +326,9 @@ app.post('/status/(:caseId)', async (req, res) => {
         let caseStatusChange = { casestatusId: reqCaseStatusId, Case_DESC: req.body.caseDescription};
         let newCaseStatusId = Number(reqCaseStatusId);
         //log.info('Body of Request=> ' + JSON.stringify(req.body));
-        let targetCases = await Case.findAll({ attributes: ['id', 'casestatusId', 'urgenttypeId', 'Case_RadiologistId', 'userId'], where: {id: caseId}});
+        let targetCases = await Case.findAll({ attributes: ['id', 'casestatusId', 'urgenttypeId', 'Case_RadiologistId', 'userId', 'patientId'], where: {id: caseId}});
         let currentStatus = targetCases[0].casestatusId;
+        let caseHospitalId = targetCases[0].hospitalId;
         switch (currentStatus) {
           case 1: //New -> 2, 3, 4, 7
             if (newCaseStatusId == 2) {
@@ -339,7 +339,7 @@ app.post('/status/(:caseId)', async (req, res) => {
               let triggerParam = JSON.parse(urgents[0].UGType_WorkingStep);
               let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: targetCases[0].Case_RadiologistId}});
               let radioUsername = radioUsers[0].username;
-              let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	id: targetCases[0].userId}});
+              let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	userId: targetCases[0].userId}});
               let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: targetCases[0].patientId}});
               let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
               tasks.doCreateNewTask(caseId, ur[0].username, triggerParam, radioUsername, ur[0].hospitalId, async (caseId, socket)=>{
@@ -349,7 +349,7 @@ app.post('/status/(:caseId)', async (req, res) => {
                     await targetCases[0].setCasestatus(expiredStatus[0]);
                     tasks.removeTaskByCaseId(caseId);
                     log.info('caseId ' + caseId + ' was expired by schedule.');
-                    let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
+                    let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: caseHospitalId}});
                     let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                     let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     let canSend = await socket.sendMessage(notify, radioUsername);
@@ -358,28 +358,44 @@ app.post('/status/(:caseId)', async (req, res) => {
                     await socket.sendMessage(notify, ur[0].username);
                     refreshAcceptCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
                     await socket.sendMessage(refreshNewCase, ur[0].username);
+
+                    if (radioUserLines.length > 0) {
+                      let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาในช่วงรออ่านผล หากคุณต้องการใช้บริการอื่นเชิญเลือกจากเมนูครับ';
+                      let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                      let lineUserId = radioUserLines[0].UserId;
+                      let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                      await lineApi.pushConnect(lineUserId, menuQuickReply);
+                    }
+
+                    if (techUserLines.length > 0) {
+                      let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้หมดเวลาในช่วงรออ่านผลจากรังสีแพทยแล้วครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
+                      let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
+                      let lineUserId = techUserLines[0].UserId;
+                      let lineMsg = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                      await lineApi.pushConnect(lineUserId, lineMsg);
+                    }
                   });
                 }
               });
-              if (techUserLines.length == 0) {
+              if (techUserLines.length > 0) {
                 let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้รับการตอบรับจากรังสีแพทย์เรียบร้อยแล้วครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
                 let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
                 let lineUserId = techUserLines[0].UserId;
-                let lineMsg = { type: "text",	text: lineCaseMsg };
+                let lineMsg = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
                 await lineApi.pushConnect(lineUserId, lineMsg);
               }
             } else if ([3, 4, 7].indexOf(newCaseStatusId) >= 0) {
               await Case.update(caseStatusChange, { where: { id: caseId } });
               tasks.removeTaskByCaseId(caseId);
               if (newCaseStatusId == 3) {
-                let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	id: targetCases[0].userId}});
-                if (techUserLines.length == 0) {
+                let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	userId: targetCases[0].userId}});
+                if (techUserLines.length > 0) {
                   let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: targetCases[0].patientId}});
                   let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
                   let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้รับการปฏิเสธจากรังสีแพทย์ครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
                   let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
                   let lineUserId = techUserLines[0].UserId;
-                  let lineMsg = { type: "text",	text: lineCaseMsg };
+                  let lineMsg = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
                   await lineApi.pushConnect(lineUserId, lineMsg);
                 }
               }
@@ -393,6 +409,16 @@ app.post('/status/(:caseId)', async (req, res) => {
               if (newCaseStatusId == 5) {
                 let refreshSuccessCase = {type: 'refresh', section: 'ReadSuccessDiv', statusId: newCaseStatusId, caseId: caseId};
                 await socket.sendMessage(refreshSuccessCase, ur[0].username);
+                let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	userId: targetCases[0].userId}});
+                if (techUserLines.length > 0) {
+                  let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: targetCases[0].patientId}});
+                  let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
+                  let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้รับผลอ่านจากรังสีแพทย์แล้วครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
+                  let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
+                  let lineUserId = techUserLines[0].UserId;
+                  let lineMsg = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                  await lineApi.pushConnect(lineUserId, lineMsg);
+                }
               }
             }
             res.json({Result: "OK", status: {code: 200}});
@@ -405,6 +431,11 @@ app.post('/status/(:caseId)', async (req, res) => {
               let triggerParam = JSON.parse(urgents[0].UGType_AcceptStep);
               let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: targetCases[0].Case_RadiologistId}});
               let radioUsername = radioUsers[0].username;
+              let radioUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {userId: targetCases[0].Case_RadiologistId}});
+              let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: targetCases[0].hospitalId}});
+              let hospitalName = hoses[0].Hos_Name;
+              let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: targetCases[0].patientId}});
+              let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
               tasks.doCreateNewTask(caseId, ur[0].username, triggerParam, radioUsername, ur[0].hospitalId, async (caseId, socket)=>{
                 let nowcaseStatus = await Case.findAll({ attributes: ['casestatusId'], where: {id: caseId}});
                 if (nowcaseStatus[0].casestatusId === newCaseStatusId) {
@@ -412,7 +443,7 @@ app.post('/status/(:caseId)', async (req, res) => {
                     await targetCases[0].setCasestatus(expiredStatus[0]);
                     tasks.removeTaskByCaseId(caseId);
                     log.info('caseId ' + caseId + ' was expired by schedule.');
-                    let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
+                    let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: caseHospitalId}});
                     let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                     let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     let canSend = await socket.sendMessage(notify, radioUsername);
@@ -421,9 +452,35 @@ app.post('/status/(:caseId)', async (req, res) => {
                     await socket.sendMessage(notify, ur[0].username);
                     let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
                     await socket.sendMessage(refreshNewCase, ur[0].username);
+
+                    if (radioUserLines.length > 0) {
+                      let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาในช่วงรอตอบรับ หากคุณต้องการใช้บริการอื่นเชิญเลือกจากเมนูครับ';
+                      let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                      let lineUserId = radioUserLines[0].UserId;
+                      let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                      await lineApi.pushConnect(lineUserId, menuQuickReply);
+                    }
+
+                    let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	userId: targetCases[0].userId}});
+                    if (techUserLines.length > 0) {
+                      let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้หมดเวลาในช่วงรอการตอบรับจากรังสีแพทยแล้วครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
+                      let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
+                      let lineUserId = techUserLines[0].UserId;
+                      let lineMsg = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                      await lineApi.pushConnect(lineUserId, lineMsg);
+                    }
                   });
                 }
               });
+              if (radioUserLines.length > 0) {
+                let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nคุณสมารถตอบรับหรือปฏิเสธเคสนี้ได้โดยเลือกจากเมนูด้านล่างครับ';
+                let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                let lineUserId = radioUserLines[0].UserId;
+                let action = 'quick';
+                let actionQuickReply = acceptActionMenu =  [{id: 'x401', name: 'รับ', data: adCase.id}, {id: 'x402', name: 'ไม่รับ', data: adCase.id}];
+                let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, action, actionQuickReply);
+                await lineApi.pushConnect(lineUserId, menuQuickReply);
+              }
             } else if (newCaseStatusId == 7) {
               await Case.update(caseStatusChange, { where: { id: caseId } });
               tasks.removeTaskByCaseId(caseId);
@@ -447,6 +504,11 @@ app.post('/status/(:caseId)', async (req, res) => {
               let triggerParam = JSON.parse(urgents[0].UGType_AcceptStep);
               let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: targetCases[0].Case_RadiologistId}});
               let radioUsername = radioUsers[0].username;
+              let radioUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {userId: targetCases[0].Case_RadiologistId}});
+              let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: targetCases[0].hospitalId}});
+              let hospitalName = hoses[0].Hos_Name;
+              let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: targetCases[0].patientId}});
+              let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
               tasks.doCreateNewTask(caseId, ur[0].username, triggerParam, radioUsername, ur[0].hospitalId, async (caseId, socket)=>{
                 let nowcaseStatus = await Case.findAll({ attributes: ['casestatusId'], where: {id: caseId}});
                 if (nowcaseStatus[0].casestatusId === newCaseStatusId) {
@@ -454,7 +516,7 @@ app.post('/status/(:caseId)', async (req, res) => {
                     await targetCases[0].setCasestatus(expiredStatus[0]);
                     tasks.removeTaskByCaseId(caseId);
                     log.info('caseId ' + caseId + ' was expired by schedule.');
-                    let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
+                    let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: caseHospitalId}});
                     let msg = 'Your a new Case on ' + hoses[0].Hos_Name + '. was expired by schedule';
                     let notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     let canSend = await socket.sendMessage(notify, radioUsername);
@@ -463,9 +525,35 @@ app.post('/status/(:caseId)', async (req, res) => {
                     await socket.sendMessage(notify, ur[0].username);
                     let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
                     await socket.sendMessage(refreshNewCase, ur[0].username);
+
+                    if (radioUserLines.length > 0) {
+                      let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาในช่วงรอตอบรับ หากคุณต้องการใช้บริการอื่นเชิญเลือกจากเมนูครับ';
+                      let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                      let lineUserId = radioUserLines[0].UserId;
+                      let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                      await lineApi.pushConnect(lineUserId, menuQuickReply);
+                    }
+
+                    let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	userId: targetCases[0].userId}});
+                    if (techUserLines.length > 0) {
+                      let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้หมดเวลาในช่วงรอการตอบรับจากรังสีแพทยแล้วครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
+                      let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
+                      let lineUserId = techUserLines[0].UserId;
+                      let lineMsg = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                      await lineApi.pushConnect(lineUserId, lineMsg);
+                    }
                   });
                 }
               });
+              if (radioUserLines.length > 0) {
+                let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nคุณสมารถตอบรับหรือปฏิเสธเคสนี้ได้โดยเลือกจากเมนูด้านล่างครับ';
+                let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                let lineUserId = radioUserLines[0].UserId;
+                let action = 'quick';
+                let actionQuickReply = acceptActionMenu =  [{id: 'x401', name: 'รับ', data: adCase.id}, {id: 'x402', name: 'ไม่รับ', data: adCase.id}];
+                let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, action, actionQuickReply);
+                await lineApi.pushConnect(lineUserId, menuQuickReply);
+              }
             }
             res.json({Result: "OK", status: {code: 200}});
           break;
@@ -595,13 +683,13 @@ app.post('/add', (req, res) => {
           let triggerParam = JSON.parse(urgents[0].UGType_AcceptStep);
           let radioUsers = await db.users.findAll({attributes: ['username'], where: {id: req.body.data.Case_RadiologistId}});
           let radioUsername = radioUsers[0].username;
-          let radioUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	id: req.body.data.Case_RadiologistId}});
+          let radioUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {userId: req.body.data.Case_RadiologistId}});
           let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: req.body.hospitalId}});
           let hospitalName = hoses[0].Hos_Name;
           let patients = await db.patients.findAll({attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: req.body.patientId}});
           let patientNameEN = patients[0].Patient_NameEN + ' ' + patients[0].Patient_LastNameEN;
           tasks.doCreateNewTask(adCase.id, ur[0].username, triggerParam, radioUsername, req.body.hospitalId, async (caseId, socket)=>{
-            let nowcaseStatus = await Case.findAll({ attributes: ['casestatusId'], where: {id: adCase.id}});
+            let nowcaseStatus = await Case.findAll({ attributes: ['casestatusId'], where: {id: caseId}});
             if (nowcaseStatus[0].casestatusId === newcaseStatus[0].id) {
               doCallCaseStatusByName('Expired').then(async (expiredStatus) => {
                 await adCase.setCasestatus(expiredStatus[0]);
@@ -615,14 +703,31 @@ app.post('/add', (req, res) => {
                 await socket.sendMessage(notify, ur[0].username);
                 refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: adCase.id};
                 await socket.sendMessage(refreshNewCase, ur[0].username);
+
+                if (radioUserLines.length > 0) {
+                  let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาในช่วงรอตอบรับ หากคุณต้องการใช้บริการอื่นเชิญเลือกจากเมนูครับ';
+                  let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                  let lineUserId = radioUserLines[0].UserId;
+                  let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                  await lineApi.pushConnect(lineUserId, menuQuickReply);
+                }
+
+                let techUserLines = await db.lineusers.findAll({ attributes: ['id', 'UserId'], where: {	userId: req.body.userId}});
+                if (techUserLines.length > 0) {
+                  let msgFormat = 'แจ้งเตือน เคสใหม่\nผู้ป่วยชื่อ %s\nได้หมดเวลาในช่วงรอการตอบรับจากรังสีแพทยแล้วครับ\nคุณสามารถใช้บริการอื่นจากเมนูครับ';
+                  let lineCaseMsg = uti.parseStr(msgFormat, patientNameEN);
+                  let lineUserId = techUserLines[0].UserId;
+                  let lineMsg = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
+                  await lineApi.pushConnect(lineUserId, lineMsg);
+                }
               });
             } else {
               log.info('caseId ' + caseId + ' was released by schedule.');
               tasks.removeTaskByCaseId(caseId);
             }
           });
-          if (radioUserLines.length == 0) {
-            let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nคุณสมารถตอบรับหรือปฏิเสธเคสนี้ได้โดยเลือกจากเมนูด้นล่างครับ';
+          if (radioUserLines.length > 0) {
+            let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nคุณสมารถตอบรับหรือปฏิเสธเคสนี้ได้โดยเลือกจากเมนูด้านล่างครับ';
             let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
             let lineUserId = radioUserLines[0].UserId;
             let action = 'quick';
@@ -714,6 +819,7 @@ module.exports = ( dbconn, caseTask, monitor, websocket ) => {
   log = monitor;
   auth = require('./auth.js')(db, log);
   lineApi = require('../../lib/mod/lineapi.js')(db, log);
+  uti = require('../../lib/mod/util.js')(log);
   socket = websocket;
   Case = db.cases;
   return app;

@@ -1342,13 +1342,13 @@ module.exports = function ( jq ) {
 					defualtValue.manufacturer = dj[i].SamplingSeries.MainDicomTags.Manufacturer;
 					defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
 					defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
-					let creatwNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
-					$(creatwNewCaseCmd).on('click', function(evt){
+					let createNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
+					$(createNewCaseCmd).on('click', function(evt){
 						doOpenCreateNewCase(defualtValue, dj[i].Series);
 					});
 
 					$(operatingCol).append($(spacingBox));
-					$(operatingCol).append($(creatwNewCaseCmd));
+					$(operatingCol).append($(createNewCaseCmd));
 
 					let downloadDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/zip-icon.png" title="ดาวน์โหลด zip ไฟล์"/>');
 					$(downloadDicomCmd).on('click', function(evt){
@@ -1460,18 +1460,18 @@ module.exports = function ( jq ) {
 		  patientHistoryBox = $("<div ></div>").appendTo($("#ManageImageCmdDiv")).imagehistory( phProp ).data("custom-imagehistory");
 
 			const main = require('../main.js');
-
+			const userdata = JSON.parse(main.doGetUserData());
 		  //let magicBox = document.getElementById('magic-box');
 		  //let imagesBox = document.getElementById('images');
 
 			await doPrepareOptionForm(defualtValue);
 
 			let dicomImgCount = 0;
-			let userdata = main.doGetUserData();
 			let seriesParam = {method: 'get', username: userdata.username, hospitalId: userdata.hospitalId};
-			var promiseList = new Promise(function(resolve, reject){
+			let promiseList = new Promise(function(resolve, reject){
 				seriesList.forEach((srs) => {
 					seriesParam.uri = '/series/' + srs;
+					seriesParam.body = '{"Level": "Series", "Expand": true, "Query": {"PatientName":"' + defualtValue.patient.name + '"}}';
 					apiconnector.doCallOrthancApiByProxy(seriesParam).then((sr) =>{
 						dicomImgCount += Number(sr.Instances.length);
 					});

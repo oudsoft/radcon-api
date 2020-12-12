@@ -29,6 +29,20 @@ const runcommand = function (command) {
 				reject(`${stderr}`);
 			}
     });
+		/*
+		var proc = exec(command);
+
+    var list = [];
+    proc.stdout.setEncoding('utf8');
+
+    proc.stdout.on('data', function (chunk) {
+      list.push(chunk);
+    });
+
+    proc.stdout.on('end', function () {
+      resolve(list.join());
+    });
+		*/
 	});
 }
 
@@ -50,23 +64,24 @@ const doLoadOrthancTarget = function(hospitalId, hostname){
 	});
 }
 
-var db, Orthanc, log, auth;
+var db, Orthanc, log, auth, uti;
 
 app.post('/find', function(req, res) {
 	/*
 	some bug never fixed
 	hospitalId is undefinded
 	*/
-	let rqBody = req.body.body;
-	log.info('rqBody=>' + rqBody)
 	let hospitalId = req.body.hospitalId;
 	log.info('hospitalId =>' + hospitalId);
 	if (hospitalId) {
+		let rqBody = req.body.body;
+		log.info('rqBody=>' + rqBody)
 		doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
 			let username = req.body.username;
 			let method = req.body.method;
 			let cloud = JSON.parse(orthanc.Orthanc_Cloud)
 			let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
+			/*
 			var command;
 			if (method.toLowerCase() == 'post') {
 				command = 'curl -X POST --user ' + cloud.user + ':' + cloud.pass + ' -H "user: ' + cloud.user + '" -H "Content-Type: application/json" ' + orthancUrl + req.body.uri + ' -d \'' + rqBody + '\'';
@@ -75,14 +90,33 @@ app.post('/find', function(req, res) {
 			}
 
 			log.info('Find Dicom with command >>', command);
+			try {
+				runcommand(command).then((stdout) => {
+					let studyObj = JSON.parse(stdout);
+					res.status(200).send(studyObj);
+				});
+			} catch (err) {
+				log.error('Run command Error => '+ JSON.stringify(err));
+				reject(err);
+			}
+			*/
 
-			runcommand(command).then((stdout) => {
-				let studyObj = JSON.parse(stdout);
-				res.status(200).send(studyObj);
+			let rqParams = {
+				method: method,
+				auth:  {user: cloud.user, pass: cloud.pass},
+				uri: orthancUrl + req.body.uri,
+				body: JSON.parse(rqBody)
+			}
+			uti.proxyRequest(rqParams).then((proxyRes)=>{
+				let orthancRes = JSON.parse(proxyRes.res.body);
+				//log.info('orthancRes JSON => ' + JSON.stringify(orthancRes));
+				res.status(200).send(orthancRes);
 			});
 		});
 	} else {
-		res.status(300).send({status: {code: 300}, error: 'Your hospitalId is incurrect. Please verify.'});
+		let orthancError = {error: 'Your hospitalId is incurrect. Please verify.'};
+		log.error('Request Orthanc Error =>' + orthancError.error);
+		res.status(500).send({status: {code: 500}, error:  + orthancError.error});
 	}
 });
 
@@ -164,5 +198,6 @@ module.exports = ( dbconn, monitor ) => {
   db = dbconn;
   log = monitor;
   Orthanc = db.orthancs;
+	uti = require('./mod/util.js')(log);
   return app;
 }

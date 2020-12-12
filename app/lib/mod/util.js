@@ -9,9 +9,7 @@ var log;
 
 const proxyRequest = function(rqParam) {
 	return new Promise(function(resolve, reject) {
-		log.info('rqParam=>', rqParam);
 		let rqBody = JSON.stringify(rqParam.body);
-		log.info('rqBody=>', rqBody);
 		request({
 			/* json: true, */
 			method: rqParam.method,
@@ -26,7 +24,7 @@ const proxyRequest = function(rqParam) {
 			if (!err) {
 				resolve({status: {code: 200}, res: res});
 			} else {
-				console.log(JSON.stringify(err));
+				log.error('your Request Error=>' + JSON.stringify(err));
 				reject({status: {code: 500}, err: err});
 			}
 		});
