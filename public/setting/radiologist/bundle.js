@@ -677,7 +677,8 @@ module.exports = function ( jq ) {
 	  const paths = window.location.pathname.split('/');
 	  const rootname = paths[1];
 
-	  const wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '/' + hospitalId + '?type=' + type;
+	  //const wsUrl = 'wss://' + hostname + ':' + port + '/' + rootname + '/' + username + '/' + hospitalId + '?type=' + type;
+		const wsUrl = 'wss://' + hostname + ':' + port + '/' + username + '/' + hospitalId + '?type=' + type;
 	  wsm = new WebSocket(wsUrl);
 		wsm.onopen = function () {
 			//console.log('Master Websocket is connected to the signaling server')
@@ -939,12 +940,16 @@ function doLoadMainPage(){
 	let jqueryUiJsUrl = "../../lib/jquery-ui.min.js";
 	let jqueryLoadingUrl = '../../lib/jquery.loading.min.js';
 	let jqueryNotifyUrl = '../../lib/notify.min.js';
+	let countdownclockPluginUrl = "../plugin/jquery-countdown-clock-plugin.js";
+
 	$('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
 	$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
 	//https://carlosbonetti.github.io/jquery-loading/
 	$('head').append('<script src="' + jqueryLoadingUrl + '"></script>');
 	//https://notifyjs.jpillora.com/
 	$('head').append('<script src="' + jqueryNotifyUrl + '"></script>');
+
+	$('head').append('<script src="' + countdownclockPluginUrl + '"></script>');
 
   $('body').append($('<div id="overlay"><div class="loader"></div></div>'));
 
@@ -1180,7 +1185,7 @@ function doCreateCaseAccordion(item){
 };
 
 function doCreateCaseDetail(caseItem){
-	return new Promise(function(resolve, reject){
+	return new Promise(async function(resolve, reject){
 		let tableCaseDetail = $('<div id="CaseDetailTable" style="display: table"></div>');
 
 		let caseDateTime = new Date(caseItem.case.createdAt);
@@ -1214,8 +1219,20 @@ function doCreateCaseDetail(caseItem){
 		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
 
 		tableRow = $('<div style="display: table-row"></div>');
-		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>สถานะเคส</b></div><div style="display: table-cell"><div class="CaseTime">' + caseItem.case.casestatus.CS_Name_EN + '</div></div>');
+		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>สถานะเคส</b></div>');
+		let caseStatusValueDiv = $('<div style="display: table-cell"><div class="CaseTime">' + caseItem.case.casestatus.CS_Name_EN + '</div></div>');
 		$(tableRow).append($(rowDetail)).appendTo($(tableCaseDetail));
+		$(caseStatusValueDiv).appendTo($(tableRow));
+		if ((caseItem.case.casestatus.id == 1) || (caseItem.case.casestatus.id == 2)) {
+			let caseTask = await apiconnector.doCallApi('/api/tasks/select/'+ caseItem.case.id, {});
+			let caseTriggerAt = new Date(caseTask.Records[0].triggerAt);
+			let diffTime = Math.abs(caseTriggerAt - new Date());
+			let hh = parseInt(diffTime/(1000*60*60));
+			let mn = parseInt((diffTime - (hh*1000*60*60))/(1000*60));
+			let clockCountdownDiv = $('<div></div>');
+			$(clockCountdownDiv).countdownclock({countToHH: hh, countToMN: mn});
+			$(caseStatusValueDiv).append($(clockCountdownDiv));
+		}
 
 		tableRow = $('<div style="display: table-row"></div>');
 		rowDetail = $('<div style="display: table-cell; width: 200px;"><b>ชื่อผู้ป่วย(ไทย)</b></div><div style="display: table-cell">' + caseItem.case.patient.Patient_NameTH + ' ' + caseItem.case.patient.Patient_LastNameTH + '</div>');

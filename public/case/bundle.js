@@ -101,6 +101,7 @@ function doLoadMainPage(){
 	let jqueryLoadingUrl = '../lib/jquery.loading.min.js';
 	let jqueryNotifyUrl = '../lib/notify.min.js';
 	let patientHistoryPluginUrl = "../setting/plugin/jquery-patient-history-image-plugin.js";
+	let countdownclockPluginUrl = "../setting/plugin/jquery-countdown-clock-plugin.js";
 
 	$('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
 	$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
@@ -110,6 +111,8 @@ function doLoadMainPage(){
 	$('head').append('<script src="' + jqueryNotifyUrl + '"></script>');
 
 	$('head').append('<script src="' + patientHistoryPluginUrl + '"></script>');
+	$('head').append('<script src="' + countdownclockPluginUrl + '"></script>');
+
 	$('head').append('<link rel="stylesheet" href="../lib/tui-image-editor.min.css" type="text/css" />');
 	$('head').append('<link rel="stylesheet" href="../lib/tui-color-picker.css" type="text/css" />');
 
@@ -949,7 +952,7 @@ module.exports = function ( jq ) {
 	}
 
   function doShowCaseList(incidents) {
-		return new Promise(function(resolve, reject) {
+		return new Promise(async function(resolve, reject) {
 			let rwTable = $('<table width="100%" cellpadding="5" cellspacing="0"></table>');
 			let headRow = $('<tr style="background-color: green;"></tr>');
 			let headColumns = $('<td width="10%" align="center">วันที่</td><td width="10%" align="center">ชื่อ</td><td width="5%" align="center">อายุ</td><td width="5%" align="center">เพศ</td><td width="10%" align="center">HN</td><td width="5%" align="center">Modality</td><td width="10%" align="center">Study Desc. / Protocol Name</td><td width="10%" align="center">ประเภทความด่วน</td><td width="10%" align="center">แพทย์ผู้ส่ง</td><td width="10%" align="center">รังสีแพทย์</td><td width="10%" align="center">สถานะเคส</td><td width="*" align="center">Control Case</td>');
@@ -972,7 +975,19 @@ module.exports = function ( jq ) {
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.urgenttype.UGType_Name + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].Refferal.User_NameTH + ' ' + incidents[i].Refferal.User_LastNameTH + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].Radiologist.User_NameTH + ' ' + incidents[i].Radiologist.User_LastNameTH + '</td>'));
-				$(dataRow).append($('<td align="center">'+ incidents[i].case.casestatus.CS_Name_EN + '</td>'));
+				let caseStatusCol = $('<td align="center">'+ incidents[i].case.casestatus.CS_Name_EN + '</td>');
+				$(dataRow).append($(caseStatusCol));
+				if ((incidents[i].case.casestatus.id == 1) || (incidents[i].case.casestatus.id == 2)) {
+					let caseTask = await doCallApi('/api/tasks/select/'+ incidents[i].case.id, {});
+					//{"status":{"code":200},"Records":[{"caseId":217,"username":"sutin","radioUsername":"test0003","triggerAt":"2020-12-13T07:13:52.968Z"}]}
+					let caseTriggerAt = new Date(caseTask.Records[0].triggerAt);
+					let diffTime = Math.abs(caseTriggerAt - new Date());
+					let hh = parseInt(diffTime/(1000*60*60));
+					let mn = parseInt((diffTime - (hh*1000*60*60))/(1000*60));
+					let clockCountdownDiv = $('<div></div>');
+					$(clockCountdownDiv).countdownclock({countToHH: hh, countToMN: mn});
+					$(caseStatusCol).append($(clockCountdownDiv));
+				}
 				let commandCol = $('<td align="center"></td>');
 				$(commandCol).appendTo($(dataRow));
 				$(rwTable).append($(dataRow));
@@ -1392,7 +1407,8 @@ module.exports = function ( jq ) {
 		const hospitalId = userdata.hospitalId;
 
 		apiconnector.doGetOrthancPort(hospitalId).then((response) => {
-			const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
+			//const orthancStoneWebviewer = 'http://'+ window.location.hostname + ':' + response.port + '/stone-webviewer/index.html?study=';
+			const orthancStoneWebviewer = 'http://'+ response.ip + ':' + response.port + '/stone-webviewer/index.html?study=';
 			let orthancwebapplink = orthancStoneWebviewer + StudyInstanceUID;
 			window.open(orthancwebapplink, '_blank');
 		});

@@ -12,6 +12,7 @@
     <script type="text/javascript" src="../../lib/jquery.js"></script>
     <script type="text/javascript" src="../../lib/jquery-ui.min.js"></script>
     <script type="text/javascript" src="jquery-patient-history-image-plugin.js"></script>
+    <script type="text/javascript" src="jquery-countdown-clock-plugin.js"></script>
   </head>
   <body>
     <div id="main" style="position: relative;">
@@ -23,10 +24,12 @@
       </div>
     </div>
     <div id="result" style="position: relative;"></div>
+    <div id="Clock"></div>
   </body>
 </html>
 <style>
-
+  .blink {color: white}
+  .danger { color: red}
 </style>
 <script type="text/javascript">
 
@@ -47,5 +50,11 @@
     console.log(imagesResult);
     $('#result').empty();
     $('#result').append("<p>" + JSON.stringify(imagesResult) + "</p>")
-  })
+  });
+
+  let countTo = {countToHH: 0, countToMN: 5};
+  $('#Clock').countdownclock(countTo);
+  $('#Clock').on('countdowntrigger', (e, data)=>{
+    alert(JSON.stringify(data));
+  });
 </script>

@@ -56,10 +56,23 @@
 
 /* Middle column */
 .column.middle {
+  /*
   width: 1004px;
   max-width: 1004px;
   height: 1410px;
   max-height: 1410px;
+  */
+  width: 79%;
+}
+
+#report-container {
+  position: relative;
+  border: 2px solid red;
+  width: 100%;
+  /*
+  height: 1410px;
+  max-height: 1410px;
+  */
 }
 
 #report-item {
@@ -67,13 +80,6 @@
   border: 2px solid yellow;
   height: 100vh;
   padding: 2px;
-  height: 1410px;
-  max-height: 1410px;  
-}
-
-#report-container {
-  position: relative;
-  border: 2px solid red;
   height: 1410px;
   max-height: 1410px;
 }

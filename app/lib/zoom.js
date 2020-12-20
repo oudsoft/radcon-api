@@ -1,13 +1,21 @@
-const bodyParser = require('body-parser');
-const express = require('express');
-const app = express();
-
-app.use(express.json({limit: '50mb'}));
-app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
-
+const fs = require('fs');
+const util = require("util");
+const path = require('path');
+const url = require('url');
 const crypto = require('crypto') // crypto comes with Node.js
 const request = require('request-promise');
 const jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
+const express = require('express');
+const app = express();
+
+//app.use(express.json({limit: '50mb'}));
+//app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
+app.use(bodyParser.json({ limit: "50MB", type:'application/json', extended: true}));
+app.use(bodyParser.urlencoded({limit: '50MB', type:'application/x-www-form-urlencoded', extended: true}));
+app.use(cookieParser());
 
 const zoomApiHeader = { "alg": "HS256", "typ": "JWT" };
 const zoomApiPayload = function() {
@@ -125,11 +133,15 @@ app.post('/createmeeting', async(req, res) => {
 app.post('/listmeeting', async(req, res) => {
   try {
     let zoomUserId = req.body.zoomUserId;
-    let zoomParams = req.body.params;
-    let zoomUrl = 'https://api.zoom.us/v2/users/' + zoomUserId + '/meetings';
-    let method = 'GET';
-    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
-    res.json({status: {code: 200}, response: zoomRes});
+    if (zoomUserId) {
+      let zoomParams = req.body.params;
+      let zoomUrl = 'https://api.zoom.us/v2/users/' + zoomUserId + '/meetings';
+      let method = 'GET';
+      let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+      res.json({status: {code: 200}, response: zoomRes});
+    } else {
+      res.json({status: 500, error: 'zoomUserId is undefinded.'});
+    }
   } catch(error) {
     log.error(error);
     res.json({status: {code: 500}, error: error});
@@ -139,11 +151,15 @@ app.post('/listmeeting', async(req, res) => {
 app.post('/getmeeting', async(req, res) => {
   try {
     let meetingId = req.body.meetingId;
-    let zoomParams = req.body.params;
-    let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
-    let method = 'GET';
-    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
-    res.json({status: {code: 200}, response: zoomRes});
+    if (meetingId) {
+      let zoomParams = req.body.params;
+      let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
+      let method = 'GET';
+      let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+      res.json({status: {code: 200}, response: zoomRes});
+    } else {
+      res.json({status: 500, error: 'meetingId is undefinded.'});
+    }
   } catch(error) {
     log.error(error);
     res.json({status: {code: 500}, error: error});
@@ -153,11 +169,15 @@ app.post('/getmeeting', async(req, res) => {
 app.post('/updatemeeting', async(req, res) => {
   try {
     let meetingId = req.body.meetingId;
-    let zoomParams = req.body.params;
-    let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
-    let method = 'PATCH';
-    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
-    res.json({status: {code: 200}, response: zoomRes});
+    if (meetingId) {
+      let zoomParams = req.body.params;
+      let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
+      let method = 'PATCH';
+      let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+      res.json({status: {code: 200}, response: zoomRes});
+    } else {
+      res.json({status: 500, error: 'meetingId is undefinded.'});
+    }
   } catch(error) {
     log.error(error);
     res.json({status: {code: 500}, error: error});
@@ -167,11 +187,15 @@ app.post('/updatemeeting', async(req, res) => {
 app.post('/deletemeeting', async(req, res) => {
   try {
     let meetingId = req.body.meetingId;
-    let zoomParams = req.body.params;
-    let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
-    let method = 'DELETE';
-    let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
-    res.json({status: {code: 200}, response: zoomRes});
+    if (meetingId) {
+      let zoomParams = req.body.params;
+      let zoomUrl = 'https://api.zoom.us/v2/meetings/' + meetingId;
+      let method = 'DELETE';
+      let zoomRes = await requestZoomApi(zoomUrl, zoomParams, method);
+      res.json({status: {code: 200}, response: zoomRes});
+    } else {
+      res.json({status: 500, error: 'meetingId is undefinded.'});
+    }
   } catch(error) {
     log.error(error);
     res.json({status: {code: 500}, error: error});

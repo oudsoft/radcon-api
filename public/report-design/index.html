@@ -52,7 +52,7 @@
       </div>
       -->
     </div>
-    <div id="PrevieDialogBox"></div>
+    <div id="PreviewDialogBox"></div>
   </body>
 </html>
 
@@ -75,7 +75,53 @@
     {name_en: 'scan_protocol', name_th: 'ตำแหน่งที่สแกน'},
   ];
 
-//[{"classes":{},"disabled":false,"create":null,"elementType":"text","type":"static","x":29,"y":24,"width":"150","height":50,"fontsize":24,"fontweight":"normal","fontstyle":"normal","fontalign":"left","id":"text-element-1","title":"test"},{"classes":{},"disabled":false,"create":null,"elementType":"hr","x":4,"y":88,"width":480,"height":26,"border":"1px solid black;","id":"hr-element-NaN"},{"classes":{},"disabled":false,"create":null,"elementType":"text","type":"static","x":294,"y":30,"width":"150","height":50,"fontsize":24,"fontweight":"normal","fontstyle":"normal","fontalign":"left","id":"text-element-NaN","title":"$hospital_name"}]
+  const A4Width = 1004;
+  const A4Height = 1410;
+
+  const doCalRatio = function(){
+    let containerWidth = $('#report-container').width();
+    let containerHeight = $('#report-container').height();
+    const newRatio = containerWidth/A4Width;
+    return newRatio;
+  }
+
+  const resetContainer = function(){
+    let newRatio = doCalRatio();
+    let newHeight = A4Height * newRatio;
+    $('#report-container').css('height', newHeight);
+    $('#report-container').css('max-height', newHeight);
+    doCollectElement().then((reportElements)=>{
+      if (reportElements.length > 0) {
+        let wrapper = $('#report-container');
+        $(wrapper).empty();
+        reportElements.forEach(async (item, i) => {
+          /*
+          let reportElem = {};
+          await Object.getOwnPropertyNames(item).forEach((tag) => {
+            if (tag === 'x') {
+              reportElem[tag] = Number(item[tag]) / newRatio;
+            } else if (tag === 'y') {
+              reportElem[tag] = Number(item[tag]) / newRatio;
+            } else if (tag === 'width') {
+              reportElem[tag] = Number(item[tag]) / newRatio;
+            } else if (tag === 'height') {
+              reportElem[tag] = Number(item[tag]) / newRatio;
+            } else {
+              reportElem[tag] = item[tag];
+            }
+          });
+          */
+          doCreateElement(wrapper, item.elementType, item);
+        });
+      }
+    });
+  }
+
+  resetContainer();
+
+  window.onresize = function(){
+    resetContainer();
+  };
 
   let queryObj, mode;
 
@@ -107,25 +153,43 @@
 
   function doCollectElement() {
     return new Promise(function(resolve, reject){
+      let newRatio = doCalRatio();
       let htmlElements = $("#report-container").children();
       let reportElements = [];
       var promiseList = new Promise(function(resolve, reject){
-        htmlElements.each((index, elem) => {
+        htmlElements.each(async (index, elem) => {
           let elemData = $(elem).data();
+          let data;
           if (elemData.customTextelement) {
-            let data = elemData.customTextelement.options;
-            reportElements.push(data);
+            data = elemData.customTextelement.options;
           } else if (elemData.customHrelement) {
-            let data = elemData.customHrelement.options;
-            reportElements.push(data);
+            data = elemData.customHrelement.options;
           } else if (elemData.customImageelement) {
-            let data = elemData.customImageelement.options;
-            reportElements.push(data);
+            data = elemData.customImageelement.options;
+          } else {
+            data = {};
           }
+
+          let reportElem = {};
+          await Object.getOwnPropertyNames(data).forEach((tag) => {
+            if (tag === 'x') {
+              reportElem[tag] = Number(data[tag]) * newRatio;
+            } else if (tag === 'y') {
+              reportElem[tag] = Number(data[tag]) * newRatio;
+            } else if (tag === 'width') {
+              reportElem[tag] = Number(data[tag]) * newRatio;
+            } else if (tag === 'height') {
+              reportElem[tag] = Number(data[tag]) * newRatio;
+            } else {
+              reportElem[tag] = data[tag];
+            }
+          });
+          reportElements.push(reportElem);
+
         });
         setTimeout(()=> {
           resolve(reportElements);
-        }, 100);
+        }, 500);
       });
       Promise.all([promiseList]).then((ob)=>{
         //console.log('Final JSON =>', ob[0]);
@@ -148,11 +212,11 @@
     let wrapperWidth = $("#report-container").css("width");
     //let wrapperHeight = $("#report-container").css("height");
     //console.log(wrapperWidth, wrapperHeight);
-    $('#PrevieDialogBox').empty();
-    $('#PrevieDialogBox').dialog('option', 'width', wrapperWidth);
-    $('#PrevieDialogBox').dialog('option', 'height', 'auto');
-    $('#PrevieDialogBox').append($(wrapperBox));
-    $('#PrevieDialogBox').dialog('open');
+    $('#PreviewDialogBox').empty();
+    $('#PreviewDialogBox').dialog('option', 'width', wrapperWidth);
+    $('#PreviewDialogBox').dialog('option', 'height', 'auto');
+    $('#PreviewDialogBox').append($(wrapperBox));
+    $('#PreviewDialogBox').dialog('open');
   }
 
   function doCreateElement(wrapper, elemType, prop){
@@ -277,12 +341,18 @@
     let reportElements = await doCollectElement();
     let reportJSON = JSON.stringify(reportElements);
     let apiUrl, params;
-    if (mode.name === 'new') {
-      apiUrl = '/api/hospitalreport/add';
-      params = {Content: reportJSON, hospitalId: queryObj.hosid};
-    } else if (mode.name === 'update') {
-      apiUrl = '/api/hospitalreport/update';
-      params = {Content: reportJSON, hospitalId: queryObj.hosid, id: mode.id};
+    if (mode) {
+      if (mode.name === 'new') {
+        apiUrl = '/api/hospitalreport/add';
+        params = {Content: reportJSON, hospitalId: queryObj.hosid};
+      } else if (mode.name === 'update') {
+        apiUrl = '/api/hospitalreport/update';
+        params = {Content: reportJSON, hospitalId: queryObj.hosid, id: mode.id};
+      }
+    } else {
+      alert('It can not save report because of your hosid is undefined.');
+      console.log(reportJSON);
+      return;
     }
 
     doCallApi(apiUrl, params).then((result) => {
@@ -360,7 +430,7 @@
       });
     });
 
-    $('#PrevieDialogBox').dialog({
+    $('#PreviewDialogBox').dialog({
       modal: true, autoOpen: false, resizable: true, title: 'Report Preview'
     });
 
@@ -382,12 +452,27 @@
         mode = {name: 'update', id: result.Records[0].id};
         //let content = JSON.parse(result.Records[0].Content);
         let content = result.Records[0].Content;
-        console.log(content);
+        //console.log(content);
 
+        let newRatio = doCalRatio();
         let wrapper = $("#report-container");
-        //doRenderElement(wrapper, content);
-        content.forEach((item, i) => {
-          doCreateElement(wrapper, item.elementType, item);
+
+        content.forEach(async (item, i) => {
+          let reportElem = {};
+          await Object.getOwnPropertyNames(item).forEach((tag) => {
+            if (tag === 'x') {
+              reportElem[tag] = Number(item[tag]) * newRatio;
+            } else if (tag === 'y') {
+              reportElem[tag] = Number(item[tag]) * newRatio;
+            } else if (tag === 'width') {
+              reportElem[tag] = Number(item[tag]) * newRatio;
+            } else if (tag === 'height') {
+              reportElem[tag] = Number(item[tag]) * newRatio;
+            } else {
+              reportElem[tag] = item[tag];
+            }
+          });
+          doCreateElement(wrapper, item.elementType, reportElem);
         });
 
       }
