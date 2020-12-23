@@ -112,7 +112,7 @@ app.post('/list', (req, res) => {
           const cases = await Case.findAll({offset: startAt, limit: limit, attributes: excludeColumn, where: {hospitalId: hospitalId}});
           //res.json({status: {code: 200}, types: types});
           //log.info('Result=> ' + JSON.stringify(types));
-          res.json({Result: "OK", Records: casees, TotalRecordCount: cases.length});
+          res.json({Result: "OK", Records: cases, TotalRecordCount: cases.length});
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});
@@ -176,10 +176,11 @@ app.post('/filter/hospital', (req, res) => {
           Promise.all([promiseList]).then((ob)=> {
             res.json({status: {code: 200}, Records: ob[0]});
           }).catch((err)=>{
-            reject(err);
+            log.error(error);
+            res.json({status: {code: 500}, error: err});
           });
         } catch(error) {
-          log.error(error);
+          log.error('Error=>' + JSON.stringify(err));
           res.json({status: {code: 500}, error: error});
         }
       } else {
@@ -250,7 +251,7 @@ app.post('/filter/radio', (req, res) => {
                 res.json({status: {code: 200}, Records: obb[0]});
               }).catch((err)=>{
                 log.error('Error=>' + JSON.stringify(err));
-                reject(err);
+                res.json({status: {code: 500}, error: error});
               });
             }).catch((err)=>{
               log.error('Error=>' + JSON.stringify(err));
@@ -325,8 +326,7 @@ app.post('/status/(:caseId)', async (req, res) => {
         const reqCaseStatusId = req.body.casestatusId;
         let caseStatusChange = { casestatusId: reqCaseStatusId, Case_DESC: req.body.caseDescription};
         let newCaseStatusId = Number(reqCaseStatusId);
-        //log.info('Body of Request=> ' + JSON.stringify(req.body));
-        let targetCases = await Case.findAll({ attributes: ['id', 'casestatusId', 'urgenttypeId', 'Case_RadiologistId', 'userId', 'patientId'], where: {id: caseId}});
+        let targetCases = await Case.findAll({ attributes: excludeColumn, where: {id: caseId}});
         let currentStatus = targetCases[0].casestatusId;
         let caseHospitalId = targetCases[0].hospitalId;
         switch (currentStatus) {
@@ -451,11 +451,11 @@ app.post('/status/(:caseId)', async (req, res) => {
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     await socket.sendMessage(notify, ur[0].username);
                     let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
-                    await socket.sendMessage(refreshNewCase, ur[0].username);
+                    await socket.sendMessage(refreshExpireCase, ur[0].username);
 
                     if (radioUserLines.length > 0) {
                       let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาในช่วงรอตอบรับ หากคุณต้องการใช้บริการอื่นเชิญเลือกจากเมนูครับ';
-                      let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                      let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, targetCases[0].Case_StudyDescription, targetCases[0].Case_ProtocolName, targetCases[0].Case_BodyPart, targetCases[0].Case_Modality);
                       let lineUserId = radioUserLines[0].UserId;
                       let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
                       await lineApi.pushConnect(lineUserId, menuQuickReply);
@@ -474,10 +474,10 @@ app.post('/status/(:caseId)', async (req, res) => {
               });
               if (radioUserLines.length > 0) {
                 let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nคุณสมารถตอบรับหรือปฏิเสธเคสนี้ได้โดยเลือกจากเมนูด้านล่างครับ';
-                let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, targetCases[0].Case_StudyDescription, targetCases[0].Case_ProtocolName, targetCases[0].Case_BodyPart, targetCases[0].Case_Modality);
                 let lineUserId = radioUserLines[0].UserId;
                 let action = 'quick';
-                let actionQuickReply = acceptActionMenu =  [{id: 'x401', name: 'รับ', data: adCase.id}, {id: 'x402', name: 'ไม่รับ', data: adCase.id}];
+                let actionQuickReply = [{id: 'x401', name: 'รับ', data: targetCases[0].id}, {id: 'x402', name: 'ไม่รับ', data: targetCases[0].id}];
                 let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, action, actionQuickReply);
                 await lineApi.pushConnect(lineUserId, menuQuickReply);
               }
@@ -524,11 +524,11 @@ app.post('/status/(:caseId)', async (req, res) => {
                     notify = {type: 'notify', message: msg, statusId: expiredStatus[0].id, caseId: caseId};
                     await socket.sendMessage(notify, ur[0].username);
                     let refreshExpireCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: expiredStatus[0].id, caseId: caseId};
-                    await socket.sendMessage(refreshNewCase, ur[0].username);
+                    await socket.sendMessage(refreshExpireCase, ur[0].username);
 
                     if (radioUserLines.length > 0) {
                       let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาในช่วงรอตอบรับ หากคุณต้องการใช้บริการอื่นเชิญเลือกจากเมนูครับ';
-                      let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                      let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, targetCases[0].Case_StudyDescription, targetCases[0].Case_ProtocolName, targetCases[0].Case_BodyPart, targetCases[0].Case_Modality);
                       let lineUserId = radioUserLines[0].UserId;
                       let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, 'quick', lineApi.mainMenu);
                       await lineApi.pushConnect(lineUserId, menuQuickReply);
@@ -547,10 +547,10 @@ app.post('/status/(:caseId)', async (req, res) => {
               });
               if (radioUserLines.length > 0) {
                 let msgFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nคุณสมารถตอบรับหรือปฏิเสธเคสนี้ได้โดยเลือกจากเมนูด้านล่างครับ';
-                let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, newCase.Case_StudyDescription, newCase.Case_ProtocolName, newCase.Case_BodyPart, newCase.Case_Modality);
+                let lineCaseMsg = uti.parseStr(msgFormat, hospitalName, patientNameEN, targetCases[0].Case_StudyDescription, targetCases[0].Case_ProtocolName, targetCases[0].Case_BodyPart, targetCases[0].Case_Modality);
                 let lineUserId = radioUserLines[0].UserId;
                 let action = 'quick';
-                let actionQuickReply = acceptActionMenu =  [{id: 'x401', name: 'รับ', data: adCase.id}, {id: 'x402', name: 'ไม่รับ', data: adCase.id}];
+                let actionQuickReply =  [{id: 'x401', name: 'รับ', data: targetCases[0].id}, {id: 'x402', name: 'ไม่รับ', data: targetCases[0].id}];
                 let menuQuickReply = lineApi.createBotMenu(lineCaseMsg, action, actionQuickReply);
                 await lineApi.pushConnect(lineUserId, menuQuickReply);
               }

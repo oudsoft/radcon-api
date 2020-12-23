@@ -587,7 +587,7 @@ module.exports = function ( jq ) {
               readyMeetings.push(item);
               return;
             } else if (meetingRes.response.status === 'end') {
-              reqUl = '/api/zoom/deletemeeting';
+              reqUrl = '/api/zoom/deletemeeting';
               meetingRes = await doCallApi(reqUrl, reqParams);
             }
           });
@@ -642,10 +642,9 @@ module.exports = function ( jq ) {
             reqParams.params = zoomParams;
             doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
               console.log('create meetingsRes=>', meetingsRes);
-              let meetingsSize = meetingsRes.meetings.length;
               reqUrl = '/api/zoom/getmeeting';
               reqParams = {};
-              reqParams.meetingId = meetingsRes.meetings[meetingsSize-1].id;
+              reqParams.meetingId = meetingsRes.response.id;
               doCallApi(reqUrl, reqParams).then((meetingRes)=>{
                 console.log('create meetingRes=>', meetingRes);
                 resolve(meetingRes.response);
@@ -980,13 +979,15 @@ module.exports = function ( jq ) {
 				if ((incidents[i].case.casestatus.id == 1) || (incidents[i].case.casestatus.id == 2)) {
 					let caseTask = await doCallApi('/api/tasks/select/'+ incidents[i].case.id, {});
 					//{"status":{"code":200},"Records":[{"caseId":217,"username":"sutin","radioUsername":"test0003","triggerAt":"2020-12-13T07:13:52.968Z"}]}
-					let caseTriggerAt = new Date(caseTask.Records[0].triggerAt);
-					let diffTime = Math.abs(caseTriggerAt - new Date());
-					let hh = parseInt(diffTime/(1000*60*60));
-					let mn = parseInt((diffTime - (hh*1000*60*60))/(1000*60));
-					let clockCountdownDiv = $('<div></div>');
-					$(clockCountdownDiv).countdownclock({countToHH: hh, countToMN: mn});
-					$(caseStatusCol).append($(clockCountdownDiv));
+					if ((caseTask.Records) && (caseTask.Records.length > 0) && (caseTask.Records[0].triggerAt)){
+						let caseTriggerAt = new Date(caseTask.Records[0].triggerAt);
+						let diffTime = Math.abs(caseTriggerAt - new Date());
+						let hh = parseInt(diffTime/(1000*60*60));
+						let mn = parseInt((diffTime - (hh*1000*60*60))/(1000*60));
+						let clockCountdownDiv = $('<div></div>');
+						$(clockCountdownDiv).countdownclock({countToHH: hh, countToMN: mn});
+						$(caseStatusCol).append($(clockCountdownDiv));
+					}
 				}
 				let commandCol = $('<td align="center"></td>');
 				$(commandCol).appendTo($(dataRow));
@@ -1286,108 +1287,116 @@ module.exports = function ( jq ) {
 			let headColumns = $('<td width="5%" align="center">No.</td><td width="15%" align="left">Study Date</td><td width="10%" align="left">HN</td><td width="15%" align="left">Name</td><td width="5%" align="left">Sex/Age</td><td width="5%" align="left">Modality</td><td width="20%" align="left">Study Desc. / Protocol Name</td><td width="*" align="center">Operation</td>');
 			$(rsTable).append($(headRow));
 			$(headRow).append($(headColumns));
-			for (let i=0; i < dj.length; i++) {
-				const spacingBox = $('<span>&nbsp;</span>');
-				let desc, protoname, mld, sa, studydate, bdp;
-				if ((dj[i].MainDicomTags) && (dj[i].SamplingSeries)){
-					if (dj[i].MainDicomTags.StudyDescription) {
-						desc = '<div class="study-desc">' + dj[i].MainDicomTags.StudyDescription + '</div>';
-						bdp = dj[i].MainDicomTags.StudyDescription;
-					} else {
-						if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
-							bdp = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
+			var promiseList = new Promise(function(resolve2, reject2){
+				for (let i=0; i < dj.length; i++) {
+					const spacingBox = $('<span>&nbsp;</span>');
+					let desc, protoname, mld, sa, studydate, bdp;
+					if ((dj[i].MainDicomTags) && (dj[i].SamplingSeries)){
+						if (dj[i].MainDicomTags.StudyDescription) {
+							desc = '<div class="study-desc">' + dj[i].MainDicomTags.StudyDescription + '</div>';
+							bdp = dj[i].MainDicomTags.StudyDescription;
 						} else {
-							bdp = '';
+							if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
+								bdp = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
+							} else {
+								bdp = '';
+							}
+							desc = '';
 						}
-						desc = '';
+						if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
+							protoname = '<div class="protoname">' + dj[i].SamplingSeries.MainDicomTags.ProtocolName + '</div>';
+						} else {
+							protoname = '';
+						}
+						if (dj[i].SamplingSeries.MainDicomTags.Modality) {
+							mld = dj[i].SamplingSeries.MainDicomTags.Modality;
+						} else {
+							mld = '';
+						}
+						if (dj[i].MainDicomTags.StudyDate) {
+							studydate = dj[i].MainDicomTags.StudyDate;
+							studydate = util.formatStudyDate(studydate);
+						} else {
+							studydate = '';
+						}
+						if (dj[i].PatientMainDicomTags.PatientSex) {
+							sa = dj[i].PatientMainDicomTags.PatientSex;
+						} else {
+							sa = '-';
+						}
+						if (dj[i].PatientMainDicomTags.PatientBirthDate) {
+							sa = sa + '/' + util.getAge(dj[i].PatientMainDicomTags.PatientBirthDate)
+						} else {
+							sa = sa + '/-';
+						}
+
+						let dataRow = $('<tr class="case-row"></tr>');
+						let dataColText = '';
+						dataColText += '<td align="center">'+ (i + 1 + startRef) + '</td>'
+						dataColText += '<td align="left">' + '<div style="float: left;">' + studydate + '</div><div style="background-color: gray; color: white; text-align: center; float: left; margin: -6px 10px; padding: 5px; border-radius: 5px;">' + util.formatStudyTime(dj[i].MainDicomTags.StudyTime) + '</div></td>'
+						dataColText += '<td align="left">' + dj[i].PatientMainDicomTags.PatientID + '</td>'
+						dataColText += '<td align="left">' + dj[i].PatientMainDicomTags.PatientName + '</td>'
+						dataColText += '<td align="left">' + sa + '</td>'
+						dataColText += '<td align="left">' + mld + '</td>';
+						dataColText += '<td align="left">' + desc +  protoname + '</td>'
+						let dataCol = $(dataColText);
+						$(dataRow).append($(dataCol));
+
+						operatingCol = $('<td align="center"></td>');
+						$(dataRow).append($(operatingCol));
+						let previewCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/preview-icon.png" title="เปิดดูรูปด้วย Web Viewer"/>');
+						//let instancePreview = dj[i].SamplingSeries.Instances[0];
+						$(previewCmd).on('click', function(evt){
+							//doOpenPreview(instancePreview, dj[i].Series[0]);
+							doOpenStoneWebViewer(dj[i].MainDicomTags.StudyInstanceUID);
+						});
+						$(operatingCol).append($(previewCmd));
+
+						let patientProps = sa.split('/');
+						let defualtValue = {patient: {id: dj[i].PatientMainDicomTags.PatientID, name: dj[i].PatientMainDicomTags.PatientName, age: patientProps[1], sex: patientProps[0]}, bodypart: bdp, studyID: dj[i].ID, acc: dj[i].MainDicomTags.AccessionNumber, mdl: mld};
+						defualtValue.studyDesc = dj[i].MainDicomTags.StudyDescription;
+						defualtValue.protocalName = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
+						defualtValue.manufacturer = dj[i].SamplingSeries.MainDicomTags.Manufacturer;
+						defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
+						defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
+						let createNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
+						$(createNewCaseCmd).on('click', function(evt){
+							doOpenCreateNewCase(defualtValue, dj[i].Series);
+						});
+
+						$(operatingCol).append($(spacingBox));
+						$(operatingCol).append($(createNewCaseCmd));
+
+						let downloadDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/zip-icon.png" title="ดาวน์โหลด zip ไฟล์"/>');
+						$(downloadDicomCmd).on('click', function(evt){
+							let dicomFilename = dj[i].PatientMainDicomTags.PatientName.split(' ');
+							dicomFilename = dicomFilename.join('_');
+							dicomFilename = dicomFilename + '-' + dj[i].MainDicomTags.StudyDate + '.zip';
+							doDownloadDicom(dj[i].ID, dicomFilename);
+						});
+
+						$(operatingCol).append($(spacingBox));
+						$(operatingCol).append($(downloadDicomCmd));
+
+						let deleteDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/delete-icon.png" title="ลบรายการนี้"/>');
+						$(deleteDicomCmd).on('click', function(evt){
+							doDeleteDicom(dj[i].ID);
+						});
+
+						$(operatingCol).append($(spacingBox));
+						$(operatingCol).append($(deleteDicomCmd));
+
+						$(rsTable).append($(dataRow));
 					}
-					if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
-						protoname = '<div class="protoname">' + dj[i].SamplingSeries.MainDicomTags.ProtocolName + '</div>';
-					} else {
-						protoname = '';
-					}
-					if (dj[i].SamplingSeries.MainDicomTags.Modality) {
-						mld = dj[i].SamplingSeries.MainDicomTags.Modality;
-					} else {
-						mld = '';
-					}
-					if (dj[i].MainDicomTags.StudyDate) {
-						studydate = dj[i].MainDicomTags.StudyDate;
-						studydate = util.formatStudyDate(studydate);
-					} else {
-						studydate = '';
-					}
-					if (dj[i].PatientMainDicomTags.PatientSex) {
-						sa = dj[i].PatientMainDicomTags.PatientSex;
-					} else {
-						sa = '-';
-					}
-					if (dj[i].PatientMainDicomTags.PatientBirthDate) {
-						sa = sa + '/' + util.getAge(dj[i].PatientMainDicomTags.PatientBirthDate)
-					} else {
-						sa = sa + '/-';
-					}
-
-					let dataRow = $('<tr class="case-row"></tr>');
-					let dataColText = '';
-					dataColText += '<td align="center">'+ (i + 1 + startRef) + '</td>'
-					dataColText += '<td align="left">' + '<div style="float: left;">' + studydate + '</div><div style="background-color: gray; color: white; text-align: center; float: left; margin: -6px 10px; padding: 5px; border-radius: 5px;">' + util.formatStudyTime(dj[i].MainDicomTags.StudyTime) + '</div></td>'
-					dataColText += '<td align="left">' + dj[i].PatientMainDicomTags.PatientID + '</td>'
-					dataColText += '<td align="left">' + dj[i].PatientMainDicomTags.PatientName + '</td>'
-					dataColText += '<td align="left">' + sa + '</td>'
-					dataColText += '<td align="left">' + mld + '</td>';
-					dataColText += '<td align="left">' + desc +  protoname + '</td>'
-					let dataCol = $(dataColText);
-					$(dataRow).append($(dataCol));
-
-					operatingCol = $('<td align="center"></td>');
-					$(dataRow).append($(operatingCol));
-					let previewCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/preview-icon.png" title="เปิดดูรูปด้วย Web Viewer"/>');
-					//let instancePreview = dj[i].SamplingSeries.Instances[0];
-					$(previewCmd).on('click', function(evt){
-						//doOpenPreview(instancePreview, dj[i].Series[0]);
-						doOpenStoneWebViewer(dj[i].MainDicomTags.StudyInstanceUID);
-					});
-					$(operatingCol).append($(previewCmd));
-
-					let patientProps = sa.split('/');
-					let defualtValue = {patient: {id: dj[i].PatientMainDicomTags.PatientID, name: dj[i].PatientMainDicomTags.PatientName, age: patientProps[1], sex: patientProps[0]}, bodypart: bdp, studyID: dj[i].ID, acc: dj[i].MainDicomTags.AccessionNumber, mdl: mld};
-					defualtValue.studyDesc = dj[i].MainDicomTags.StudyDescription;
-					defualtValue.protocalName = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
-					defualtValue.manufacturer = dj[i].SamplingSeries.MainDicomTags.Manufacturer;
-					defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
-					defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
-					let createNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
-					$(createNewCaseCmd).on('click', function(evt){
-						doOpenCreateNewCase(defualtValue, dj[i].Series);
-					});
-
-					$(operatingCol).append($(spacingBox));
-					$(operatingCol).append($(createNewCaseCmd));
-
-					let downloadDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/zip-icon.png" title="ดาวน์โหลด zip ไฟล์"/>');
-					$(downloadDicomCmd).on('click', function(evt){
-						let dicomFilename = dj[i].PatientMainDicomTags.PatientName.split(' ');
-						dicomFilename = dicomFilename.join('_');
-						dicomFilename = dicomFilename + '-' + dj[i].MainDicomTags.StudyDate + '.zip';
-						doDownloadDicom(dj[i].ID, dicomFilename);
-					});
-
-					$(operatingCol).append($(spacingBox));
-					$(operatingCol).append($(downloadDicomCmd));
-
-					let deleteDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/delete-icon.png" title="ลบรายการนี้"/>');
-					$(deleteDicomCmd).on('click', function(evt){
-						doDeleteDicom(dj[i].ID);
-					});
-
-					$(operatingCol).append($(spacingBox));
-					$(operatingCol).append($(deleteDicomCmd));
-
-					$(rsTable).append($(dataRow));
 				}
-			}
-			resolve($(rsTable));
+				setTimeout(()=> {
+					resolve2($(rsTable));
+				}, 700);
+			});
+			Promise.all([promiseList]).then((ob)=>{
+				//resolve($(rsTable));
+				resolve(ob[0]);
+			});
 		});
   }
 
