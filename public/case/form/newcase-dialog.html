@@ -81,7 +81,7 @@
           <td align="left" class="input-label">รายละเอียดเพิ่มเติม</td>
           <td align="left"><textarea id="detail" cols="25" rows="5"></textarea></td>
         </tr>
-        <tr>
+        <tr id="radio-row">
           <td align="left" class="input-label">รังสีแพทย์</td>
           <td align="left" colspan="3">
             <select id="dr-reader">
@@ -98,6 +98,7 @@
       <input type="hidden" id="stationName"/>
       <input type="hidden" id="caseID"/>
       <input type="hidden" id="studyInstanceUID"/>
+      <input type="hidden" id="radioId"/>
     </div>
     <div class="modal-footer">
       <input type="Button" value=" ส่งอ่าน " id="SaveNewCase-Cmd"/>
@@ -154,6 +155,7 @@
     let manufacturer = $('#manufacturer').val();
     let stationName = $('#stationName').val();
     let studyInstanceUID = $('#studyInstanceUID').val();
+    let radioId = $('#radioId').val();
     //console.log(/^[a-zA-Z]\w{1,65}$/.test(patientNameEN));
     resetFieldValidate();
 
@@ -188,7 +190,7 @@
       $('#dr-reader').focus();
       return false;
     } else {
-      let newCase = {patientNameTH, patientNameEN, patientHistory, studyID, patientSex, patientAge, patientRights, price, hn, acc, department, drOwner, bodyPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID};
+      let newCase = {patientNameTH, patientNameEN, patientHistory, studyID, patientSex, patientAge, patientRights, price, hn, acc, department, drOwner, bodyPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
       //console.log(newCase);
       return newCase;
     }

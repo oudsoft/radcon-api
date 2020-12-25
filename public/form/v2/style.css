@@ -1,0 +1,93 @@
+/* */
+@font-face { font-family: THSarabunNew; src: url("../../font/THSarabunNew.ttf");}
+@font-face { font-family: THSarabunNewBold; src: url("../../font/THSarabunNew Bold.ttf");}
+
+input, select, textarea, button{
+	font-family:inherit;
+	font-size: 24px;
+}
+input[type='text'], input[type='number'], select, textarea {
+	border-radius: 4px;
+}
+
+.loader {
+  position: relative;
+  border: 16px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 16px solid #3498db;
+  width: 70px;
+  height: 70px;
+  left:50%;
+  top:50%;
+  -webkit-animation: spin 2s linear infinite; /* Safari */
+  animation: spin 2s linear infinite;
+}
+#overlay{
+    position: absolute;
+    top:0px;
+    left:0px;
+    width: 100%;
+    height: 100%;
+    background: black;
+    opacity: .5;
+}
+/* Safari */
+@-webkit-keyframes spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.blink {
+  animation: blink-animation 1s steps(5, start) infinite;
+  -webkit-animation: blink-animation 1s steps(5, start) infinite;
+}
+@keyframes blink-animation {
+  to {
+    visibility: hidden;
+  }
+}
+@-webkit-keyframes blink-animation {
+  to {
+    visibility: hidden;
+  }
+}
+
+.accorhead {
+	display: block;
+	height: 40px;
+	line-height: 40px;
+	background-color: #FCCF36;
+	padding: 4;
+	width: inherit;
+	text-align: center;
+	margin-top: 10px;
+	cursor: pointer;
+}
+
+.accorcont {
+	display: none;
+  width: inherit;
+  height: auto;
+  border: 1px solid #ccc;
+}
+
+.accoractive {
+  background: #eee;
+  color: #000;
+}
+
+.casetools{
+	display: block;
+	height: 60px;
+	line-height: 60px;
+	background-color: #FCCF36;
+	padding: 4;
+	width: inherit;
+	text-align: center;
+	margin-top: 10px;
+}

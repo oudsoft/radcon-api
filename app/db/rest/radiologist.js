@@ -111,6 +111,96 @@ app.post('/join/update/(:radioId)', (req, res) => {
   }
 });
 
+//caseaccept load update API
+app.post('/caseaccept/(:radioId)/(:hospitalId)', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          let radioId = req.params.radioId;
+          let hospitalId = req.params.hospitalId;
+          const userInclude = [{model: db.userinfoes, attributes: excludeColumn}];
+          const radusers = await db.users.findAll({ attributes: excludeColumn, include: userInclude, where: {id: radioId}});
+          const radioConfigs = JSON.parse(radusers[0].userinfo.User_Hospitals);
+          const promiseList = new Promise(async function(resolve, reject) {
+            const configs = await radioConfigs.filter((item, i) => {
+              if (item.id === hospitalId) {
+                return item;
+              }
+            });
+            setTimeout(()=> {
+              resolve(configs);
+            },400);
+          });
+          Promise.all([promiseList]).then((ob)=> {
+            res.json({status: {code: 200}, configs: ob[0]});
+          }).catch((err)=>{
+            log.error(error);
+            res.json({status: {code: 500}, error: error});
+          });
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+//caseaccept reset update API
+app.post('/caseaccept/reset/(:radioId)/(:hospitalId)', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          let radioId = req.params.radioId;
+          let hospitalId = req.params.hospitalId;
+          const userInclude = [{model: db.userinfoes, attributes: excludeColumn}];
+          const radusers = await db.users.findAll({ attributes: excludeColumn, include: userInclude, where: {id: radioId}});
+          const radioConfigs = JSON.parse(radusers[0].userinfo.User_Hospitals);
+          const radioUserinfoId = radusers[0].userinfo.id;
+          const promiseList = new Promise(async function(resolve, reject) {
+            const anotherConfigs = await radioConfigs.filter((item, i) => {
+              if (item.id !== hospitalId) {
+                return item;
+              }
+            });
+            anotherConfigs.push(req.body);
+            setTimeout(()=> {
+              resolve(anotherConfigs);
+            },400);
+          });
+          Promise.all([promiseList]).then(async (ob)=> {
+            let configData = {User_Hospitals: JSON.stringify(ob[0])};
+            await db.userinfoes.update(configData, { where: { id: radioUserinfoId } });
+            res.json({status: {code: 200}});
+          }).catch((err)=>{
+            log.error(error);
+            res.json({status: {code: 500}, error: error});
+          });
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
 module.exports = ( dbconn, monitor ) => {
   db = dbconn;
   log = monitor;

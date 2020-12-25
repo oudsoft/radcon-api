@@ -706,7 +706,7 @@ module.exports = function ( jq ) {
 	const defualtPacsStudyDate = 'ALL';
 
 	const caseReadWaitStatus = [1,2,3,4,7];
-	const caseReadSuccessStatus = [5,6];
+	const caseReadSuccessStatus = [5];
 	const caseAllStatus = [1,2,3,4,5,6,7];
 
 	/*******************************************************/
@@ -897,6 +897,7 @@ module.exports = function ( jq ) {
 	function doShowRwCaseList(incidents) {
 		return new Promise(async function(resolve, reject) {
 			if ((incidents) && (incidents.length > 0)) {
+				/*
 				let filterIncidents = incidents.filter((item, ind) => {
 					if (caseReadWaitStatus.indexOf(item.case.casestatusId) >= 0) {
 						return item;
@@ -908,6 +909,10 @@ module.exports = function ( jq ) {
 				} else {
 					resolve($('<div>Cases not found.</div>'));
 				}
+				*/
+
+				let showTable = await doShowCaseList(incidents);
+				resolve(showTable);
 			} else {
 				resolve($('<div>Cases not found.</div>'));
 			}
@@ -917,6 +922,7 @@ module.exports = function ( jq ) {
   function doShowRsCaseList(incidents) {
 		return new Promise(async function(resolve, reject) {
 			if ((incidents) && (incidents.length > 0)) {
+				/*
 				let filterIncidents = incidents.filter((item, ind) => {
 					if (caseReadSuccessStatus.indexOf(item.case.casestatusId) >= 0) {
 						return item;
@@ -928,6 +934,9 @@ module.exports = function ( jq ) {
 				} else {
 					resolve($('<div>Cases not found.</div>'));
 				}
+				*/
+				let showTable = await doShowCaseList(incidents);
+				resolve(showTable);
 			} else {
 				resolve($('<div>Cases not found.</div>'));
 			}
@@ -1025,17 +1034,21 @@ module.exports = function ( jq ) {
 				});
 				$(downlodDicomButton).appendTo($(operationCmdBox));
 
-				let editCaseButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/edit-icon.png" title="Edit Case Detail."/>');
-				$(editCaseButton).click(function() {
-					doCallEditCase(incidents[i].case.id);
-				});
-				$(editCaseButton).appendTo($(operationCmdBox));
+				if ((incidents[i].case.casestatus.id == 1) || (incidents[i].case.casestatus.id == 3) || (incidents[i].case.casestatus.id == 4) || (incidents[i].case.casestatus.id == 7)) {
+					let editCaseButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/edit-icon.png" title="Edit Case Detail."/>');
+					$(editCaseButton).click(function() {
+						doCallEditCase(incidents[i].case.id);
+					});
+					$(editCaseButton).appendTo($(operationCmdBox));
+				}
 
-				let changeCaseStatusButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/status-icon.png" title="Change Case\'s Status."/>');
-				$(changeCaseStatusButton).click(function() {
-					doShowPopupChangeCaseStatus(incidents[i].case.id, incidents[i].case.casestatusId);
-				});
-				$(changeCaseStatusButton).appendTo($(operationCmdBox));
+				if ((incidents[i].case.casestatus.id == 1) || (incidents[i].case.casestatus.id == 3) || (incidents[i].case.casestatus.id == 4) || (incidents[i].case.casestatus.id == 5) || (incidents[i].case.casestatus.id == 7)) {
+					let changeCaseStatusButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/status-icon.png" title="Change Case\'s Status."/>');
+					$(changeCaseStatusButton).click(function() {
+						doShowPopupChangeCaseStatus(incidents[i].case.id, incidents[i].case.casestatusId);
+					});
+					$(changeCaseStatusButton).appendTo($(operationCmdBox));
+				}
 
 				if (caseReadSuccessStatus.indexOf(incidents[i].case.casestatusId) >= 0) {
 					let printResultButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/print-icon.png" title="Print Read Result."/>');
@@ -1059,20 +1072,22 @@ module.exports = function ( jq ) {
 						doConvertResultToDicom(incidents[i].case.id, hospitalId, userId, incidents[i].case.Case_OrthancStudyID, incidents[i].case.Case_Modality, studyInstanceUID);
 					});
 					$(convertResultButton).appendTo($(operationCmdBox));
+
+					let zoomCallButton = $('<img class="pacs-command-dd" data-toggle="tooltip" src="/images/zoom-black-icon.png" title="Call Radiologist by zoom app."/>');
+					$(zoomCallButton).click(function() {
+						doZoomCallRadio(incidents[i]);
+					});
+					$(zoomCallButton).appendTo($(operationCmdBox));
+
 				}
 
-				let zoomCallButton = $('<img class="pacs-command-dd" data-toggle="tooltip" src="/images/zoom-black-icon.png" title="Call Radiologist by zoom app."/>');
-				$(zoomCallButton).click(function() {
-					doZoomCallRadio(incidents[i]);
-				});
-				$(zoomCallButton).appendTo($(operationCmdBox));
-
-				let deleteCaseButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/delete-icon.png" title="Delete Case."/>');
-				$(deleteCaseButton).click(function() {
-					doCallDeleteCase(incidents[i].case.id);
-				});
-				$(deleteCaseButton).appendTo($(operationCmdBox));
-
+				if ((incidents[i].case.casestatus.id == 3) || (incidents[i].case.casestatus.id == 4) || (incidents[i].case.casestatus.id == 7)) {
+					let deleteCaseButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/delete-icon.png" title="Delete Case."/>');
+					$(deleteCaseButton).click(function() {
+						doCallDeleteCase(incidents[i].case.id);
+					});
+					$(deleteCaseButton).appendTo($(operationCmdBox));
+				}
 			}
 			resolve($(rwTable));
 		});
@@ -1581,9 +1596,16 @@ module.exports = function ( jq ) {
 			$("#urgent-type").val(defualtValue.urgent);
 
 			$("#dr-reader").val(defualtValue.dr_id);
+			$("#radioId").val(defualtValue.dr_id);
 
 			$("#detail").val(defualtValue.detail);
 			$("#caseID").val(defualtValue.id);
+
+			if ((defualtValue.status == 1) || (defualtValue.status == 3) || (defualtValue.status == 4) || (defualtValue.status == 7)) {
+				$("#radio-row").show();
+			} else {
+				$("#radio-row").hide();
+			}
 			/*
 			let ziplink = 'https://radconnext.com/radconnext/inc_files/' + defualtValue.dicom_zip1;
 			$('#MainTableForm').append($('<tr><td class="input-label">Dicom Zip File</td><td colspan="3"><a href="' + ziplink + '" target="_blank"><img class="pacs-command" data-toggle="tooltip" src="images/zip-icon.png" title="Download Dicom in zip file."/></a></td></tr>'));
@@ -1755,27 +1777,39 @@ module.exports = function ( jq ) {
 	}
 
 	async function doSaveEditCase(caseId, patientId){
-		let newCaseData = doVerifyInputForm();
-		if (newCaseData) {
+		let updateCaseData = doVerifyInputForm();
+		if (updateCaseData) {
 			$('body').loading('start');
 			const main = require('../main.js');
 			const userdata = JSON.parse(main.doGetUserData());
 			const hospitalId = userdata.hospitalId;
 			const userId = userdata.id
 
-			let patientData = doPreparePatientParams(newCaseData);
+			let patientData = doPreparePatientParams(updateCaseData);
 			let rqParams = {data: patientData, patientId: patientId};
 			let patientRes = await doCallApi('/api/patient/update', rqParams);
 
-			const urgenttypeId = newCaseData.urgentType;
-			const cliamerightId = newCaseData.patientRights
-			let casedata = doPrepareCaseParams(newCaseData);
+			const urgenttypeId = updateCaseData.urgentType;
+			const cliamerightId = updateCaseData.patientRights
+			let casedata = doPrepareCaseParams(updateCaseData);
 			//rqParams = {data: casedata, hospitalId: hospitalId, userId: userId, patientId: patientId, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId};
 			rqParams = {id: caseId, data: casedata, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId};
 			let caseRes = await doCallApi('/api/cases/update', rqParams);
 			if (caseRes.status.code === 200) {
-				$.notify("บันทึกการแก้ไขเคสเรียบร้อยแล้ว", "info");
-				doCloseNewCaseBox();
+				if (updateCaseData.drReader !== updateCaseData.radioId) {
+					let caseNewStatus = 1;
+					let d = new Date().getTime();
+					let stampTime = util.formatDateTimeStr(d);
+					let changeRaioLog = 'Radio change from ' + updateCaseData.drReader + ' to ' + updateCaseData.radioId + ' by ' + userId + ' at ' + stampTime;
+					doUpdateCaseStatus(caseId, caseNewStatus, changeRaioLog).then((caseChangeStatusRes) => {
+						console.log(caseChangeStatusRes);
+						$.notify("บันทึกการแก้ไขเคสและปรับสถานะเคสเป็นเคสใหม่เรียบร้อยแล้ว", "info");
+						doCloseNewCaseBox();
+					});
+				} else {
+					$.notify("บันทึกการแก้ไขเคสเรียบร้อยแล้ว", "info");
+					doCloseNewCaseBox();
+				}
 			} else {
 				$.notify("เกิดความผิดพลาด ไม่สามารถบันทึกการแก้ไขเคสได้ในขณะนี้", "error");
 			}
@@ -2493,9 +2527,8 @@ module.exports = function ( jq ) {
 		}
 	}
 
-	const formatStartTimeStr = function(){
-		let d = new Date().getTime() + (5*60*1000);
-	  d = new Date(d);
+	const formatDateTimeStr = function(dt){
+	  d = new Date(dt);
 		var yy, mm, dd, hh, mn, ss;
 	  yy = d.getFullYear();
 	  if (d.getMonth() + 1 < 10) {
@@ -2525,6 +2558,11 @@ module.exports = function ( jq ) {
 	  }
 		var td = `${yy}-${mm}-${dd}T${hh}:${mn}:${ss}`;
 		return td;
+	}
+
+	const formatStartTimeStr = function(){
+		let d = new Date().getTime() + (5*60*1000);
+		return formatDateTimeStr(d);
 	}
 
 	const invokeGetDisplayMedia = function(success) {
@@ -2738,6 +2776,7 @@ module.exports = function ( jq ) {
 		formatStudyTime,
 		getDatetimeValue,
 		formatDateDev,
+		formatDateTimeStr,
 		formatStartTimeStr,
 		invokeGetDisplayMedia,
 		addStreamStopListener,

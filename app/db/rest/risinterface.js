@@ -9,10 +9,13 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-var db, Orthanc, log, auth;
+var db, Ris, log, auth;
 
 const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
-
+/*
+  RIS User
+  Token = eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJyaXN1c2VyIiwiaWF0IjoxNjA4ODc5NzIxMTg0fQ.HM3ADA9p7Mtv0nAR47hKYSHhogsZoImSG3OAPuKnGMI
+*/
 //List API
 app.post('/list', (req, res) => {
   let token = req.headers.authorization;
@@ -20,12 +23,11 @@ app.post('/list', (req, res) => {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
         try {
-          const hospitalId = req.query.hospitalId;
-          const count = await Orthanc.count();
-          const orthanc = await Orthanc.findAll({ attributes: excludeColumn, where: {hospitalId: hospitalId}});
+          const count = await Ris.count();
+          const ris = await Ris.findAll({ attributes: excludeColumn});
           //res.json({status: {code: 200}, types: types});
           //log.info('Result=> ' + JSON.stringify(types));
-          res.json({Result: "OK", Records: orthanc, TotalRecordCount: count});
+          res.json({Result: "OK", Records: ris, TotalRecordCount: count});
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});
@@ -47,9 +49,9 @@ app.post('/add', (req, res) => {
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        let newOrthanc = req.body;
-        let adOrthanc = await Orthanc.create(newOrthanc);
-        res.json({Result: "OK", Record: adOrthanc});
+        let newRisData = {RisData: req.body};
+        let adRis = await Ris.create(newRisData);
+        res.json({Result: "OK", Record: adRis});
       } else {
         log.info('Can not found user from token.');
         res.json({status: {code: 203}, error: 'Your token lost.'});
@@ -67,9 +69,10 @@ app.post('/update', (req, res) => {
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        const id = req.body.id;
-        let updateOrthanc = req.body;
-        await Orthanc.update(updateOrthanc, { where: { id: id } });
+        //const id = req.body.id;
+        const id = 1;
+        let updateRis = {RisData: req.body};
+        await Ris.update(updateRis, { where: { id: id } });
         res.json({Result: "OK"});
       } else {
         log.info('Can not found user from token.');
@@ -89,7 +92,7 @@ app.post('/delete', (req, res) => {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
         const id = req.body.id;
-        await Orthanc.destroy({ where: { id: id } });
+        await Ris.destroy({ where: { id: id } });
         res.json({Result: "OK"});
       } else {
         log.info('Can not found user from token.');
@@ -106,6 +109,6 @@ module.exports = ( dbconn, monitor ) => {
   db = dbconn;
   log = monitor;
   auth = require('./auth.js')(db, log);
-  Orthanc = db.orthancs;
+  Ris = db.risinterfaces;
   return app;
 }

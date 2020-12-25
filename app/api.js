@@ -18,13 +18,11 @@ const windowsappPath = '/home/windowsapp';
 const db = require('./db/relation.js');
 db.sequelize.sync({ force: false });
 
-const apiproxy = require('./lib/apiproxy.js');
 const windowsappStatic = express.static(windowsappPath);
 const windowsappIndex = serveIndex(windowsappPath, {'icons': true});
 const uploader = require('./lib/uploader.js')(apiApp);
 const notificator = require('./lib/notification.js')(apiApp);
 
-apiApp.use('/apiproxy', apiproxy);
 apiApp.use('/windowsapp', windowsappStatic, windowsappIndex);
 
 //const orthancproxy = require('./lib/orthancproxy.js');
@@ -44,12 +42,16 @@ apiApp.post('/', (req, res) => {
 	res.status(200).send(req.body);
 });
 
+require('./lib/v2/pdfconvertor.js')(apiApp);
+
 module.exports = ( webSocketServer, monitor ) => {
 	log = monitor;
 
+	const externalapiproxy = require('./lib/v2/apiproxy.js')(db, log);
 	const orthancproxy = require('./lib/orthancproxy_new.js')(db, log);
 	const uploader = require('./lib/uploader.js')(apiApp);
 	const pdfconvertor = require('./lib/pdfconvertor.js')(apiApp, webSocketServer);
+	//const pdfconvertorV2 = require('./lib/v2/pdfconvertor.js')(apiApp);
 	const taskCase = require('./lib/casetask.js')(webSocketServer, db, log);
 	const taskApp = require('./lib/taskapp.js')(taskCase, db, log);
 	const zoomApp = require('./lib/zoom.js')(db, log);
@@ -75,7 +77,9 @@ module.exports = ( webSocketServer, monitor ) => {
 	const template = require('./db/rest/template.js')(db, log);
 	const caseresponse = require('./db/rest/caseresponse.js')(db, log);
 	const casereport = require('./db/rest/casereport.js')(webSocketServer, db, log);
+	const risinterface = require('./db/rest/risinterface.js')(db, log);
 
+	apiApp.use('/external', externalapiproxy);
 	apiApp.use('/orthancproxy', orthancproxy);
 	apiApp.use('/users', users);
 	apiApp.use('/user', user);
@@ -101,6 +105,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	apiApp.use('/tasks', taskApp);
 	apiApp.use('/zoom', zoomApp);
 	apiApp.use('/bot', botApp);
+	apiApp.use('/ris', risinterface);
 
 	const publicDir = path.normalize(__dirname + '/..' + '/public');
 	const internalHTTP = 'http-server ' + publicDir;

@@ -355,6 +355,13 @@ const RadLineUserDef = {
 			}
 		};
 
+// RIS interface
+const RadRisInterfaceDef = {
+	RisData : {
+		type: Sequelize.JSONB
+	}
+}
+
 module.exports = {
 	RadUserTypeDef,
 	RadUserStatusDef,
@@ -375,5 +382,6 @@ module.exports = {
 	RadCaseDef,
 	RadCaseResponseDef,
 	RadCaseReportDef,
-	RadLineUserDef
+	RadLineUserDef,
+	RadRisInterfaceDef
 }

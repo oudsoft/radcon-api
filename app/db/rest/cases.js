@@ -157,10 +157,12 @@ app.post('/filter/hospital', (req, res) => {
             }
           }
           const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
-          const cases = await Case.findAll({include: caseInclude, where: whereClous});
+          const orderby = [['id', 'DESC']];
+          const cases = await Case.findAll({include: caseInclude, where: whereClous, order: orderby});
           const casesFormat = [];
           const promiseList = new Promise(async function(resolve, reject) {
-            cases.forEach(async (item, i) => {
+            for (let i=0; i<cases.length; i++) {
+              let item = cases[i];
               const radUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RadiologistId}});
               const rades = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: radUser[0].userinfoId}});
               const Radiologist = {id: item.Case_RadiologistId, User_NameTH: rades[0].User_NameTH, User_LastNameTH: rades[0].User_LastNameTH};
@@ -168,7 +170,7 @@ app.post('/filter/hospital', (req, res) => {
               const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
               const Refferal = {id: item.Case_RefferalId, User_NameTH: refes[0].User_NameTH, User_LastNameTH: refes[0].User_LastNameTH};
               casesFormat.push({case: item, Radiologist: Radiologist, Refferal: Refferal});
-            });
+            }
             setTimeout(()=> {
               resolve(casesFormat);
             },500);
@@ -220,7 +222,7 @@ app.post('/filter/radio', (req, res) => {
                 } else {
                   whereClous = {hospitalId: item.id, Case_RadiologistId: raduserId, casestatusId: { [db.Op.in]: statusId }}
                 }
-                let orderby = [['createdAt', 'DESC']];
+                const orderby = [['id', 'DESC']];
                 const cases = await Case.findAll({include: caseInclude, where: whereClous, order: orderby});
                 cases.forEach((cas, i) => {
                   casesFormat.push(cas)

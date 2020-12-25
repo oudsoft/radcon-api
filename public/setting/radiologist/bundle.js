@@ -274,7 +274,7 @@ module.exports = function ( jq ) {
               readyMeetings.push(item);
               return;
             } else if (meetingRes.response.status === 'end') {
-              reqUl = '/api/zoom/deletemeeting';
+              reqUrl = '/api/zoom/deletemeeting';
               meetingRes = await doCallApi(reqUrl, reqParams);
             }
           });
@@ -329,10 +329,9 @@ module.exports = function ( jq ) {
             reqParams.params = zoomParams;
             doCallApi(reqUrl, reqParams).then((meetingsRes)=>{
               console.log('create meetingsRes=>', meetingsRes);
-              let meetingsSize = meetingsRes.meetings.length;
               reqUrl = '/api/zoom/getmeeting';
               reqParams = {};
-              reqParams.meetingId = meetingsRes.meetings[meetingsSize-1].id;
+              reqParams.meetingId = meetingsRes.response.id;
               doCallApi(reqUrl, reqParams).then((meetingRes)=>{
                 console.log('create meetingRes=>', meetingRes);
                 resolve(meetingRes.response);
@@ -583,9 +582,8 @@ module.exports = function ( jq ) {
 		}
 	}
 
-	const formatStartTimeStr = function(){
-		let d = new Date().getTime() + (5*60*1000);
-	  d = new Date(d);
+	const formatDateTimeStr = function(dt){
+	  d = new Date(dt);
 		var yy, mm, dd, hh, mn, ss;
 	  yy = d.getFullYear();
 	  if (d.getMonth() + 1 < 10) {
@@ -615,6 +613,11 @@ module.exports = function ( jq ) {
 	  }
 		var td = `${yy}-${mm}-${dd}T${hh}:${mn}:${ss}`;
 		return td;
+	}
+
+	const formatStartTimeStr = function(){
+		let d = new Date().getTime() + (5*60*1000);
+		return formatDateTimeStr(d);
 	}
 
 	const invokeGetDisplayMedia = function(success) {
@@ -828,6 +831,7 @@ module.exports = function ( jq ) {
 		formatStudyTime,
 		getDatetimeValue,
 		formatDateDev,
+		formatDateTimeStr,
 		formatStartTimeStr,
 		invokeGetDisplayMedia,
 		addStreamStopListener,
@@ -1507,147 +1511,29 @@ function doShowWorkSchedules(radioId) {
 	$('#WorkScheduleSection').on('togglemainform', async (e, data)=>{
 		$('body').loading('start');
 		$('#WorkScheduleSection').find('#HospitalJoinForm').remove();
-		let controlForm = await doCreateHospitalJoinForm(radioId);
+		let controlForm = await radio.doCreateHospitalJoinForm(radioId);
 		$('#WorkScheduleSection').append($(controlForm));
 		$(controlForm).on('openjoinconfig', (e, data)=>{
 			$('body').loading('start');
 			//console.log(data);
-			let configForm = doCreateJoinConfigurationForm(radioId);
+			let configForm = radio.doCreateJoinConfigurationForm(radioId);
 			$(controlForm).empty().append($(configForm));
 			$('body').loading('stop');
 		});
-		$(controlForm).on('loadschedule', (e, data)=>{
-
+		$(controlForm).on('loadschedule', async (e, data)=>{
+			$('body').loading('start');
+			console.log(data);
+			let acceptCaseConfigData = await radio.doLoadAcceptCaseConfig(data.radioId, data.joinId);
+			let acceptCaseConfigForm = await radio.doCreateAcceptCaseConfigForm(acceptCaseConfigData, data.radioId, data.joinId);
+			$(controlForm).find('#AcceptCaseConfigForm').remove();
+			$(controlForm).append($(acceptCaseConfigForm));
+			$('body').loading('stop');
 		});
 		$('body').loading('stop');
 	});
 	$('#WorkScheduleSection').find('#HospitalJoinForm').remove();
 	let eventData = {radioId: radioId};
 	$('#WorkScheduleSection').trigger('togglemainform', [eventData]);
-}
-
-function doCreateHospitalJoinForm(radioId){
-	return new Promise(async function(resolve, reject){
-		let form = $('<div id="HospitalJoinForm"></div>');
-		let mainDiv = $('<div style="display: table"></div>');
-		$(mainDiv).appendTo($(form));
-		let labelRow = $('<div style="display: table-row"></div>');
-		$(labelRow).appendTo($(mainDiv));
-		let labelCol = $('<div style="display: table-cell" width="200px;">รายการโรงพยาบาลที่รับงาน</div>');
-		$(labelCol).appendTo($(labelRow));
-		let configCol = $('<div style="display: table-cell""></div>');
-		$(configCol).appendTo($(labelRow));
-		let configCmd = $('<img src="/images/setting-icon.png" width="30px" title="hospital join configuration."/>');
-		$(configCmd).css({'cursor': 'pointer', 'margin-left': '20px'});
-		$(configCmd).appendTo($(configCol));
-		$(configCmd).on('click', (e)=>{
-			let eventData = {radioId: radioId};
-			$(selector).trigger('openjoinconfig', [eventData]);
-		});
-		let selectorRow = $('<div style="display: table-row"></div>');
-		$(selectorRow).appendTo($(mainDiv));
-		let selectorCol = $('<div style="display: table-cell""></div>');
-		$(selectorCol).appendTo($(selectorRow));
-		let selector = $('<select id="HospitalJoinSelector"></select>');
-		let guideOption = $('<option value="0">โปรดเลือกโรงพยาบาล</option>');
-		$(guideOption).appendTo($(selector));
-		$(selector).appendTo($(selectorCol));
-		$(selector).on('change', (e)=>{
-			let joinId = $(selector).val();
-			let eventData = {radioId: radioId, joinId: joinId};
-			$(selector).trigger('loadschedule', [eventData]);
-		});
-		radio.doCallHospitalJoinOption(radioId).then((joins) => {
-			//console.log((joins));
-			joins.options.forEach((item, i) => {
-				$(selector).append('<option value="' + item.Value + '">' + item.DisplayText + '</option>');
-			});
-			$(selector).css(radio.inputStyleClass);
-			$(form).css(radio.inputStyleClass);
-			resolve($(form));
-		});
-	});
-}
-
-function doCreateJoinConfigurationForm(radioId){
-	let form = $('<div id="JoinConfigurationForm"></div>');
-	let mainDiv = $('<div style="display: table"></div>');
-	$(mainDiv).appendTo($(form));
-	let labelRow = $('<div style="display: table-row"></div>');
-	$(labelRow).appendTo($(mainDiv));
-	let availableLabelCol = $('<div style="display: table-cell" width="300px;">โรงพยาบาลที่ยังไม่รับงาน</div>');
-	$(availableLabelCol).appendTo($(labelRow));
-	let existLabelCol = $('<div style="display: table-cell" width="300px;">โรงพยาบาลที่รับงานแล้ว</div>');
-	$(existLabelCol).appendTo($(labelRow));
-
-	let seletorRow = $('<div style="display: table-row"></div>');
-	$(seletorRow).appendTo($(mainDiv));
-	let availableCol = $('<div style="display: table-cell width: 200px"></div>');
-	$(availableCol).appendTo($(seletorRow));
-	let existCol = $('<div style="display: table-cell"></div>');
-	$(existCol).appendTo($(seletorRow));
-
-	let availableSelector = $('<select id="AvailableHospital" multiple></select>');
-	$(availableSelector).appendTo($(availableCol));
-	$(availableSelector).css(radio.inputStyleClass);
-	let existSelector = $('<select id="ExistHospital" multiple></select>');
-	$(existSelector).appendTo($(existCol));
-	$(existSelector).css(radio.inputStyleClass);
-
-	let availableList = $("#HospitalSelector > option").clone();
-	$(availableSelector).append($(availableList));
-
-	let existList = $("#HospitalJoinSelector > option").clone();
-	$(existSelector).append($(existList));
-	$(existSelector).find('option[value="0"]').remove();
-	$(existSelector).find('option').each((i,opt) =>{
-		let v = $(opt).attr('value');
-		$(availableSelector).find('option[value="' + v + '"]').remove();
-	});
-
-	$(availableSelector).on('change', (e) => {
-		let v = $(availableSelector).val();
-		let t = $(availableSelector).find('option[value="' + v + '"]').text();
-		$(existSelector).append('<option value="' + v + '">' + t + '</option>');
-		$(availableSelector).find('option[value="' + v + '"]').remove();
-	});
-	$(existSelector).on('change', (e) => {
-		let v = $(existSelector).val();
-		let t = $(existSelector).find('option[value="' + v + '"]').text();
-		$(availableSelector).append('<option value="' + v + '">' + t + '</option>');
-		$(existSelector).find('option[value="' + v + '"]').remove();
-	});
-
-	let actionCmdRow = $('<div style="display: table-row; text-align: center; margin-top: 20px;"></div>');
-	$(actionCmdRow).appendTo($(mainDiv));
-	let actionCmdCol = $('<div style="display: table-cell; width: 400px;"></div>');
-	$(actionCmdCol).appendTo($(actionCmdRow));
-	let saveCmd = $('<input type="button" value=" Save "/>');
-	$(saveCmd).appendTo($(actionCmdCol));
-	$(saveCmd).on('click', (e)=>{
-		$('body').loading('start');
-		let yourHospitals = [];
-		$(existSelector).find('option').each((i,opt) =>{
-			let v = $(opt).attr('value');
-			let item = {id: v};
-			yourHospitals.push(item);
-		});
-		radio.doCallHospitalJoinUpdate(yourHospitals, radioId).then((result)=>{
-			console.log(result);
-			alert('บันทึกการเข้ารับงานสำเร็จ');
-			let eventData = {radioId: radioId};
-			$(saveCmd).trigger('togglemainform', [eventData]);
-			$('body').loading('stop');
-		});
-	});
-	let cancelCmd = $('<input type="button" value=" Cancel "/>');
-	$(cancelCmd).appendTo($(actionCmdCol));
-	$(cancelCmd).on('click', (e)=>{
-		let eventData = {radioId: radioId};
-		$(cancelCmd).trigger('togglemainform', [eventData]);
-	});
-	$(actionCmdCol).find('input[type="button"]').css(radio.inputStyleClass);
-	return $(form);
 }
 
 /* Radio Tools Section */
@@ -1875,6 +1761,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1887,6 +1774,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1900,6 +1788,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1915,6 +1804,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1927,6 +1817,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1957,6 +1848,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1969,6 +1861,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1981,6 +1874,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -1993,6 +1887,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -2005,6 +1900,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -2017,6 +1913,7 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
 		});
 	}
@@ -2029,7 +1926,189 @@ module.exports = function ( jq ) {
 				resolve(response);
 			}).catch((err) => {
 				console.log(JSON.stringify(err));
+				reject(err);
 			})
+		});
+	}
+
+	const doLoadAcceptCaseConfig = function(radioId, hospitalId) {
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/radiologist/caseaccept/' + radioId + '/' + hospitalId;
+			var params = {userId: radioId};
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+				reject(err);
+			})
+		});
+	}
+
+	const doResetAcceptCaseConfig = function(newConfig, radioId, hospitalId) {
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/radiologist/caseaccept/reset/' + radioId + '/' + hospitalId;
+			var params = newConfig;
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+				reject(err);
+			})
+		});
+	}
+
+	/* Radio Work Schedule Section */
+
+	function doCreateHospitalJoinForm(radioId){
+		return new Promise(async function(resolve, reject){
+			let form = $('<div id="HospitalJoinForm"></div>');
+			let mainDiv = $('<div style="display: table"></div>');
+			$(mainDiv).appendTo($(form));
+			let labelRow = $('<div style="display: table-row"></div>');
+			$(labelRow).appendTo($(mainDiv));
+			let labelCol = $('<div style="display: table-cell" width="200px;">รายการโรงพยาบาลที่รับงาน</div>');
+			$(labelCol).appendTo($(labelRow));
+			let configCol = $('<div style="display: table-cell""></div>');
+			$(configCol).appendTo($(labelRow));
+			let configCmd = $('<img src="/images/setting-icon.png" width="30px" title="hospital join configuration."/>');
+			$(configCmd).css({'cursor': 'pointer', 'margin-left': '20px'});
+			$(configCmd).appendTo($(configCol));
+			$(configCmd).on('click', (e)=>{
+				let eventData = {radioId: radioId};
+				$(selector).trigger('openjoinconfig', [eventData]);
+			});
+			let selectorRow = $('<div style="display: table-row"></div>');
+			$(selectorRow).appendTo($(mainDiv));
+			let selectorCol = $('<div style="display: table-cell""></div>');
+			$(selectorCol).appendTo($(selectorRow));
+			let selector = $('<select id="HospitalJoinSelector"></select>');
+			let guideOption = $('<option value="0">โปรดเลือกโรงพยาบาล</option>');
+			$(guideOption).appendTo($(selector));
+			$(selector).appendTo($(selectorCol));
+			$(selector).on('change', (e)=>{
+				let joinId = $(selector).val();
+				let eventData = {radioId: radioId, joinId: joinId};
+				$(selector).trigger('loadschedule', [eventData]);
+			});
+			doCallHospitalJoinOption(radioId).then((joins) => {
+				//console.log((joins));
+				joins.options.forEach((item, i) => {
+					$(selector).append('<option value="' + item.Value + '">' + item.DisplayText + '</option>');
+				});
+				$(selector).css(inputStyleClass);
+				$(form).css(inputStyleClass);
+				resolve($(form));
+			});
+		});
+	}
+
+	function doCreateJoinConfigurationForm(radioId){
+		let form = $('<div id="JoinConfigurationForm"></div>');
+		let mainDiv = $('<div style="display: table"></div>');
+		$(mainDiv).appendTo($(form));
+		let labelRow = $('<div style="display: table-row"></div>');
+		$(labelRow).appendTo($(mainDiv));
+		let availableLabelCol = $('<div style="display: table-cell" width="300px;">โรงพยาบาลที่ยังไม่รับงาน</div>');
+		$(availableLabelCol).appendTo($(labelRow));
+		let existLabelCol = $('<div style="display: table-cell" width="300px;">โรงพยาบาลที่รับงานแล้ว</div>');
+		$(existLabelCol).appendTo($(labelRow));
+
+		let seletorRow = $('<div style="display: table-row"></div>');
+		$(seletorRow).appendTo($(mainDiv));
+		let availableCol = $('<div style="display: table-cell width: 200px"></div>');
+		$(availableCol).appendTo($(seletorRow));
+		let existCol = $('<div style="display: table-cell"></div>');
+		$(existCol).appendTo($(seletorRow));
+
+		let availableSelector = $('<select id="AvailableHospital" multiple></select>');
+		$(availableSelector).appendTo($(availableCol));
+		$(availableSelector).css(inputStyleClass);
+		let existSelector = $('<select id="ExistHospital" multiple></select>');
+		$(existSelector).appendTo($(existCol));
+		$(existSelector).css(inputStyleClass);
+
+		let availableList = $("#HospitalSelector > option").clone();
+		$(availableSelector).append($(availableList));
+
+		let existList = $("#HospitalJoinSelector > option").clone();
+		$(existSelector).append($(existList));
+		$(existSelector).find('option[value="0"]').remove();
+		$(existSelector).find('option').each((i,opt) =>{
+			let v = $(opt).attr('value');
+			$(availableSelector).find('option[value="' + v + '"]').remove();
+		});
+
+		$(availableSelector).on('change', (e) => {
+			let v = $(availableSelector).val();
+			let t = $(availableSelector).find('option[value="' + v + '"]').text();
+			$(existSelector).append('<option value="' + v + '">' + t + '</option>');
+			$(availableSelector).find('option[value="' + v + '"]').remove();
+		});
+		$(existSelector).on('change', (e) => {
+			let v = $(existSelector).val();
+			let t = $(existSelector).find('option[value="' + v + '"]').text();
+			$(availableSelector).append('<option value="' + v + '">' + t + '</option>');
+			$(existSelector).find('option[value="' + v + '"]').remove();
+		});
+
+		let actionCmdRow = $('<div style="display: table-row; text-align: center; margin-top: 20px;"></div>');
+		$(actionCmdRow).appendTo($(mainDiv));
+		let actionCmdCol = $('<div style="display: table-cell; width: 400px;"></div>');
+		$(actionCmdCol).appendTo($(actionCmdRow));
+		let saveCmd = $('<input type="button" value=" Save "/>');
+		$(saveCmd).appendTo($(actionCmdCol));
+		$(saveCmd).on('click', (e)=>{
+			$('body').loading('start');
+			let yourHospitals = [];
+			$(existSelector).find('option').each((i,opt) =>{
+				let v = $(opt).attr('value');
+				let item = {id: v, acctype: 'n'};
+				yourHospitals.push(item);
+			});
+			doCallHospitalJoinUpdate(yourHospitals, radioId).then((result)=>{
+				console.log(result);
+				alert('บันทึกการเข้ารับงานสำเร็จ');
+				let eventData = {radioId: radioId};
+				$(saveCmd).trigger('togglemainform', [eventData]);
+				$('body').loading('stop');
+			});
+		});
+		let cancelCmd = $('<input type="button" value=" Cancel "/>');
+		$(cancelCmd).appendTo($(actionCmdCol));
+		$(cancelCmd).on('click', (e)=>{
+			let eventData = {radioId: radioId};
+			$(cancelCmd).trigger('togglemainform', [eventData]);
+		});
+		$(actionCmdCol).find('input[type="button"]').css(inputStyleClass);
+		return $(form);
+	}
+
+	const doCreateAcceptCaseConfigForm = function(configData, radioId, hospitalId) {
+		return new Promise(function(resolve, reject) {
+			let form = $('<div id="AcceptCaseConfigForm" style="display: table"></div>');
+			let formRow = $('<div style="display: table-row"></dv>');
+			let labelCell = $('<div style="display: table-cell; width: 250px;"><b>Auto Accept New Case</b></div>');
+			let valueCell = $('<div style="display: table-cell;"></div>');
+			let accOption = $('<select></select>');
+			$(accOption).css(inputStyleClass);
+			$(accOption).append($('<option value="n">No</option>'));
+			$(accOption).append($('<option value="y">Yes</option>'));
+			$(accOption).appendTo($(valueCell));
+			$(accOption).on('change', async (evt)=>{
+				$('body').loading('start');
+				let newAcc = $(accOption).val();
+				let newConfig = {id: hospitalId, acctype: newAcc};
+				let accResetRes = await doResetAcceptCaseConfig(newConfig, radioId, hospitalId);
+				console.log(accResetRes);
+				$('body').loading('stop');
+			});
+			let config = configData.configs[0];
+			if ((config) && (config.acctype)) {
+				$(accOption).val(config.acctype);
+			}
+			$(form).append($(formRow));
+			$(formRow).append($(labelCell)).append($(valueCell));
+			resolve($(form));
 		});
 	}
 
@@ -2435,6 +2514,14 @@ module.exports = function ( jq ) {
 		doCallHospitalJoinOption,
 		doCallHospitalJoinUpdate,
 		doCallTemplate,
+		doLoadAcceptCaseConfig,
+
+		/* Radio Work Schedule Section */
+
+		doCreateHospitalJoinForm,
+		doCreateJoinConfigurationForm,
+		doCreateAcceptCaseConfigForm,
+
 		/* Radio Tools Section */
 		doCreateSearchDicomForm,
 		doCreateResultCFind,

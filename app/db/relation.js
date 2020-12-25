@@ -115,6 +115,8 @@ casereports.belongsTo(cases);
 const lineusers = sequelize.define('lineusers', Def.RadLineUserDef);
 lineusers.belongsTo(users);
 
+const risinterfaces = sequelize.define('risinterfaces', Def. RadRisInterfaceDef);
+
 module.exports =  {
   sequelize,
   Op,
@@ -138,5 +140,6 @@ module.exports =  {
   cases,
   caseresponses,
   casereports,
-  lineusers
+  lineusers,
+  risinterfaces
 }
