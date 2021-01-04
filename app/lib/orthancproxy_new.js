@@ -45,7 +45,7 @@ const runcommand = function (command) {
 		*/
 	});
 }
-
+/*
 const doLoadOrthancTarget = function(hospitalId, hostname){
 	return new Promise(async function(resolve, reject) {
 		//log.info('hostname => ' + hostname);
@@ -63,6 +63,7 @@ const doLoadOrthancTarget = function(hospitalId, hostname){
 		}
 	});
 }
+*/
 
 var db, Orthanc, log, auth, uti;
 
@@ -76,7 +77,7 @@ app.post('/find', function(req, res) {
 	if (hospitalId) {
 		let rqBody = req.body.body;
 		log.info('rqBody=>' + rqBody)
-		doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
+		uti.doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
 			let username = req.body.username;
 			let method = req.body.method;
 			let cloud = JSON.parse(orthanc.Orthanc_Cloud)
@@ -122,7 +123,7 @@ app.post('/find', function(req, res) {
 
 app.get('/find', function(req, res) {
 	hospitalId = req.body.hospitalId;
-	doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
+	uti.doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
 		let rqBody = req.body.body;
 		let username = req.body.username;
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud)
@@ -138,7 +139,7 @@ app.get('/find', function(req, res) {
 
 app.post('/preview/(:instanceID)', function(req, res) {
 	hospitalId = req.body.hospitalId;
-	doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
+	uti.doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
 		var instanceID = req.params.instanceID;
 		var username = req.body.username;
 		var previewFileName = instanceID + '.png';
@@ -156,7 +157,7 @@ app.post('/preview/(:instanceID)', function(req, res) {
 
 app.post('/loadarchive/(:studyID)', function(req, res) {
 	hospitalId = req.body.hospitalId;
-	doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
+	uti.doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
 		var studyID = req.params.studyID;
 		var username = req.body.username;
 		var archiveFileName = studyID + '.zip';
@@ -173,7 +174,7 @@ app.post('/loadarchive/(:studyID)', function(req, res) {
 
 app.post('/deletedicom/(:studyID)', function(req, res) {
 	hospitalId = req.body.hospitalId;
-	doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
+	uti.doLoadOrthancTarget(hospitalId, req.hostname).then((orthanc) => {
 		var studyID = req.params.studyID;
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud);
 		let orthancUrl = 'http://' + cloud.ip + ':' + cloud.httpport;
@@ -188,7 +189,7 @@ app.post('/deletedicom/(:studyID)', function(req, res) {
 app.get('/orthancexternalport', function(req, res) {
 	let hospitalId = req.query.hospitalId;
 	let hostname = req.hostname;
-	doLoadOrthancTarget(hospitalId, hostname).then((orthanc) => {
+	uti.doLoadOrthancTarget(hospitalId, hostname).then((orthanc) => {
 		let cloud = JSON.parse(orthanc.Orthanc_Cloud);
 		res.status(200).send({ip: cloud.ipex, port: cloud.portex});
 	});
@@ -198,6 +199,6 @@ module.exports = ( dbconn, monitor ) => {
   db = dbconn;
   log = monitor;
   Orthanc = db.orthancs;
-	uti = require('./mod/util.js')(log);
+	uti = require('./mod/util.js')(db, log);
   return app;
 }

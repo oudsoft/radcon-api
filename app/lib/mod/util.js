@@ -5,22 +5,29 @@ const url = require('url');
 const request = require('request-promise');
 const exec = require('child_process').exec;
 
-var log;
+var log, db;
+
+const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
+const myCloud = {os: "docker-linux", ip: "202.28.68.28", httpport: "8042", dicomport: "4242", user: "demo", pass: "demo", portex : "8042", ipex: "202.28.68.28"};
+const localOrthanc = [{id: 0, Orthanc_Local: {}, Orthanc_Cloud: JSON.stringify(myCloud)}];
 
 const proxyRequest = function(rqParam) {
 	return new Promise(function(resolve, reject) {
 		let rqBody = JSON.stringify(rqParam.body);
-		request({
-			/* json: true, */
+		let proxyParams = {
 			method: rqParam.method,
 			url: rqParam.uri,
 			auth: rqParam.auth,
 			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': rqParam.Authorization
+				'Content-Type': 'application/json'
 			},
 			body: rqBody
-		}, (err, res, body) => {
+		};
+		if (rqParam.Authorization) {
+			proxyParams.headers.Authorization = rqParam.Authorization;
+		}
+		log.info('proxyParams=>' + JSON.stringify(proxyParams));
+		request(proxyParams, (err, res, body) => {
 			if (!err) {
 				resolve({status: {code: 200}, res: res});
 			} else {
@@ -42,7 +49,7 @@ const runcommand = function (command) {
 				logger().error(new Date()  + " Reject " + `${stderr}`);
 				reject(`${stderr}`);
 			}
-        });
+    });
 	});
 }
 
@@ -52,11 +59,45 @@ const parseStr = function (str) {
   return str.replace(/%s/g, () => args[i++]);
 }
 
-module.exports = (monitor) => {
+const doLoadOrthancTarget = function(hospitalId, hostname){
+	return new Promise(async function(resolve, reject) {
+		//log.info('hostname => ' + hostname);
+		if ((hostname === 'localhost') || (hostname.indexOf('192.168') >= 0)){
+			resolve(localOrthanc[0]);
+		} else {
+			const orthancs = await db.orthancs.findAll({ attributes: excludeColumn, where: {hospitalId: hospitalId}});
+			if (orthancs.length > 0) {
+				resolve(orthancs[0]);
+			} else {
+				reject({error: 'Not found your orthanc in database'});
+			}
+		}
+	});
+}
+
+const doMyLoadOrthanc = function(myOrthancId, hostname){
+	return new Promise(async function(resolve, reject) {
+		if ((hostname === 'localhost') || (hostname.indexOf('192.168') >= 0)){
+			resolve(localOrthanc[0]);
+		} else {
+			const orthancs = await db.orthancs.findAll({ attributes: excludeColumn, where: {id: myOrthancId}});
+			if (orthancs.length > 0) {
+				resolve(orthancs[0]);
+			} else {
+				reject({error: 'Not found your orthanc in database'});
+			}
+		}
+	});
+}
+
+module.exports = (dbconn, monitor) => {
+	db = dbconn;
 	log = monitor;
   return {
     proxyRequest,
     runcommand,
-    parseStr
+    parseStr,
+		doLoadOrthancTarget,
+		doMyLoadOrthanc
   }
 }

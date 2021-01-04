@@ -1,0 +1,323 @@
+<div class="menu-tab">
+  <div id="one"></div>
+  <div id="two"></div>
+  <div id="three"></div>
+</div>
+<div class="menu-hide">
+  <div id="NavHeader">
+    Your Hospital Name
+  </div>
+
+  <div class="NavTable">
+    <div class="NavRow" id="HomeMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/home-icon.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        Home
+      </div>
+    </div>
+    <div class="NavSubHide">
+      <div class="NavSub" id="FilterSettingSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubTextCell">
+          Filter Setting
+        </div>
+      </div>
+    </div>
+
+    <div class="NavRow" id="CaseMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/case-incident.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        Case
+      </div>
+    </div>
+    <div class="NavSubHide">
+      <div class="NavSub" id="NewStatusSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubTextCell">
+          New
+        </div>
+      </div>
+      <div class="NavSub" id="AcceptedStatusSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubTextCell">
+          Accepted
+        </div>
+      </div>
+      <div class="NavSub" id="SuccessStatusSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubTextCell">
+          Success
+        </div>
+      </div>
+      <div class="NavSub" id="NegativeStatusSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubTextCell">
+          Not Accept/Expired/Cancel
+        </div>
+      </div>
+      <div class="NavSub" id="SearchCaseSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubTextCell">
+          Search
+        </div>
+      </div>
+    </div>
+
+    <div class="NavRow" id="MessageMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/message-icon.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        Message
+      </div>
+    </div>
+
+    <div class="NavRow" id="ToolsMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/tools-icon.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        Tools
+      </div>
+    </div>
+    <div class="NavSubHide">
+      <div class="NavSub" id="ReportPetternSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubTextCell">
+          Report Pattern
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="NavFooter">
+
+  </div>
+</div>
+
+<style>
+  @font-face { font-family: THSarabunNew; src: url("../font/THSarabunNew.ttf");}
+  #NavHeader{
+    top: 10px;
+    /* background-color: #3cb344; */
+  }
+
+  #NavFooter{
+    position: absolute;
+    bottom: 0px;
+    width: 100%;
+    background-color: #3cb344;
+  }
+
+  .menu-tab {
+    width: 90px;
+    height: 70px;
+    position: fixed;
+    z-index: 100;
+    top: 0px;
+    left: 0px;
+    cursor: pointer;
+    transition: all .6s ease-in-out;
+  }
+  .menu-tab div {
+    width: 33px;
+    height: 4px;
+    background-color: #3cb344;
+    display: block;
+    margin: 5px 28px;
+    transition: all .6s ease-in-out;
+  }
+  .menu-tab div:nth-child(1) {
+    margin-top: 20px;
+  }
+
+  .menu-tab.active {
+    left: 300px;
+    transition: all .6s ease-in-out;
+    /* background-color: rgba(0, 255, 0, 0.85); */
+    background-color: rgba(148, 234, 105, 0.85);
+  }
+  .menu-tab.active:hover {
+    /* background-color: rgba(148, 234, 105, 1.00); */
+    background-color: #3cb344;
+    transition: all .5s ease;
+  }
+  .menu-tab.active #one {
+    -webkit-transform: translateY(9px) rotate(-135deg);
+    transform: translateY(9px) rotate(-135deg);
+    transition: all .6s ease-in-out;
+    background-color: #f1f1f1;
+  }
+  /*
+  .menu-tab.active #one:hover {
+    background-color: #e74c3c;
+    transition: all .5s ease;
+  }
+  */
+  .menu-tab.active #two {
+    opacity: 0;
+    transition: .4s ease;
+  }
+  .menu-tab.active #three {
+    -webkit-transform: translateY(-9px) rotate(-45deg);
+    transform: translateY(-9px) rotate(-45deg);
+    transition: all .6s ease-in-out;
+    background-color: #f1f1f1;
+  }
+  /*
+  .menu-tab.active #three:hover {
+    background-color: #e74c3c;
+    transition: all .5s ease;
+  }
+  */
+  .menu-hide {
+    width: 300px;
+    left: -300px;
+    height: 100vh;
+    position: fixed;
+    z-index: 10;
+    top: 0px;
+    background-color: rgba(148, 234, 105, 0.85);
+    transition: all .6s ease-in-out;
+    overflow-y: auto;
+    font-family: THSarabunNew;
+  	font-size: 24px;
+  }
+  .menu-hide.show {
+    left: 0px;
+    transition: all .6s ease-in-out;
+  }
+
+  .NavTable{
+    display: table;
+    width: 100%;
+    font-family: THSarabunNew;
+  	font-size: 24px;
+    margin-top: 10px;
+  }
+  .NavRow{
+    display: table-row block;
+    line-height: 25px;
+  }
+  .NavRow:hover {
+    background-color: #3cb344;
+    transition: all .5s ease;
+  }
+  .NavRowIconCell, .NavSubIconCell{
+    display: table-cell;
+    width: 50px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .NavRowTextCell, .NavSubTextCell{
+    display: table-cell;
+    cursor: pointer;
+    width: 220px;
+    text-align: left;
+    vertical-align: middle;
+  }
+  .NavSub {
+    display: table-row;
+    line-height: 30px;
+  }
+  .NavSub:hover {
+    background-color: #3cb344;
+    transition: all .5s ease;
+  }
+  .NavSubTextCell:hover {
+    /* background-color: #3cb344; */
+    transition: all .5s ease;
+  }
+  .NavActive {
+    background-color: #3cb344;
+  }
+  .NavSubShow {
+    display: block;
+  }
+  .NavSubHide {
+    display: none;
+  }
+  .UserInfoCmd {
+    display: table-cell;
+    cursor: pointer;
+    width: 120px;
+    text-align: center;
+    vertical-align: middle;
+    padding: 2px;
+  }
+  .UserInfoCmd:hover {
+    background-color: rgba(148, 234, 105, 0.85);
+  }
+</style>
+
+<script>
+  function urlQueryToObject(url) {
+  	let result = url.split(/[?&]/).slice(1).map(function(paramPair) {
+  				return paramPair.split(/=(.+)?/).slice(0, 2);
+  		}).reduce(function (obj, pairArray) {
+  				obj[pairArray[0]] = pairArray[1];
+  				return obj;
+  		}, {});
+  	return result;
+  }
+
+  let queryObj = urlQueryToObject(window.location.href);
+  //console.log(queryObj);
+  let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
+  //console.log(yourUserdata);
+  let yourToken = localStorage.getItem('token');
+  //console.log(yourToken);
+  $('.NavRow').click(function (e){
+    if($(this).next('.NavSubHide').css('display') != 'block'){
+      $(this).addClass('NavActive');
+      $(this).next('.NavSubHide').slideDown('slow').removeClass('NavActive');
+    } else {
+      $(this).removeClass('NavActive');
+      $(this).next('.NavSubHide').slideUp('fast').removeClass('NavActive');
+    }
+  });
+
+  $('#HomeMainCmd').click((evt)=>{
+    let styleClass = $('#HomeMainCmd').attr("class").split(/\s+/);
+    if (styleClass.indexOf('NavActive') >= 0) {
+      let eventData = {userId: yourUserdata.id};
+      $('#HomeMainCmd').trigger('openhome', [eventData]);
+      $('.menu-hide').removeClass('show');
+      $('.menu-tab').removeClass('active');
+    }
+  });
+  $('#FilterSettingSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#FilterSettingSubCmd').trigger('openfiltersetting', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
+  });
+
+  $('#NavHeader').empty().append('<h4 style="text-align: center;">โรงพยาบาล' + yourUserdata.hospital.Hos_Name + '</h4>');
+
+  let userFullName = yourUserdata.userinfo.User_NameEN + ' ' + yourUserdata.userinfo.User_LastNameEN + ' (' + yourUserdata.userinfo.User_NameTH + ' ' + yourUserdata.userinfo.User_LastNameTH + ')';
+  let userInfoBox = $('<div style="margin-top: 5px;"></div>');
+  $(userInfoBox).append('<img width="40" height="auto" src="/images/user-account.png"/>');
+  $(userInfoBox).append('<div style="text-align: center; color: white;">' + userFullName + '</div>');
+  let editUserInfoCmd = $('<div class="UserInfoCmd">แก้ไขข้อมูลของฉัน</div>');
+  $(userInfoBox).append($(editUserInfoCmd));
+  let userLogoutCmd = $('<div class="UserInfoCmd">ออกจากระบบ</div>');
+  $(userInfoBox).append($(userLogoutCmd));
+  $('#NavFooter').empty().append($(userInfoBox));
+  $(editUserInfoCmd).click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $(editUserInfoCmd).trigger('openedituserinfo', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
+  });
+  $(userLogoutCmd).click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $(userLogoutCmd).trigger('userlogout', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
+  });
+
+</script>

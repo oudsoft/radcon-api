@@ -1,0 +1,49 @@
+@font-face { font-family: THSarabunNew; src: url("../../../font/THSarabunNew.ttf");}
+@font-face { font-family: THSarabunNewBold; src: url("../../../font/THSarabunNew Bold.ttf");}
+
+.loader {
+  position: relative;
+  border: 16px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 16px solid #3498db;
+  width: 70px;
+  height: 70px;
+  left:50%;
+  top:50%;
+  -webkit-animation: spin 2s linear infinite; /* Safari */
+  animation: spin 2s linear infinite;
+}
+#overlay{
+  position: absolute;
+  top:0px;
+  left:0px;
+  width: 100%;
+  height: 100%;
+  background: black;
+  opacity: .5;
+}
+/* Safari */
+@-webkit-keyframes spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+select, input[type='button'] {font-family: THSarabunNew; font-size: 24px;}
+.RadiologistAccordion .ui-accordion-header {
+  font-family: THSarabunNew; font-size: 24px;
+  line-height: 15px;
+  margin:1px;
+  padding:0px;
+}
+#CaseSection, #WorkScheduleSection, #ToolSection { padding: 0px 10px; }
+.CaseContent{font-family: THSarabunNew; font-size: 24px;}
+.ui-tabs .ui-tabs-nav li a {font-family: THSarabunNew; font-size: 24px; line-height: 20px;}
+.CaseClassifyContent{font-family: THSarabunNew; font-size: 24px;}
+.CaseTime{background-color: gray; color: white; text-align: center; padding: 5px; border-radius: 5px; float: left; margin: -6px 10px;}
+.HorBar{background-color: gray; color: white; padding: 2px; border-radius: 5px; width: 100%}
+.Hot{color: red;}

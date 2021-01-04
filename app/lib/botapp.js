@@ -326,7 +326,7 @@ module.exports = ( taskCase, dbconn, monitor ) => {
   log = monitor;
   auth = require('../db/rest/auth.js')(db, log);
   lineApi = require('./mod/lineapi.js')(db, log);
-  uti = require('./mod/util.js')(log);
+  uti = require('./mod/util.js')(db, log);
   Task = taskCase;
   return app;
 }

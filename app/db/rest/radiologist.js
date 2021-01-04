@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-var db, log, auth;
+var db, log, auth, common;
 
 const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 
@@ -25,6 +25,30 @@ app.post('/list', (req, res) => {
           const userInclude = [{model: db.userinfoes, attributes: ['id', 'User_NameEN', 'User_LastNameEN', 'User_NameTH', 'User_LastNameTH']}];
           const radio = await db.users.findAll({ attributes: excludeColumn, include: userInclude, where: {hospitalId: hospitalId, usertypeId: 4}});
           res.json({status: {code: 200}, Records: radio});
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+app.post('/hospital/radio', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          const hospitalId = req.body.hospitalId;
+          let rades = await common.doSearchRadioForHospital(hospitalId);
+          res.json({status: {code: 200}, Records: rades});
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});
@@ -205,5 +229,6 @@ module.exports = ( dbconn, monitor ) => {
   db = dbconn;
   log = monitor;
   auth = require('./auth.js')(db, log);
+  common = require('./commonlib.js')(db, log);
   return app;
 }

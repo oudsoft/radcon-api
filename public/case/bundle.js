@@ -9,6 +9,7 @@ const cases = require('./mod/case.js')($);
 //const urgent = require('./mod/urgent.js')($);
 const apiconnector = require('./mod/apiconnect.js')($);
 const util = require('./mod/utilmod.js')($);
+const dicomfilter = require('./mod/dicomfilter.js')($);
 
 /*
 ต
@@ -44,6 +45,30 @@ function doCallLoginApi(user) {
 	});
 }
 
+function doCallUpdateUserInfo(data) {
+  return new Promise(function(resolve, reject) {
+    var updateUserApiUri = '/api/user/update';
+    var params = data;
+    $.post(updateUserApiUri, params, function(response){
+			resolve(response);
+		}).catch((err) => {
+			console.log(JSON.stringify(err));
+		})
+	});
+}
+
+function doCallUserInfo(userId) {
+  return new Promise(function(resolve, reject) {
+    var userInfoApiUri = '/api/user/' + userId;
+    var params = {};
+    $.get(userInfoApiUri, params, function(response){
+			resolve(response);
+		}).catch((err) => {
+			console.log(JSON.stringify(err));
+		})
+	});
+}
+
 function doLogin(){
 	var username = $("#username").val();
 	var password = $("#password").val();
@@ -63,10 +88,12 @@ function doLogin(){
 				$('#login-msg').html('<p>Username or Password incorrect. Please try with other username and password again.</p>');
 				$('#login-msg').show();
 			} else {
-				//Save resBody to cookie.
-        $('#login-msg').show();
+				//Save resBody to localStorage
+        $('#login-msg').hide();
+				const defualtDicomFilter = {"Level": "Study", "Expand": true, "Query": {"Modality": "*"}, "Limit": 30};
         localStorage.setItem('token', response.token);
         localStorage.setItem('userdata', JSON.stringify(response.data));
+				localStorage.setItem('dicomfilter', JSON.stringify(defualtDicomFilter));
 				doLoadMainPage();
 			}
 		});
@@ -90,8 +117,10 @@ function doLoadLogin() {
 
 function doUserLogout() {
   localStorage.removeItem('token');
+	localStorage.removeItem('userdata');
+	localStorage.removeItem('dicomfilter');
   $('#LogoutCommand').hide();
-  let url = '/staff.html';
+  let url = '/case/index.html';
   window.location.replace(url);
 }
 
@@ -119,7 +148,7 @@ function doLoadMainPage(){
   $('body').append($('<div id="overlay"><div class="loader"></div></div>'));
 
   $('body').loading({overlay: $("#overlay"), stoppable: true});
-  $('body').loading('stop');
+  //$('body').loading('stop');
 
   $('#HistoryDialogBox').dialog({
     modal: true, autoOpen: false, width: 350, resizable: false, title: 'ประวัติผู้ป่วย'
@@ -128,11 +157,13 @@ function doLoadMainPage(){
   let userdata = JSON.parse(doGetUserData());
 
 	$('#app').load('form/main.html', function(){
-		$('.header').append('<h2 style="margin-right:1px;">โรงพยาบาล' + userdata.hospital.Hos_Name + '</h2>');
+		//$('.header').append('<h2 style="margin-right:1px;">โรงพยาบาล' + userdata.hospital.Hos_Name + '</h2>');
+		/*
 		$("#User-Identify").text(userdata.userinfo.User_NameEN + ' ' + userdata.userinfo.User_LastNameEN);
 		$("#User-Identify").click(function(){
 			doShowUserProfile();
 		});
+		*/
 		$("#Case-Cmd").click(function(){
 			doShowCase()
 		});
@@ -141,6 +172,25 @@ function doLoadMainPage(){
 	    window.location.replace(url);
 		});
 
+		$('#Menu').load('form/menu.html', function(){
+			$('.menu-tab').click(function(){
+				$('.menu-hide').toggleClass('show');
+				$('.menu-tab').toggleClass('active');
+			});
+			$(document).on('openedituserinfo', (evt, data)=>{
+				doShowUserProfile();
+			});
+			$(document).on('userlogout', (evt, data)=>{
+				doUserLogout();
+			});
+			$(document).on('openhome', (evt, data)=>{
+				$("#PACSTab").trigger("click");
+				$("#PACSTab").addClass('active');
+			});
+			$(document).on('openfiltersetting', (evt, data)=>{
+				doShowFilterSetting();
+			});
+		});
     /*
 		$("#Doctor-Cmd").click(function(){
 			doShowMainDoctor();
@@ -152,19 +202,25 @@ function doLoadMainPage(){
 			doShowSetting();
 		});
     */
-		$("#Logout-Cmd").click(function(){
+		$("#EditUserInfoCmd").click(function(){
+			doShowUserProfile();
+		});
+		//$("#Logout-Cmd").click(function(){
+		$("#UserLogoutCmd").click(function(){
 			doUserLogout();
 		});
 
 		doShowCase();
-		let localWsl = util.doConnectWebsocketLocal(userdata.username);
-		//util.doAssignWsl(wsl);
-		if ((localWsl.readyState == 0) || (localWsl.readyState == 1)) {
-    	wsm = util.doConnectWebsocketMaster(userdata.username, userdata.hospitalId, 'local');
-		} else {
-			wsm = util.doConnectWebsocketMaster(userdata.username, userdata.hospitalId, 'none');
-		}
-		//util.doAssignWsm(wsm);
+
+		util.doConnectWebsocketLocal(userdata.username).then((localWsl) => {
+			if ((localWsl.readyState == 0) || (localWsl.readyState == 1)) {
+	    	wsm = util.doConnectWebsocketMaster(userdata.username, userdata.hospitalId, 'local');
+			} else {
+				wsm = util.doConnectWebsocketMaster(userdata.username, userdata.hospitalId, 'none');
+			}
+		}).catch ((err) =>{
+			console.log(err);
+		});
 	});
 }
 
@@ -176,123 +232,136 @@ function doShowCase() {
 	cases.doLoadCasePage(userdata.username);
 	$('body').loading('stop');
 }
-/*
-function doShowMainDoctor(){
-	$(".row").show();
-	$(".mainfull").hide();
-	$(".submenu").empty();
-	$(".submenu").show();
-	$(".main").empty();
-	$(".submenu").append($('<div class="sub-menu-item"><a href="#" id="DoctorData-Cmd">ข้อมูลแพทย์</a></div>'));
-	$(".submenu").append($('<div class="sub-menu-item"><a href="#" id="DoctorSchedule-Cmd">ตารางเวร</a></div>'));
-	$("#DoctorData-Cmd").click(function(){
-		$(".main").empty();
-    $('body').loading('start');
-		home.doCallSummaryDoctor(cookie.username).then((response) => {
-			let drList = JSON.parse(response.res.body);
-			doctor.doShowAllDoctor(drList, cookie.username, cookie.org[0].id);
-      $('body').loading('stop');
-		})
-	});
-	$("#DoctorSchedule-Cmd").click(function(){
-		alert('#DoctorSchedule');
-		$(".main").empty();
-	});
-	$("#DoctorData-Cmd").trigger("click");
-}
-*/
 
-/*
-function doShowMainHotpital() {
-	$(".row").show();
-	$(".mainfull").hide();
-	$(".submenu").empty();
-	$(".submenu").show();
-	$(".main").empty();
-	$(".submenu").append($('<div class="sub-menu-item"><a href="#" id="HotpitalData-Cmd">ข้อมูลโรงพยาบาล</a></div>'));
-	$(".submenu").append($('<div class="sub-menu-item"><a href="#" id="ReportForm-Cmd">Set Report Form</a></div>'));
-	$(".submenu").append($('<div class="sub-menu-item"><a href="#" id="UrgentLevel-Cmd">Urgent Level</a></div>'));
-	$("#HotpitalData-Cmd").click(function(){
-		$(".main").empty();
-    $('body').loading('start');
-		home.doCallHospitalData(cookie.username).then((response) => {
-			let hospData = JSON.parse(response.res.body);
-			hospital.doShowHospitalData(hospData);
-      $('body').loading('stop');
-		});
-	});
-	$("#ReportForm-Cmd").click(function(){
-		$(".main").empty();
-    $('body').loading('start');
-    $('head').append('<script src="lib/jquery-ui.min.js"></script>');
-    $('head').append('<link rel="stylesheet" href="lib/jquery-ui.min.css" type="text/css" />');
-    $('body').loading('start');
-  	$(".main").load('form/design.html', function(oo){
-
-      $('body').loading('stop');
-    });
-  });
-
-	$("#UrgentLevel-Cmd").click(function(){
-		$(".main").empty();
-    $('body').loading('start');
-		home.doCallUrgentData(cookie.username).then((response) => {
-			let urgentData = JSON.parse(response.res.body);
-			urgent.doShowUrgentData(urgentData.data, cookie.username);
-      $('body').loading('stop');
-		});
-	});
-	$("#HotpitalData-Cmd").trigger("click");
-}
-*/
-/*
-function doShowSetting() {
-	$("#dialog").load('form/setting-dialog.html', function(){
+function doShowFilterSetting() {
+	$("#dialog").load('form/dialog.html', function() {
+		$('.modal-header').empty().append('<h3>ตั้งค่าตัวกรอง Dicom</h3>');
+		let localDicomFilter = localStorage.getItem('dicomfilter');
+		let yourDicomFilter = JSON.parse(localDicomFilter);
+		let filter = dicomfilter.doCreateFilter(yourDicomFilter);
+		$('#UserProfileBox').empty().append($(filter));
 		$(".modal-footer").css('text-align', 'center');
-		$("#SaveSetting-Cmd").click(function(){
-			doSaveSetting();
+		$("#SaveUserProfile-Cmd").click((evt)=>{
+			$('body').loading('start');
+			let queryString = dicomfilter.doGetDicomFilter(filter);
+			let newDicomFilter = JSON.parse(queryString);
+			localStorage.setItem('dicomfilter', JSON.stringify(newDicomFilter));
+			$("#dialog").find('#CloseUserProfile-Cmd').click();
+			//Re-Load Study from orthanc
+			//$('body').loading('stop');
+
+			cases.doCallSearhOrthanc(queryString).then(async (studies) => {
+				$("#Dicom-Result").empty();
+  			//let resultTable = await cases.doShowOrthancResult(studies, 0);
+				let resultTable = await cases.doShowDicomResult(studies, 0);
+  			$("#Dicom-Result").append($(resultTable));
+				$('body').loading('stop');
+			});
+
 		});
-	})
+	});
 }
-*/
+
 function doShowUserProfile() {
 	$("#dialog").load('form/dialog.html', function() {
-		$("#UserStaus").text(cookie.curr_status);
-		$("#OrgName").text(cookie.org[0].name);
-		$("#OrgName").text(cookie.org[0].name);
-		$("#PositionName").val(cookie.org[0].position);
-		$("#Username").text(cookie.username);
-		$("#Password").val(upwd);
-		$("#Name").val(cookie.name);
-		$("#Telno").val(cookie.tel);
-		$("#Email").val(cookie.email);
-		$("#LineId").val(cookie.LineId);
-		$("#Comment").val(cookie.comment);
+		const createFormFragment = function(fragId, fragLabel, fragValue) {
+			let fragRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
+			let labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"></div>');
+			$(labelCell).html('<b>' + fragLabel + '</b>');
+			let inputCell = $('<div style="display: table-cell; padding: 2px;"></div>');
+			let fragInput = $('<input type="text"/>');
+			$(fragInput).attr('id', fragId);
+			$(fragInput).val(fragValue);
+			$(fragInput).appendTo($(inputCell));
+			$(labelCell).appendTo($(fragRow));
+			$(inputCell).appendTo($(fragRow));
+			return $(fragRow);
+		}
+
+		let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
+		let table = $('<div style="display: table; width: 100%;"></div>');
+
+		let yourNameENFrag = createFormFragment('UserNameEN', 'ชื่อ(ภาษาอังกฤษ)์', yourUserdata.userinfo.User_NameEN);
+		$(yourNameENFrag).appendTo($(table));
+
+		let yourLastNameENFrag = createFormFragment('UserLastNameEN', 'นามสกุล(ภาษาอังกฤษ)์', yourUserdata.userinfo.User_LastNameEN);
+		$(yourLastNameENFrag).appendTo($(table));
+
+		let yourNameTHFrag = createFormFragment('UserNameTH', 'ชื่อ(ภาษาไทย)', yourUserdata.userinfo.User_NameTH);
+		$(yourNameTHFrag).appendTo($(table));
+
+		let yourLastNameTHFrag = createFormFragment('UserLastNameTH', 'นามสกุล(ภาษาไทย)', yourUserdata.userinfo.User_LastNameTH);
+		$(yourLastNameTHFrag).appendTo($(table));
+
+		let yourEmailFrag = createFormFragment('UserEmail', 'อีเมล์', yourUserdata.userinfo.User_Email);
+		$(yourEmailFrag).appendTo($(table));
+
+		let yourPhoneFrag = createFormFragment('UserPhone', 'โทรศัพท์', yourUserdata.userinfo.User_Phone);
+		$(yourPhoneFrag).appendTo($(table));
+
+		let yourLineIDFrag = createFormFragment('UserLineID', 'Line ID', yourUserdata.userinfo.User_LineID);
+		$(yourLineIDFrag).appendTo($(table));
+
+		$('#UserProfileBox').empty().append($(table));
 		$(".modal-footer").css('text-align', 'center');
-		$("#SaveUserProfile-Cmd").click(function(){
-			doSaveUserProfile();
+		$("#SaveUserProfile-Cmd").click((evt)=>{
+
+			let newNameEN = $(table).find('#UserNameEN').val();
+			let newLastNameEN = $(table).find('#UserLastNameEN').val();
+			let newNameTH = $(table).find('#UserNameTH').val();
+			let newLastNameTH = $(table).find('#UserLastNameTH').val();
+			let newEmail = $(table).find('#UserEmail').val();
+			let newPhone = $(table).find('#UserPhone').val();
+			let newLineID = $(table).find('#UserLineID').val();
+			if (newNameEN === '') {
+				$(table).find('#UserNameEN').css('border', '1px solid red');
+				return;
+			} else if (newLastNameEN === '') {
+				$(table).find('#UserNameEN').css('border', '');
+				$(table).find('#UserLastNameEN').css('border', '1px solid red');
+				return;
+			} else if (newNameTH === '') {
+				$(table).find('#UserLastNameEN').css('border', '');
+				$(table).find('#UserNameTH').css('border', '1px solid red');
+				return;
+			} else if (newLastNameTH === '') {
+				$(table).find('#UserNameTH').css('border', '');
+				$(table).find('#UserLastNameTH').css('border', '1px solid red');
+				return;
+			} else if (newEmail === '') {
+				$(table).find('#UserLastNameTH').css('border', '');
+				$(table).find('#UserEmial').css('border', '1px solid red');
+				return;
+			} else {
+				$(table).find('#UserEmail').css('border', '');
+				let yourNewUserInfo = {User_NameEN: newNameEN, User_LastNameEN: newLastNameEN, User_NameTH: newNameTH, User_LastNameTH: newLastNameTH, User_Email: newEmail, User_Phone: newPhone, User_LineID: newLineID};
+				yourNewUserInfo.userId = yourUserdata.id;
+				yourNewUserInfo.infoId = yourUserdata.userinfo.id;
+				yourNewUserInfo.usertypeId = yourUserdata.usertype.id;
+				doSaveUserProfile(yourNewUserInfo);
+			}
 		});
 	});
 }
 
-function doSaveUserProfile(){
-	/*
-	let positionName = $("#PositionName").val();
-	let password = $("#Password").val();
-	let name = $("#Name").val();
-	let telno = $("#Telno").val();
-	let email = $("#Email").val();
-	let lineId = $("#LineId").val();
-	let comment = $("#Comment").val();
-	*/
-	alert('Now have not support yet.');
-	$("#myModal").css("display", "none");
+function doSaveUserProfile(newUserInfo){
+	doCallUpdateUserInfo(newUserInfo).then((updateRes)=>{
+		if (updateRes.Result === "OK") {
+			doCallUserInfo(newUserInfo.userId).then((userInfoRes)=>{
+				//update userdata in localstorage
+				let newUserInfo = userInfoRes.Record.info;
+				let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
+				yourUserdata.userinfo = newUserInfo;
+				localStorage.setItem('userdata', JSON.stringify(yourUserdata));
+				$.notify("บันทึกการแก้ไขจ้อมูลของคุณ่เข้าสู่ระบบสำเร็จ", "info");
+				$("#dialog").find('#CloseUserProfile-Cmd').click();
+			});
+		} else {
+			$.notify("เกิดความผิดพลาด ไม่สามารถบันทึกการแก้ไขจ้อมูลของคุณ่เข้าสู่ระบบได้ในขณะนี้", "error");
+		}
+	});
 }
-/*
-function doSaveSetting() {
-	alert('Now have not support yet.');
-}
-*/
+
 function doGetToken(){
 	return localStorage.getItem('token');
 }
@@ -311,7 +380,7 @@ module.exports = {
 	doGetWsm
 }
 
-},{"./mod/apiconnect.js":2,"./mod/case.js":3,"./mod/jquery-ex.js":4,"./mod/utilmod.js":5,"jquery":6}],2:[function(require,module,exports){
+},{"./mod/apiconnect.js":2,"./mod/case.js":3,"./mod/dicomfilter.js":4,"./mod/jquery-ex.js":5,"./mod/utilmod.js":6,"jquery":7}],2:[function(require,module,exports){
 /* apiconnect.js */
 
 const apiExt = ".php";
@@ -779,22 +848,37 @@ module.exports = function ( jq ) {
 	}
 
 	const openPACS = function(e) {
+		/*
+			ค่าข้อมูลใน query ที่ไม่ใช่สตริง ต้องเขียนแบบนี้เท่านั้น
+			"Expand": true
+			"Limit": 5
+			ถ้าเขียนเป็น
+			"Expand": "true"
+			"Limit": "5"
+			แบบนี้จะผิด และจะเกิด Internal Error ขึ้นที่ orthanc
+		*/
+
 		currentTab = e.detail.eventname;
+		/*
   	$("#Dicom-Filter").load('form/dicom-filter.html', function(){
   		$("#studydate").val(defualtPacsStudyDate).change();
   		$("#limit").val(defualtPacsLimit).change();
   		$("#search-cmd").on('click', doSearchOrthanc);
-	  	/*
-	  		ค่าข้อมูลใน query ที่ไม่ใช่สตริง ต้องเขียนแบบนี้เท่านั้น
-				"Expand": true
-				"Limit": 5
-				ถ้าเขียนเป็น
-				"Expand": "true"
-				"Limit": "5"
-				แบบนี้จะผิด และจะเกิด Internal Error ขึ้นที่ orthanc
-	  	*/
 	  	$("#search-cmd").trigger('click');
 	  });
+		*/
+		$('body').loading('start');
+		//let queryString = JSON.parse(localStorage.getItem('dicomfilter'));
+		let queryString = localStorage.getItem('dicomfilter');
+		doCallSearhOrthanc(queryString).then(async (studies) => {
+			$("#Dicom-Result").empty();
+			//let resultTable = await doShowOrthancResult(studies, 0);
+			let resultTable = await doShowDicomResult(studies, 0);
+
+			$("#Dicom-Result").append($(resultTable));
+			$('body').loading('stop');
+		});
+
   }
 
   const openCaseList = async function(e) {
@@ -1081,13 +1165,13 @@ module.exports = function ( jq ) {
 
 				}
 
-				if ((incidents[i].case.casestatus.id == 3) || (incidents[i].case.casestatus.id == 4) || (incidents[i].case.casestatus.id == 7)) {
+				//if ((incidents[i].case.casestatus.id == 3) || (incidents[i].case.casestatus.id == 4) || (incidents[i].case.casestatus.id == 7)) {
 					let deleteCaseButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/delete-icon.png" title="Delete Case."/>');
 					$(deleteCaseButton).click(function() {
 						doCallDeleteCase(incidents[i].case.id);
 					});
 					$(deleteCaseButton).appendTo($(operationCmdBox));
-				}
+				//}
 			}
 			resolve($(rwTable));
 		});
@@ -1284,6 +1368,160 @@ module.exports = function ( jq ) {
   	});
   }
 
+	function doCreateDicomHeaderRow() {
+		const headerLabels = ['No.', 'Study Date', 'HN', 'Name', 'Sex/Age', 'Modality', 'Study Desc. / Protocol Name', 'Operation'];
+		const tableRow = $('<div style="display: table-row;"></div>');
+		for (var i = 0; i < headerLabels.length; i++) {
+			let item = headerLabels[i];
+	    let tableHeader = $('<div style="display: table-cell;" class="header-cell">' + item + '</div>');
+			$(tableHeader).appendTo($(tableRow));
+		}
+		return $(tableRow);
+	}
+
+	function doCreateDicomItemRow(no, studyDate, studyTime, hn, name, sa, mdl, sdd, defualtValue, dicomSeries, dicomID){
+		const tableRow = $('<div style="display: table-row; padding: 2px;" class="case-row"></div>');
+
+		let dicomValue = $('<div style="display: table-cell; padding: 2px; text-align: center;">' + no + '</div>');
+		$(dicomValue).appendTo($(tableRow));
+
+		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + studyDate + ' / ' + studyTime + '</div>');
+		$(dicomValue).appendTo($(tableRow));
+
+		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + hn + '</div>');
+		$(dicomValue).appendTo($(tableRow));
+
+		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + name + '</div>');
+		$(dicomValue).appendTo($(tableRow));
+
+		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + sa + '</div>');
+		$(dicomValue).appendTo($(tableRow));
+
+		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + mdl + '</div>');
+		$(dicomValue).appendTo($(tableRow));
+
+		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + sdd + '</div>');
+		$(dicomValue).appendTo($(tableRow));
+
+		let operationField = $('<div style="display: table-cell; padding: 2px; text-align: center;"></div>');
+		$(operationField).appendTo($(tableRow));
+
+		let previewCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/preview-icon.png" title="เปิดดูรูปด้วย Web Viewer"/>');
+		$(previewCmd).on('click', function(evt){
+			doOpenStoneWebViewer(defualtValue.studyInstanceUID);
+		});
+		$(previewCmd).appendTo($(operationField));
+
+		let createNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
+		$(createNewCaseCmd).on('click', function(evt){
+			doOpenCreateNewCase(defualtValue, dicomSeries);
+		});
+		$(createNewCaseCmd).appendTo($(operationField));
+
+		let downloadDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/zip-icon.png" title="ดาวน์โหลด zip ไฟล์"/>');
+		$(downloadDicomCmd).on('click', function(evt){
+			let dicomFilename = defualtValue.patient.name.split(' ');
+			dicomFilename = dicomFilename.join('_');
+			dicomFilename = dicomFilename + '-' + studyDate + '.zip';
+			doDownloadDicom(dicomID, dicomFilename);
+		});
+		$(downloadDicomCmd).appendTo($(operationField));
+
+		let deleteDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/delete-icon.png" title="ลบรายการนี้"/>');
+		$(deleteDicomCmd).on('click', function(evt){
+			doDeleteDicom(dicomID);
+		});
+		$(deleteDicomCmd).appendTo($(operationField));
+
+		return $(tableRow);
+	}
+
+	function doShowDicomResult(dj, startRef){
+		return new Promise(async function(resolve, reject) {
+			await dj.sort((a,b) => {
+				let av = util.getDatetimeValue(a.MainDicomTags.StudyDate, a.MainDicomTags.StudyTime);
+				let bv = util.getDatetimeValue(b.MainDicomTags.StudyDate, b.MainDicomTags.StudyTime);
+				if (av && bv) {
+					return bv - av;
+				} else {
+					return 0;
+				}
+			});
+
+			const table = $('<div style="display: table; width: 100%;"></div>');
+			const tableHeader = doCreateDicomHeaderRow();
+			$(tableHeader).appendTo($(table));
+
+			const promiseList = new Promise(function(resolve2, reject2){
+				for (let i=0; i < dj.length; i++) {
+					let desc, protoname, mld, sa, studydate, bdp;
+					if ((dj[i].MainDicomTags) && (dj[i].SamplingSeries)){
+						if (dj[i].MainDicomTags.StudyDescription) {
+							desc = '<div class="study-desc">' + dj[i].MainDicomTags.StudyDescription + '</div>';
+							bdp = dj[i].MainDicomTags.StudyDescription;
+						} else {
+							if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
+								bdp = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
+							} else {
+								bdp = '';
+							}
+							desc = '';
+						}
+						if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
+							protoname = '<div class="protoname">' + dj[i].SamplingSeries.MainDicomTags.ProtocolName + '</div>';
+						} else {
+							protoname = '';
+						}
+						if (dj[i].SamplingSeries.MainDicomTags.Modality) {
+							mld = dj[i].SamplingSeries.MainDicomTags.Modality;
+						} else {
+							mld = '';
+						}
+						if (dj[i].MainDicomTags.StudyDate) {
+							studydate = dj[i].MainDicomTags.StudyDate;
+							studydate = util.formatStudyDate(studydate);
+						} else {
+							studydate = '';
+						}
+						if (dj[i].PatientMainDicomTags.PatientSex) {
+							sa = dj[i].PatientMainDicomTags.PatientSex;
+						} else {
+							sa = '-';
+						}
+						if (dj[i].PatientMainDicomTags.PatientBirthDate) {
+							sa = sa + '/' + util.getAge(dj[i].PatientMainDicomTags.PatientBirthDate)
+						} else {
+							sa = sa + '/-';
+						}
+
+						let patientProps = sa.split('/');
+						let defualtValue = {patient: {id: dj[i].PatientMainDicomTags.PatientID, name: dj[i].PatientMainDicomTags.PatientName, age: patientProps[1], sex: patientProps[0]}, bodypart: bdp, studyID: dj[i].ID, acc: dj[i].MainDicomTags.AccessionNumber, mdl: mld};
+						defualtValue.studyDesc = dj[i].MainDicomTags.StudyDescription;
+						defualtValue.protocalName = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
+						defualtValue.manufacturer = dj[i].SamplingSeries.MainDicomTags.Manufacturer;
+						defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
+						defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
+ 						let no = (i + 1 + startRef);
+						let studyDate = '<div style="float: left;">' + dj[i].MainDicomTags.StudyDate + '</div>';
+						let studyTime = '<div style="background-color: gray; color: white; text-align: center; float: left; margin: -6px 10px; padding: 5px; border-radius: 5px;">' + util.formatStudyTime(dj[i].MainDicomTags.StudyTime) + '</div>';
+						let hn = dj[i].PatientMainDicomTags.PatientID;
+						let name = dj[i].PatientMainDicomTags.PatientName;
+						let sdd =  desc +  protoname;
+						let dicomDataRow = doCreateDicomItemRow(no, studyDate, studyTime, hn, name, sa, mld, sdd, defualtValue, dj[i].Series, dj[i].ID);
+						$(dicomDataRow).appendTo($(table));
+					}
+				}
+
+				setTimeout(()=> {
+					resolve2($(table));
+				}, 700);
+			});
+			Promise.all([promiseList]).then((ob)=>{
+				resolve(ob[0]);
+			});
+		});
+	}
+
   function doShowOrthancResult(dj, startRef){
 		return new Promise(async function(resolve, reject) {
 			/* sort dj by studydatetime */
@@ -1374,6 +1612,7 @@ module.exports = function ( jq ) {
 						defualtValue.manufacturer = dj[i].SamplingSeries.MainDicomTags.Manufacturer;
 						defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
 						defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
+
 						let createNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
 						$(createNewCaseCmd).on('click', function(evt){
 							doOpenCreateNewCase(defualtValue, dj[i].Series);
@@ -2251,11 +2490,218 @@ module.exports = function ( jq ) {
 	return {
 		doLoadCasePage,
 		doEventManagment,
-		doLoadCaseList
+		doLoadCaseList,
+		doCallSearhOrthanc,
+		doShowOrthancResult,
+		doShowDicomResult
 	}
 }
 
-},{"../main.js":1,"./apiconnect.js":2,"./utilmod.js":5}],4:[function(require,module,exports){
+},{"../main.js":1,"./apiconnect.js":2,"./utilmod.js":6}],4:[function(require,module,exports){
+/* dicomfilter.js */
+module.exports = function ( jq ) {
+	const $ = jq;
+  const util = require('./utilmod.js')($);
+
+  const doCreateFilter = function(filterObject) {
+    let query = filterObject.Query;
+    let queryTags = Object.getOwnPropertyNames(query);
+
+    let modality, queryTag, tagValue, studydate;
+
+		if (query.Modality === '*') {
+			modality = 'ALL';
+		} else {
+			modality = query.Modality;
+		}
+
+    if (queryTags.length >= 2) {
+			if (queryTags[1] !== 'StudyDate') {
+		    queryTag = queryTags[1];
+		    tagValue = query[queryTag];
+				if (query.StudyDate) {
+					studydate = query.StudyDate;
+				}
+			} else {
+				queryTag = 'ALL';
+	      tagValue = '*';
+				studydate = query.StudyDate;
+			}
+    } else {
+			queryTag = 'ALL';
+      tagValue = '*';
+    }
+
+		let studydateName = 'ALL';
+		if (studydate) {
+			if (studydate === (util.getToday() + '-')) {
+				studydateName = 'TODAY';
+			} else if (studydate === (util.getYesterday() + '-')) {
+				studydateName = 'YESTERDAY';
+			} else if (studydate === (util.getDateLastWeek() + '-')) {
+				studydateName = 'WEEK';
+			} else if (studydate === (util.getDateLastMonth() + '-')) {
+				studydateName = 'MONTH';
+			} else if (studydate === (util.getDateLast3Month() + '-')) {
+				studydateName = '3MONTH';
+			} else if (studydate === (util.getDateLastYear() + '-')) {
+				studydateName = 'YEAR';
+			}
+		}
+
+		let limit = filterObject.Limit;
+
+  	let table = $('<div style="display: table; width: 100%;"></div>');
+
+    let tableRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
+    let labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"><b>Dicom Tag</b></div>');
+    let tagSelectorCell = $('<div style="display: table-cell; padding: 2px;"></div>');
+    let tagSelector = $('<select id="DicomTag"></select>');
+    $(tagSelector).append($('<option value="ALL">ALL</option>'));
+    $(tagSelector).append($('<option value="PatientID">Patient ID</option>'));
+    $(tagSelector).append($('<option value="PatientName">Patient Name</option>'));
+    $(tagSelector).append($('<option value="PatientSax">Patient Sex</option>'));
+    $(tagSelector).append($('<option value="AccessionNumber">Accession Number</option>'));
+    $(tagSelector).append($('<option value="StudyDescription">Study Description</option>'));
+		if (queryTag) {
+			$(tagSelector).val(queryTag);
+		}
+    $(tagSelector).appendTo($(tagSelectorCell));
+    $(labelCell).appendTo($(tableRow));
+    $(tagSelectorCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
+    tableRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
+    labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"><b>Tag Value</b></div>');
+    let tagValueCell = $('<div style="display: table-cell; padding: 2px;"></div>');
+    let tagValueInput = $('<input type="text" id="TagValue"/>');
+    $(tagValueInput).val(tagValue);
+    $(tagValueInput).appendTo($(tagValueCell));
+    $(labelCell).appendTo($(tableRow));
+    $(tagValueCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
+    tableRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
+    labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"><b>Modality</b></div>');
+    let modalitySelectorCell = $('<div style="display: table-cell; padding: 2px;"></div>');
+    let modalitySelector = $('<select id="Modality"></select>');
+    $(modalitySelector).append($('<option value="ALL">ALL</option>'));
+    $(modalitySelector).append($('<option value="CT">CT</option>'));
+    $(modalitySelector).append($('<option value="CR">CR</option>'));
+    $(modalitySelector).append($('<option value="MR">MR</option>'));
+    $(modalitySelector).append($('<option value="XA">XA</option>'));
+    $(modalitySelector).append($('<option value="DR">DR</option>'));
+		$(modalitySelector).val(modality);
+    $(modalitySelector).appendTo($(modalitySelectorCell));
+    $(labelCell).appendTo($(tableRow));
+    $(modalitySelectorCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
+    tableRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
+    labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"><b>Study Date</b></div>');
+    let studydateSelectorCell = $('<div style="display: table-cell; padding: 2px;"></div>');
+    let studydateSelector = $('<select id="StudyDate"></select>');
+    $(studydateSelector).append($('<option value="ALL">ALL</option>'));
+    $(studydateSelector).append($('<option value="TODAY">Today</option>'));
+    $(studydateSelector).append($('<option value="YESTERDAY">Yesterday</option>'));
+    $(studydateSelector).append($('<option value="WEEK">Last 7 days</option>'));
+    $(studydateSelector).append($('<option value="MONTH">Last 31 days</option>'));
+    $(studydateSelector).append($('<option value="3MONTH">Last 3 months</option>'));
+    $(studydateSelector).append($('<option value="YEAR">Last year</option>'));
+		$(studydateSelector).val(studydateName)
+    $(studydateSelector).appendTo($(studydateSelectorCell));
+    $(labelCell).appendTo($(tableRow));
+    $(studydateSelectorCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
+    tableRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
+    labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"><b>Limit</b></div>');
+    let limitSelectorCell = $('<div style="display: table-cell; padding: 2px;"></div>');
+    let limitSelector = $('<select id="Limit"></select>');
+    $(limitSelector).append($('<option value="ALL">ALL</option>'));
+    $(limitSelector).append($('<option value="5">5</option>'));
+    $(limitSelector).append($('<option value="10">10</option>'));
+    $(limitSelector).append($('<option value="20">20</option>'));
+    $(limitSelector).append($('<option value="30">30</option>'));
+    $(limitSelector).append($('<option value="50">50</option>'));
+    $(limitSelector).append($('<option value="100">100</option>'));
+		$(limitSelector).val(limit);
+    $(limitSelector).appendTo($(limitSelectorCell));
+    $(labelCell).appendTo($(tableRow));
+    $(limitSelectorCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
+    $(tagSelector).on('change', (evt)=>{
+      $(tagValueInput).val('*');
+    });
+
+    return $(table);
+  }
+
+  const doGetDicomFilter = function(filter) {
+    let modality = $(filter).find('#Modality').val();
+  	let keyName = $(filter).find('#DicomTag').val();
+  	let keyValue = $(filter).find('#TagValue').val();
+  	let studydate = $(filter).find('#StudyDate').val();
+  	let limit = $(filter).find('#Limit').val();
+    let queryStr = '{"Level": "Study", "Expand": true, "Query": {';
+  	if (modality === 'ALL') {
+  		queryStr += '"Modality": "*"';
+  	} else {
+  		queryStr += '"Modality": "' + modality + '"';
+  	}
+  	if (keyName !== 'ALL') {
+  		queryStr += ', "' + keyName + '": "' + keyValue + '"';
+  	}
+  	if (studydate !== 'ALL') {
+			if (studydate === 'TODAY') {
+				//queryStr += ', "StudyDate": "' + '-' + util.getToday() + '"';
+				queryStr += ', "StudyDate": "' + util.getToday() + '-"';
+			} else if (studydate === 'YESTERDAY') {
+				queryStr += ', "StudyDate": "' + util.getYesterday() + '-"';
+			} else if (studydate === 'WEEK') {
+				queryStr += ', "StudyDate": "' + util.getDateLastWeek() + '-"';
+			} else if (studydate === 'MONTH') {
+				queryStr += ', "StudyDate": "' + util.getDateLastMonth() + '-"';
+			} else if (studydate === '3MONTH') {
+				queryStr += ', "StudyDate": "' + util.getDateLast3Month() + '-"';
+			} else if (studydate === 'YEAR') {
+				queryStr += ', "StudyDate": "' + util.getDateLastYear() + '-"';
+			} else {
+				queryStr = queryStr;
+			}
+  	}
+
+  	queryStr += '}';
+
+		/*
+  	if (limitControl) {
+			if (limit !== 'ALL') {
+				queryStr += ', "Limit": ' + limit + '}';
+			} else {
+				queryStr += '}';
+			}
+		} else {
+			queryStr += '}';
+		}
+		*/
+
+		if (limit !== 'ALL') {
+			queryStr += ', "Limit": ' + limit + '}';
+		} else {
+			queryStr += '}';
+		}
+
+    return queryStr;
+  }
+
+  return {
+    doCreateFilter,
+    doGetDicomFilter
+	}
+}
+
+},{"./utilmod.js":6}],5:[function(require,module,exports){
 const $ = require('jquery');
 
 $.ajaxSetup({
@@ -2326,7 +2772,7 @@ $.fn.doLoadServiceworker = function(noti) {
   DOMException: Failed to register a ServiceWorker for scope ('https://192.168.1.108:8443/webapp/') with script ('https://192.168.1.108:8443/webapp/sw.js?hash=159800668'): An SSL certificate error occurred when fetching the script.
 */
 
-},{"jquery":6}],5:[function(require,module,exports){
+},{"jquery":7}],6:[function(require,module,exports){
 /* utilmod.js */
 
 module.exports = function ( jq ) {
@@ -2707,59 +3153,69 @@ module.exports = function ( jq ) {
 		return wsm;
 	}
 
-	const doConnectWebsocketLocal = function(username){
-	  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
-		//let wsl;
-		try {
-			wsl = new WebSocket(wsUrl);
-			wsl.onopen = function () {
-				console.log('Local Websocket is connected to the signaling server')
-			};
+	const wslOnClose = function(event) {
+		console.log("Local WebSocket is closed now. with  event:=> ", event);
+	}
 
-			wsl.onmessage = function (msgEvt) {
-		    let data = JSON.parse(msgEvt.data);
-		    console.log(data);
-				if (data.type !== 'test') {
-					let localNotify = localStorage.getItem('localnotify');
-			    let LocalNotify = JSON.parse(localNotify);
-			    if (LocalNotify) {
-			      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
-			    } else {
-			      LocalNotify = [];
-			      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
-			    }
-			    localStorage.setItem('localnotify', JSON.stringify(LocalNotify));
-				}
-		    if (data.type == 'test') {
-		      $.notify(data.message, "success");
-		    } else if (data.type == 'result') {
-		      $.notify(data.message, "success");
-		    } else if (data.type == 'notify') {
-		      $.notify(data.message, "warnning");
-		    } else if (data.type == 'exec') {
-					//Send result of exec back to websocket server
-		    	wsm.send(JSON.stringify(data.data));
-				} else if (data.type == 'move') {
-					wsm.send(JSON.stringify(data.data));
-				} else if (data.type == 'run') {
-					wsm.send(JSON.stringify(data.data));
-		    }
-		  };
+	const wslOnError = function (err) {
+		 console.log("Local WS Got error", err);
+	}
 
-		  wsl.onclose = function(event) {
-				console.log("Local WebSocket is closed now. with  event:=> ", event);
-			};
+	const wslOnOpen = function () {
+		console.log('Local Websocket is connected to the signaling server')
+	}
 
-			wsl.onerror = function (err) {
-			   console.log("Local WS Got error", err);
-			};
-
-			return wsl;
-
-		} catch(error) {
-			console.log('I can not connect to local socket with error message => ' + error);
-			return;
+	const wslOnMessage = function (msgEvt) {
+		let data = JSON.parse(msgEvt.data);
+		console.log(data);
+		if (data.type !== 'test') {
+			let localNotify = localStorage.getItem('localnotify');
+			let LocalNotify = JSON.parse(localNotify);
+			if (LocalNotify) {
+				LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+			} else {
+				LocalNotify = [];
+				LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+			}
+			localStorage.setItem('localnotify', JSON.stringify(LocalNotify));
 		}
+		if (data.type == 'test') {
+			$.notify(data.message, "success");
+		} else if (data.type == 'result') {
+			$.notify(data.message, "success");
+		} else if (data.type == 'notify') {
+			$.notify(data.message, "warnning");
+		} else if (data.type == 'exec') {
+			//Send result of exec back to websocket server
+			wsm.send(JSON.stringify(data.data));
+		} else if (data.type == 'move') {
+			wsm.send(JSON.stringify(data.data));
+		} else if (data.type == 'run') {
+			wsm.send(JSON.stringify(data.data));
+		}
+	}
+
+	const doConnectWebsocketLocal = function(username){
+		return new Promise(function(resolve, reject) {
+						
+		  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
+			try {
+				wsl = new WebSocket(wsUrl);
+				wsl.onopen = wslOnOpen;
+
+				wsl.onmessage = wslOnMessage;
+
+			  wsl.onclose = wslOnClose;
+
+				wsl.onerror = wslOnError;
+
+				resolve(wsl);
+
+			} catch(error) {
+				reject(error);
+			}
+
+		});
 	}
 
 	return {
@@ -2788,7 +3244,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.5.1
  * https://jquery.com/

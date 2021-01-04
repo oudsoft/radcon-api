@@ -15,34 +15,36 @@ function RadconCaseTask (socket, db, log) {
     tasks Model {caseId, statusId, triggerAt: datetime, task<cron.schedule>}
   */
 
-  this.doCreateNewTask = async function (caseId, username, triggerParam, radioUsername, hospitalId, cb) {
-    const startDate = new Date();
-    const day = Number(triggerParam.dd) * 24 * 60 * 60 * 1000;
-    const hour = Number(triggerParam.hh) * 60 * 60 * 1000;
-    const minute = Number(triggerParam.mn) * 60 * 1000;
-    let endDate = new Date(startDate.getTime() + day + hour + minute);
-    let endMM = endDate.getMonth() + 1;
-    let endDD = endDate.getDate();
-    let endHH = endDate.getHours();
-    let endMN = endDate.getMinutes();
-    let endSS = endDate.getSeconds();
-    let scheduleTrigger = endSS + ' ' + endMN + ' ' + endHH + ' ' + endDD + ' ' + endMM + ' *';
-		let task = cron.schedule(scheduleTrigger, function(){
-      cb(caseId, socket);
+  this.doCreateNewTask = function (caseId, username, triggerParam, radioUsername, hospitalName, cb) {
+    return new Promise(async function(resolve, reject) {
+      const startDate = new Date();
+      const day = Number(triggerParam.dd) * 24 * 60 * 60 * 1000;
+      const hour = Number(triggerParam.hh) * 60 * 60 * 1000;
+      const minute = Number(triggerParam.mn) * 60 * 1000;
+      let endDate = new Date(startDate.getTime() + day + hour + minute);
+      let endMM = endDate.getMonth() + 1;
+      let endDD = endDate.getDate();
+      let endHH = endDate.getHours();
+      let endMN = endDate.getMinutes();
+      let endSS = endDate.getSeconds();
+      let scheduleTrigger = endSS + ' ' + endMN + ' ' + endHH + ' ' + endDD + ' ' + endMM + ' *';
+  		let task = cron.schedule(scheduleTrigger, function(){
+        cb(caseId, socket, endDate);
+      });
+      let newTask = {caseId: caseId, username: username, radioUsername: radioUsername, triggerAt: endDate/*, task: task*/};
+      $this.caseTasks.push(newTask);
+      let msg = 'You have a new Case on ' + hospitalName + '. This your case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
+      let notify = {type: 'notify', message: msg, caseId: caseId};
+      let canSend = await socket.sendMessage(notify, radioUsername);
+      if (canSend) {
+        msg = 'The Radiologist of your new case can recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
+      } else {
+        msg = 'The Radiologist of your new case can not recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
+      }
+      notify = {type: 'notify', message: msg, caseId: caseId};
+      await socket.sendMessage(notify, username);
+      resolve(endDate.getTime());
     });
-    let hoses = await db.hospitals.findAll({attributes: ['Hos_Name'], where: {id: hospitalId}});
-    let newTask = {caseId: caseId, username: username, radioUsername: radioUsername, triggerAt: endDate/*, task: task*/};
-    $this.caseTasks.push(newTask);
-    let msg = 'You have a new Case on ' + hoses[0].Hos_Name + '. This your case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
-    let notify = {type: 'notify', message: msg, caseId: caseId};
-    let canSend = await socket.sendMessage(notify, radioUsername);
-    if (canSend) {
-      msg = 'The Radiologist of your new case can recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
-    } else {
-      msg = 'The Radiologist of your new case can not recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
-    }
-    notify = {type: 'notify', message: msg, caseId: caseId};
-    await socket.sendMessage(notify, username);
   }
 
   this.removeTaskByCaseId = async function (caseId) {

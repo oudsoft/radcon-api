@@ -762,59 +762,69 @@ module.exports = function ( jq ) {
 		return wsm;
 	}
 
-	const doConnectWebsocketLocal = function(username){
-	  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
-		//let wsl;
-		try {
-			wsl = new WebSocket(wsUrl);
-			wsl.onopen = function () {
-				console.log('Local Websocket is connected to the signaling server')
-			};
+	const wslOnClose = function(event) {
+		console.log("Local WebSocket is closed now. with  event:=> ", event);
+	}
 
-			wsl.onmessage = function (msgEvt) {
-		    let data = JSON.parse(msgEvt.data);
-		    console.log(data);
-				if (data.type !== 'test') {
-					let localNotify = localStorage.getItem('localnotify');
-			    let LocalNotify = JSON.parse(localNotify);
-			    if (LocalNotify) {
-			      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
-			    } else {
-			      LocalNotify = [];
-			      LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
-			    }
-			    localStorage.setItem('localnotify', JSON.stringify(LocalNotify));
-				}
-		    if (data.type == 'test') {
-		      $.notify(data.message, "success");
-		    } else if (data.type == 'result') {
-		      $.notify(data.message, "success");
-		    } else if (data.type == 'notify') {
-		      $.notify(data.message, "warnning");
-		    } else if (data.type == 'exec') {
-					//Send result of exec back to websocket server
-		    	wsm.send(JSON.stringify(data.data));
-				} else if (data.type == 'move') {
-					wsm.send(JSON.stringify(data.data));
-				} else if (data.type == 'run') {
-					wsm.send(JSON.stringify(data.data));
-		    }
-		  };
+	const wslOnError = function (err) {
+		 console.log("Local WS Got error", err);
+	}
 
-		  wsl.onclose = function(event) {
-				console.log("Local WebSocket is closed now. with  event:=> ", event);
-			};
+	const wslOnOpen = function () {
+		console.log('Local Websocket is connected to the signaling server')
+	}
 
-			wsl.onerror = function (err) {
-			   console.log("Local WS Got error", err);
-			};
-
-			return wsl;
-
-		} catch(error) {
-			console.log('I can not connect to local socket with error message => ' + error);
-			return;
+	const wslOnMessage = function (msgEvt) {
+		let data = JSON.parse(msgEvt.data);
+		console.log(data);
+		if (data.type !== 'test') {
+			let localNotify = localStorage.getItem('localnotify');
+			let LocalNotify = JSON.parse(localNotify);
+			if (LocalNotify) {
+				LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+			} else {
+				LocalNotify = [];
+				LocalNotify.push({notify: data, datetime: new Date(), status: 'new'});
+			}
+			localStorage.setItem('localnotify', JSON.stringify(LocalNotify));
 		}
+		if (data.type == 'test') {
+			$.notify(data.message, "success");
+		} else if (data.type == 'result') {
+			$.notify(data.message, "success");
+		} else if (data.type == 'notify') {
+			$.notify(data.message, "warnning");
+		} else if (data.type == 'exec') {
+			//Send result of exec back to websocket server
+			wsm.send(JSON.stringify(data.data));
+		} else if (data.type == 'move') {
+			wsm.send(JSON.stringify(data.data));
+		} else if (data.type == 'run') {
+			wsm.send(JSON.stringify(data.data));
+		}
+	}
+
+	const doConnectWebsocketLocal = function(username){
+		return new Promise(function(resolve, reject) {
+						
+		  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
+			try {
+				wsl = new WebSocket(wsUrl);
+				wsl.onopen = wslOnOpen;
+
+				wsl.onmessage = wslOnMessage;
+
+			  wsl.onclose = wslOnClose;
+
+				wsl.onerror = wslOnError;
+
+				resolve(wsl);
+
+			} catch(error) {
+				reject(error);
+			}
+
+		});
 	}
 
 	return {
@@ -1782,7 +1792,7 @@ module.exports = function ( jq ) {
 	const doLoadRadioList = function(hospitalId) {
 		return new Promise(function(resolve, reject) {
 			//var apiUri = '/api/radiologist/list';
-			var apiUri = '/api/cases/hospital/radio';
+			var apiUri = '/api/radiologist/hospital/radio';
 			var params = {hospitalId: hospitalId};
 			$.post(apiUri, params, function(response){
 				resolve(response);

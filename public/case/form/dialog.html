@@ -3,7 +3,7 @@
   <div class="modal-content">
 	  <div class="modal-header">
 	    <span class="close">&times;</span>
-	    <h2>ข้อมูลของคุณ</h2>
+	    <h3>ข้อมูลของคุณ</h3>
 	  </div>
     <div id="UserProfileBox">
     	<table width="100%" border="0" cellpadding="2" cellspacing="10">
@@ -92,7 +92,7 @@
     </div>
 	  <div class="modal-footer">
 	  	<input type="Button" value=" บันทึก " id="SaveUserProfile-Cmd"/>
-	  	<input type="Button" value=" ปิด " onclick="doCloseUserProfileBox()"/>
+	  	<input type="Button" value=" ปิด " id="CloseUserProfile-Cmd" onclick="doCloseUserProfileBox()"/>
 	  </div>
   </div>
 </div>
@@ -144,7 +144,7 @@
 	  margin: 1% auto; /* 15% from the top and centered */
 	  padding: 20px;
 	  border: 1px solid #888;
-	  width: 80%; /* Could be more or less, depending on screen size */
+	  width: 480px; /* Could be more or less, depending on screen size */
     font-family: THSarabunNew;
     font-size: 24px;
     font-weight: normal;
@@ -169,6 +169,7 @@
 	  padding: 2px 2px;
 	  background-color: #5cb85c;
 	  color: white;
+    text-align: center;
 	}
 
 	.modal-footer {
