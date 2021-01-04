@@ -45,3 +45,114 @@ input[type='text'], input[type='number'], select, textarea {
 .modal-footer {
 	text-align: center;
 }
+
+/* Tooltip */
+.tooltip {
+	position: relative;
+	display: inline-block;
+	border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+	visibility: hidden;
+	width: 120px;
+	background-color: #555;
+	color: #fff;
+	text-align: center;
+	border-radius: 6px;
+	padding: 5px 0;
+	position: absolute;
+	z-index: 1;
+	bottom: 125%;
+	left: 50%;
+	margin-left: -60px;
+	opacity: 0;
+	transition: opacity 0.3s;
+}
+
+.tooltip .tooltiptext::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+	visibility: visible;
+	opacity: 1;
+}
+
+.study-desc {
+	border-radius: 10px;
+	border: 2px solid #73AD21;
+	padding: 5px;
+}
+.protoname {
+	margin-top: 3px;
+	border-radius: 10px;
+	border: 2px solid #0066ff;
+	padding: 5px;
+}
+.pacs-command {
+	width: 35px;
+	height: auto;
+	cursor: pointer;
+	padding: 4px;
+}
+.pacs-command-dd {
+	width: 45px;
+	height: auto;
+	cursor: pointer;
+	padding: 5px;
+}
+
+.header-cell {
+	padding: 2px;
+	font-weight: bold;
+	color: white;
+	text-align: center;
+	background-color: green;
+	box-shadow: 0px 5px 5px gray;
+	-moz-box-shadow: 0px 5px 5px gray, ;
+	-webkit-box-shadow: 0px 5px 5px gray;
+}
+.case-row {
+	background-color: #fbfbfb;
+	box-shadow: 0px 5px 5px gray;
+	-moz-box-shadow: 0px 5px 5px gray, ;
+	-webkit-box-shadow: 0px 5px 5px gray;
+}
+.case-row:hover {
+	background-color: rgb(165, 182, 229);
+	box-shadow: 0px 2px 18px 0px rgba(0, 0, 0, 0.5);
+	/* cursor: pointer; */
+}
+
+.radcon-button {
+	border: none;
+	color: white;
+	padding: 1px 16px;
+	text-align: center;
+	text-decoration: none;
+	display: inline-block;
+	font-size: 20px;
+	margin: 4px 2px;
+	transition-duration: 0.4s;
+	cursor: pointer;
+	max-height: 30px;
+}
+
+.button-bw {
+	background-color: green; /* Green */
+	color: white;
+}
+
+.button-bw:hover {
+	background-color: white;
+	color: black;
+	border: 2px solid #4CAF50;
+}
