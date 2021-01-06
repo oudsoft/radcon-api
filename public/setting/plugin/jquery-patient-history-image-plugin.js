@@ -398,7 +398,7 @@ $.widget( "custom.imagehistory", {
     let modalContent = $('<div class="modal-content"></div>');
     $(modalContent).appendTo($(mainModal));
     let modalHeader = $('<div class="modal-header"></div>');
-    let modalTitle = $('<h2 id="dialog-title">Screen Capture</h2>');
+    let modalTitle = $('<h3 id="dialog-title">Screen Capture</h3>');
     $(modalTitle).appendTo($(modalHeader));
     $(modalHeader).appendTo($(modalContent));
     let captureCanvasDiv = $('<div id="CaptureCanvasDiv" style="margin-top: 5px; padding: 5px; border: 2px solid gray;"></div>');

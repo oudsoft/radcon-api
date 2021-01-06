@@ -156,3 +156,57 @@ input[type='text'], input[type='number'], select, textarea {
 	color: black;
 	border: 2px solid #4CAF50;
 }
+
+/* Modal Dialog */
+.modal {
+	display: none; /* Hidden by default */
+	position: fixed; /* Stay in place */
+	z-index: 1; /* Sit on top */
+	left: 0;
+	top: 0;
+	width: 100%; /* Full width */
+	height: 100%; /* Full height */
+	overflow: auto; /* Enable scroll if needed */
+	background-color: rgb(0,0,0); /* Fallback color */
+	background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+	background-color: #fefefe;
+	margin: 1% auto; /* 15% from the top and centered */
+	padding: 20px;
+	border: 1px solid #888;
+	width: 80%; /* Could be more or less, depending on screen size */
+	font-family: THSarabunNew;
+	font-size: 24px;
+	font-weight: normal;
+}
+
+.modal-header {
+	padding: 2px 2px;
+	background-color: green;
+	color: white;
+	display: block;
+	width: 100%;
+	max-height: 80px;
+	vertical-align: middle;
+	font-size: 30px;
+}
+
+.modal-footer {
+	padding: 2px 2px;
+	background-color: green;
+	color: white;
+	display: block;
+	width: 100%;
+	text-align: center;
+	vertical-align: middle;;
+}
+
+.remove {
+	width: 100%;
+	top: 0;
+	right: 0;
+	font-size: 30px;
+	cursor: pointer;
+}
