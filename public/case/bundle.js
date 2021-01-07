@@ -176,11 +176,14 @@ function doLoadMainPage(){
 				doUserLogout();
 			});
 			$(document).on('openhome', (evt, data)=>{
+				doSaveQueryOrthanc(data)
 				newcase.doLoadDicomFromOrthanc();
 			});
+			/*
 			$(document).on('openfiltersetting', (evt, data)=>{
 				doShowFilterSetting();
 			});
+			*/
 			$(document).on('opennewstatuscase', async (evt, data)=>{
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseReadWaitStatus };
 				console.log(rqParams);
@@ -228,6 +231,23 @@ function doUseFullPage() {
 	$(".row").hide();
 	$(".mainfull").show();
 	$(".mainfull").empty();
+}
+
+function doSaveQueryOrthanc(filterData) {
+	let queryStr = '{"Level": "Study", "Expand": true, "Query": {"Modality": "' + filterData.dm;
+	if (filterData.dd === '*') {
+		queryStr += '"}}';
+	} else {
+		let dDate;
+		if (filterData.dd == 1) {
+			dDate = util.getToday() + '-';
+		} else if (filterData.dd == 3) {
+			dDate = util.getDateLastThreeDay() + '-';
+		}
+		queryStr += '", "StudyDate": "' + dDate + '"}}';
+	}
+	let newDicomFilter = JSON.parse(queryStr);
+	localStorage.setItem('dicomfilter', JSON.stringify(newDicomFilter));
 }
 
 function doShowFilterSetting() {
@@ -2314,6 +2334,8 @@ module.exports = function ( jq ) {
 
 		let tableRow = $('<div style="display: table-row;"></div>');
 		let tableCell = $('<div style="display: table-cell; width: 240px; height: 100%; vertical-align: middle;">ประวัติผู้ป่วย</div>');
+		let pthrnaDiv = $('<div><input type="checkbox" id="pthrna" value="0"><label for="pthrna"> ไม่มีภาพประวัติแนบ</label></div>');
+		$(tableCell).append($(pthrnaDiv));
 		$(tableCell).appendTo($(tableRow));
 		tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
 
@@ -2357,11 +2379,9 @@ module.exports = function ( jq ) {
 			$(lastTable).animate({ left: centerPos }, 1000);
 		});
 
-		$(nextStepTwoCmd).click(async()=>{
-      let patientHistory = patientHistoryBox.images();
-      //console.log(patientHistory);
-      if (patientHistory.length > 0){
-  			await $(tableWrapper).animate({ left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
+		$(nextStepTwoCmd).click(()=>{
+			const goToThirdStep = async()=>{
+				await $(tableWrapper).animate({ left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
   			let nextTable = $('.mainfull').find('#ThirdStepWrapper');
   			if ($(nextTable).prop('id')) {
   				$(nextTable).show();
@@ -2369,8 +2389,18 @@ module.exports = function ( jq ) {
   			} else {
   				doCreateNewCaseThirdStep(defualtValue, options, patientHistory);
   			}
+			}
+      let patientHistory = patientHistoryBox.images();
+      //console.log(patientHistory);
+      if (patientHistory.length > 0){
+				goToThirdStep();
       } else {
-        $('.mainfull').find('#PatientHistoryBox').notify("โปรดแนบรูปประวัติผู้ป่วยอย่างน้อย 1 รูป", "error");
+				let pthrna = $('.mainfull').find('#pthrna').prop('checked');
+				if (pthrna) {
+					goToThirdStep();
+				} else {
+        	$('.mainfull').find('#PatientHistoryBox').notify("โปรดแนบรูปประวัติผู้ป่วยอย่างน้อย 1 รูป หรือเลือกเป็นไม่มีประวัติแนบ", "error");
+				}
       }
 		});
 
@@ -2515,11 +2545,6 @@ module.exports = function ( jq ) {
 	const doSaveNewCaseStep = async function(defualtValue, options, phrImages){
 		let newCaseData = doCreateNewCaseData(defualtValue, phrImages);
 		console.log(newCaseData);
-    /*
-    ACC
-    Department
-    */
-    /*
     $('body').loading('start');
     try {
       const main = require('../main.js');
@@ -2552,6 +2577,7 @@ module.exports = function ( jq ) {
       let caseRes = await common.doCallApi('/api/cases/add', rqParams);
       if (caseRes.status.code === 200) {
         $.notify("บันทึกเคสใหม่เข้าสู่ระบบเรียบร้อยแล้ว", "info");
+				$('#NewStatusSubCmd').click();
       } else {
         $.notify("เกิดความผิดพลาด ไม่สามารถบันทึกเคสใหม่เข้าสู่ระบบได้ในขณะนี้", "error");
       }
@@ -2560,7 +2586,6 @@ module.exports = function ( jq ) {
       console.log('Unexpected error occurred =>', e);
       $('body').loading('stop');
     }
-    */
 	}
 
   const doShowPopupRegisterNewRefferalUser = async function(){
@@ -3103,6 +3128,14 @@ module.exports = function ( jq ) {
 		return formatDate(td);
 	}
 
+	const getDateLastThreeDay = function(){
+		var days = 3;
+		var d = new Date();
+		var last = new Date(d.getTime() - (days * 24 * 60 * 60 * 1000));
+		var td = formatDateStr(last);
+		return formatDate(td);
+	}
+
 	const getDateLastWeek = function(){
 		var days = 7;
 		var d = new Date();
@@ -3435,7 +3468,7 @@ module.exports = function ( jq ) {
 
 	const doConnectWebsocketLocal = function(username){
 		return new Promise(function(resolve, reject) {
-						
+
 		  let wsUrl = 'wss://localhost:3000/api/' + username + '?type=test';
 			try {
 				wsl = new WebSocket(wsUrl);
@@ -3460,6 +3493,7 @@ module.exports = function ( jq ) {
 		getTodayDevFormat,
 		getToday,
 		getYesterday,
+		getDateLastThreeDay,
 		getDateLastWeek,
 		getDateLastMonth,
 		getDateLast3Month,

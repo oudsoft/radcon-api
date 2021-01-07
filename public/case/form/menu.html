@@ -8,15 +8,17 @@
     Your Hospital Name
   </div>
 
+  <!-- Home Menu -->
   <div class="NavTable">
     <div class="NavRow" id="HomeMainCmd">
       <div class="NavRowIconCell">
-        <img src="/images/home-icon.png" width="30px" height="auto"/>
+        <img src="/images/orthanc-icon-1.png" width="30px" height="auto"/>
       </div>
       <div class="NavRowTextCell">
-        Home
+        ภาพในระบบ
       </div>
     </div>
+    <!--
     <div class="NavSubHide">
       <div class="NavSub" id="FilterSettingSubCmd">
         <div class="NavSubIconCell"></div>
@@ -25,32 +27,302 @@
         </div>
       </div>
     </div>
+    -->
+    <div class="NavSubHide">
+      <div class="NavSub NavRow">
+        <div class="NavSubIconCell">
+          <img src="/images/filter-icon-1.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          X-ray
+        </div>
+      </div>
+      <div class="NavSubHide">
+        <div class="NavSub MenuCmd" id="XRayFilter1DayCmd" data-dd="1", data-dm="XR">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            1 Day
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="XRayFilter3DaysCmd"  data-dd="3", data-dm="XR">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            3 Days
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="XRayFilterAllCmd"  data-dd="*", data-dm="XR">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            All
+          </div>
+        </div>
+      </div>
 
+      <div class="NavSub NavRow">
+        <div class="NavSubIconCell">
+          <img src="/images/filter-icon-1.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          MG
+        </div>
+      </div>
+      <div class="NavSubHide">
+        <div class="NavSub MenuCmd" id="MGFilter1DayCmd" data-dd="1", data-dm="MG">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            1 Day
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="MGFilter3DaysCmd"  data-dd="3", data-dm="MG">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            3 Days
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="MGFilterAllCmd"  data-dd="*", data-dm="MG">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            All
+          </div>
+        </div>
+      </div>
+
+      <div class="NavSub NavRow">
+        <div class="NavSubIconCell">
+          <img src="/images/filter-icon-1.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          US
+        </div>
+      </div>
+      <div class="NavSubHide">
+        <div class="NavSub MenuCmd" id="USFilter1DayCmd" data-dd="1", data-dm="US">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            1 Day
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="USFilter3DaysCmd"  data-dd="3", data-dm="US">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            3 Days
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="USFilterAllCmd"  data-dd="*", data-dm="US">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            All
+          </div>
+        </div>
+      </div>
+
+      <div class="NavSub NavRow">
+        <div class="NavSubIconCell">
+          <img src="/images/filter-icon-1.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          CT
+        </div>
+      </div>
+      <div class="NavSubHide">
+        <div class="NavSub MenuCmd" id="CTFilter1DayCmd" data-dd="1", data-dm="CT">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            1 Day
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="CTFilter3DaysCmd"  data-dd="3", data-dm="CT">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            3 Days
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="CTFilterAllCmd"  data-dd="*", data-dm="CT">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            All
+          </div>
+        </div>
+      </div>
+
+      <div class="NavSub NavRow">
+        <div class="NavSubIconCell">
+          <img src="/images/filter-icon-1.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          MR
+        </div>
+      </div>
+      <div class="NavSubHide">
+        <div class="NavSub MenuCmd" id="MRFilter1DayCmd" data-dd="1", data-dm="MR">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            1 Day
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="MRFilter3DaysCmd"  data-dd="3", data-dm="MR">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            3 Days
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="MRFilterAllCmd"  data-dd="*", data-dm="MR">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            All
+          </div>
+        </div>
+      </div>
+
+      <div class="NavSub NavRow">
+        <div class="NavSubIconCell">
+          <img src="/images/filter-icon-1.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          XA
+        </div>
+      </div>
+      <div class="NavSubHide">
+        <div class="NavSub MenuCmd" id="XAFilter1DayCmd" data-dd="1", data-dm="XA">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            1 Day
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="XAFilter3DaysCmd"  data-dd="3", data-dm="XA">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            3 Days
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="XAFilterAllCmd"  data-dd="*", data-dm="XA">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            All
+          </div>
+        </div>
+      </div>
+
+      <div class="NavSub NavRow">
+        <div class="NavSubIconCell">
+          <img src="/images/filter-icon-1.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          All
+        </div>
+      </div>
+      <div class="NavSubHide">
+        <div class="NavSub MenuCmd" id="ALLFilter1DayCmd" data-dd="1", data-dm="*">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            1 Day
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="ALLFilter3DaysCmd"  data-dd="3", data-dm="*">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            3 Days
+          </div>
+        </div>
+        <div class="NavSub MenuCmd" id="ALLFilterAllCmd"  data-dd="*", data-dm="*">
+          <div class="NavSubIconCell"></div>
+          <div class="NavSubIconCell">
+            <img src="/images/arrow-right-icon-1.png" width="30px" height="auto"/>
+          </div>
+          <div class="NavSubTextCell">
+            All
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Case Menu -->
     <div class="NavRow" id="CaseMainCmd">
       <div class="NavRowIconCell">
         <img src="/images/case-incident.png" width="30px" height="auto"/>
       </div>
       <div class="NavRowTextCell">
-        Case
+        เคสส่งอ่าน
       </div>
     </div>
     <div class="NavSubHide">
       <div class="NavSub" id="NewStatusSubCmd">
         <div class="NavSubIconCell"></div>
         <div class="NavSubTextCell">
-          New
+          สร้างเคสใหม่
         </div>
       </div>
       <div class="NavSub" id="AcceptedStatusSubCmd">
         <div class="NavSubIconCell"></div>
         <div class="NavSubTextCell">
-          Accepted
+          หมอตอบรับแล้ว(รอผลอ่าน)
         </div>
       </div>
       <div class="NavSub" id="SuccessStatusSubCmd">
         <div class="NavSubIconCell"></div>
         <div class="NavSubTextCell">
-          Success
+          ได้ผลอ่านแล้ว
         </div>
       </div>
       <div class="NavSub" id="NegativeStatusSubCmd">
@@ -62,26 +334,28 @@
       <div class="NavSub" id="SearchCaseSubCmd">
         <div class="NavSubIconCell"></div>
         <div class="NavSubTextCell">
-          Search
+          ค้นหาเคส
         </div>
       </div>
     </div>
 
+    <!-- Message Menu -->
     <div class="NavRow" id="MessageMainCmd">
       <div class="NavRowIconCell">
         <img src="/images/message-icon.png" width="30px" height="auto"/>
       </div>
       <div class="NavRowTextCell">
-        Message
+        ข้อความ
       </div>
     </div>
 
+    <!-- Tools Menu -->
     <div class="NavRow" id="ToolsMainCmd">
       <div class="NavRowIconCell">
         <img src="/images/tools-icon.png" width="30px" height="auto"/>
       </div>
       <div class="NavRowTextCell">
-        Tools
+        เครื่องมือ
       </div>
     </div>
     <div class="NavSubHide">
@@ -93,179 +367,13 @@
       </div>
     </div>
   </div>
+
   <div id="NavFooter">
 
   </div>
 </div>
 
-<style>
-  @font-face { font-family: THSarabunNew; src: url("../font/THSarabunNew.ttf");}
-  #NavHeader{
-    top: 10px;
-    /* background-color: #3cb344; */
-  }
-
-  #NavFooter{
-    position: absolute;
-    bottom: 0px;
-    width: 100%;
-    background-color: #3cb344;
-  }
-
-  .menu-tab {
-    width: 90px;
-    height: 70px;
-    position: fixed;
-    z-index: 100;
-    top: 0px;
-    left: 0px;
-    cursor: pointer;
-    transition: all .6s ease-in-out;
-  }
-  .menu-tab div {
-    width: 33px;
-    height: 4px;
-    background-color: #3cb344;
-    display: block;
-    margin: 5px 28px;
-    transition: all .6s ease-in-out;
-  }
-  .menu-tab div:nth-child(1) {
-    margin-top: 20px;
-  }
-
-  .menu-tab.active {
-    left: 300px;
-    transition: all .6s ease-in-out;
-    /* background-color: rgba(0, 255, 0, 0.85); */
-    background-color: rgba(148, 234, 105, 0.85);
-  }
-  .menu-tab.active:hover {
-    /* background-color: rgba(148, 234, 105, 1.00); */
-    background-color: #3cb344;
-    transition: all .5s ease;
-  }
-  .menu-tab.active #one {
-    -webkit-transform: translateY(9px) rotate(-135deg);
-    transform: translateY(9px) rotate(-135deg);
-    transition: all .6s ease-in-out;
-    background-color: #f1f1f1;
-  }
-  /*
-  .menu-tab.active #one:hover {
-    background-color: #e74c3c;
-    transition: all .5s ease;
-  }
-  */
-  .menu-tab.active #two {
-    opacity: 0;
-    transition: .4s ease;
-  }
-  .menu-tab.active #three {
-    -webkit-transform: translateY(-9px) rotate(-45deg);
-    transform: translateY(-9px) rotate(-45deg);
-    transition: all .6s ease-in-out;
-    background-color: #f1f1f1;
-  }
-  /*
-  .menu-tab.active #three:hover {
-    background-color: #e74c3c;
-    transition: all .5s ease;
-  }
-  */
-  .menu-hide {
-    width: 300px;
-    left: -300px;
-    height: 100vh;
-    position: fixed;
-    z-index: 10;
-    top: 0px;
-    background-color: rgba(148, 234, 105, 0.85);
-    transition: all .6s ease-in-out;
-    overflow-y: auto;
-    font-family: THSarabunNew;
-  	font-size: 24px;
-  }
-  .menu-hide.show {
-    left: 0px;
-    transition: all .6s ease-in-out;
-  }
-
-  .NavTable{
-    display: table;
-    width: 100%;
-    font-family: THSarabunNew;
-  	font-size: 24px;
-    margin-top: 10px;
-  }
-  .NavRow{
-    display: table-row block;
-    line-height: 25px;
-  }
-  .NavRow:hover {
-    background-color: #3cb344;
-    transition: all .5s ease;
-  }
-  .NavRowIconCell, .NavSubIconCell{
-    display: table-cell;
-    width: 50px;
-    text-align: center;
-    vertical-align: middle;
-  }
-  .NavRowTextCell, .NavSubTextCell{
-    display: table-cell;
-    cursor: pointer;
-    width: 220px;
-    text-align: left;
-    vertical-align: middle;
-  }
-  .NavSub {
-    display: table-row;
-    line-height: 30px;
-  }
-  .NavSub:hover {
-    background-color: #3cb344;
-    transition: all .5s ease;
-  }
-  .NavSubTextCell:hover {
-    /* background-color: #3cb344; */
-    transition: all .5s ease;
-  }
-  .NavActive {
-    background-color: #3cb344;
-  }
-  .NavSubShow {
-    display: block;
-  }
-  .NavSubHide {
-    display: none;
-  }
-  .UserInfoCmd {
-    display: table-cell;
-    cursor: pointer;
-    width: 120px;
-    text-align: center;
-    vertical-align: middle;
-    padding: 2px;
-  }
-  .UserInfoCmd:hover {
-    background-color: rgba(148, 234, 105, 0.85);
-  }
-</style>
-
 <script>
-  function urlQueryToObject(url) {
-  	let result = url.split(/[?&]/).slice(1).map(function(paramPair) {
-  				return paramPair.split(/=(.+)?/).slice(0, 2);
-  		}).reduce(function (obj, pairArray) {
-  				obj[pairArray[0]] = pairArray[1];
-  				return obj;
-  		}, {});
-  	return result;
-  }
-
-  let queryObj = urlQueryToObject(window.location.href);
-  //console.log(queryObj);
   let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
   //console.log(yourUserdata);
   let yourToken = localStorage.getItem('token');
@@ -278,23 +386,27 @@
       $(this).removeClass('NavActive');
       $(this).next('.NavSubHide').slideUp('fast').removeClass('NavActive');
     }
+    $('#NavFooter').css({'bottom': '0px'});
   });
 
-  $('#HomeMainCmd').click((evt)=>{
-    let styleClass = $('#HomeMainCmd').attr("class").split(/\s+/);
-    if (styleClass.indexOf('NavActive') >= 0) {
-      let eventData = {userId: yourUserdata.id};
-      $('#HomeMainCmd').trigger('openhome', [eventData]);
-      $('.menu-hide').removeClass('show');
-      $('.menu-tab').removeClass('active');
-    }
+  $('.MenuCmd').click((evt)=>{
+    let cmdId = $(evt.currentTarget).prop('id');
+    let dd = $(evt.currentTarget).data('dd');
+    let dm = $(evt.currentTarget).data('dm');
+    let eventData = {userId: yourUserdata.id, cmdId: cmdId, dd: dd, dm: dm};
+    $(evt.currentTarget).trigger('openhome', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
   });
+
+  /*
   $('#FilterSettingSubCmd').click((evt)=>{
     let eventData = {userId: yourUserdata.id};
     $('#FilterSettingSubCmd').trigger('openfiltersetting', [eventData]);
     $('.menu-hide').removeClass('show');
     $('.menu-tab').removeClass('active');
   });
+  */
 
   $('#NewStatusSubCmd').click((evt)=>{
     let eventData = {userId: yourUserdata.id};
