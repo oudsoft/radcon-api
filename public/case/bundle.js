@@ -1716,7 +1716,7 @@ module.exports = function ( jq ) {
 		rqParams.Patient_LastNameTH = '';
 		rqParams.Patient_NameEN = newCaseData.patientNameEN;
 		rqParams.Patient_LastNameEN = '';
-		rqParams.Patient_CitizenID = '';
+		rqParams.Patient_CitizenID = newCaseData.patientCitizenID;
 		rqParams.Patient_Birthday = '';
 		rqParams.Patient_Age = newCaseData.patientAge;
 		rqParams.Patient_Sex = newCaseData.patientSex;
@@ -1730,6 +1730,7 @@ module.exports = function ( jq ) {
 		rqParams.Case_OrthancStudyID = newCaseData.studyID;
 		rqParams.Case_ACC = newCaseData.acc;
 		rqParams.Case_BodyPart = newCaseData.bodyPart;
+		rqParams.Case_ScanPart = newCaseData.scanPart;
 		rqParams.Case_Modality = newCaseData.mdl;
 		rqParams.Case_Manufacturer = newCaseData.manufacturer;
 		rqParams.Case_ProtocolName = newCaseData.protocalName;
@@ -2512,24 +2513,21 @@ module.exports = function ( jq ) {
 		});
 
 		$(saveStepTwoCmd).click(()=>{
-			const goToThirdStep = async()=>{
-				await $(tableWrapper).animate({ left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
-  			let nextTable = $('.mainfull').find('#ThirdStepWrapper');
-  			if ($(nextTable).prop('id')) {
-  				$(nextTable).show();
-  				$(nextTable).animate({ left: centerPos }, 1000);
-  			} else {
-  				//doCreateNewCaseThirdStep(defualtValue, options, patientHistory);
-  			}
-			}
       let patientHistory = patientHistoryBox.images();
-      //console.log(patientHistory);
+			const goToSaveCaseStep = async()=>{
+				let verified = doVerifyNewCaseDataSecondStep(table);
+	      if (verified) {
+					let phrImages =
+	  			await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000);
+	  			doSaveNewCaseStep(defualtValue, options, patientHistory);
+	      }
+			}
       if (patientHistory.length > 0){
-				goToThirdStep();
+				goToSaveCaseStep();
       } else {
 				let pthrna = $('.mainfull').find('#pthrna').prop('checked');
 				if (pthrna) {
-					goToThirdStep();
+					goToSaveCaseStep();
 				} else {
         	$('.mainfull').find('#PatientHistoryBox').notify("โปรดแนบรูปประวัติผู้ป่วยอย่างน้อย 1 รูป หรือเลือกเป็นไม่มีประวัติแนบ", "error");
 				}
@@ -2570,7 +2568,7 @@ module.exports = function ( jq ) {
     let stationName = defualtValue.stationName;
     let studyInstanceUID = defualtValue.studyInstanceUID;
     let radioId = drReader;
-    let newCase = {patientNameTH, patientNameEN, patientHistory, studyID, patientSex, patientAge, patientRights, price, hn, acc, department, drOwner, bodyPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
+    let newCase = {patientNameTH, patientNameEN, patientHistory, studyID, patientSex, patientAge, patientRights, patientCitizenID, price, hn, acc, department, drOwner, bodyPart, scanPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
     return newCase;
   }
 

@@ -223,7 +223,7 @@ const RadDicomTransferLogDef = {
 			},
 			StudyTags : {
 				type: Sequelize.JSONB
-			}			
+			}
 		};
 
 //Hos_ID
@@ -288,6 +288,9 @@ const RadCaseDef = {
 			},
 			Case_BodyPart : {
 				type: Sequelize.STRING(150)
+			},
+			Case_ScanPart : {
+				type: Sequelize.STRING(50)
 			},
 			Case_Modality : {
 				type: Sequelize.STRING(40)
