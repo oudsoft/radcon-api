@@ -1995,9 +1995,11 @@ module.exports = function ( jq ) {
 		$(previewCmd).appendTo($(operationField));
 
 		let createNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
-		$(createNewCaseCmd).on('click', function(evt){
-			//doOpenCreateNewCase(defualtValue, dicomSeries);
-			doCreateNewCaseFirstStep(defualtValue);
+		$(createNewCaseCmd).on('click', async function(evt){
+			let patientName = defualtValue.patient.name;
+			let allSeries = dicomSeries.length;
+			let allImageInstances = await doCallCountInstanceImage(dicomSeries, patientName);
+			doCreateNewCaseFirstStep(defualtValue, allSeries, allImageInstances);
 		});
 		$(createNewCaseCmd).appendTo($(operationField));
 
@@ -2106,6 +2108,32 @@ module.exports = function ( jq ) {
 		});
 	}
 
+	function doCallCountInstanceImage(seriesList, patientNname){
+		return new Promise(async function(resolve, reject) {
+			$('body').loading('start');
+			const main = require('../main.js');
+			const userdata = JSON.parse(main.doGetUserData());
+			let dicomImgCount = 0;
+			let seriesParam = {method: 'get', username: userdata.username, hospitalId: userdata.hospitalId};
+			let promiseList = new Promise(function(resolve2, reject2){
+				seriesList.forEach((srs) => {
+					seriesParam.uri = '/series/' + srs;
+					seriesParam.body = '{"Level": "Series", "Expand": true, "Query": {"PatientName":"' + patientNname + '"}}';
+					apiconnector.doCallOrthancApiByProxy(seriesParam).then((sr) =>{
+						dicomImgCount += Number(sr.Instances.length);
+					});
+				});
+				setTimeout(()=> {
+					resolve2(dicomImgCount);
+				},1200);
+			});
+			Promise.all([promiseList]).then((ob)=>{
+				$('body').loading('stop');
+				resolve(ob[0]);
+			});
+		});
+	}
+
   function doVerifyNewCaseDataFirstStep(form){
     let patientNameEN = $(form).find('#PatientNameEN').val();
     let patientNameTH = $(form).find('#PatientNameTH').val();
@@ -2113,10 +2141,10 @@ module.exports = function ( jq ) {
     let sex = $(form).find('#Sex').val();
     let age = $(form).find('#age').val();
     let acc = $(form).find('#ACC').val();
-    let bodypart = $(form).find('#Bodypart').val();
-    let department = $(form).find('#Department').val();
+		let citizenID = $(form).find('#CitizenID').val();
     let cliameright = $(form).find('#Cliameright').val();
-    let refferal = $(form).find('#Refferal').val();
+    let bodypart = $(form).find('#Bodypart').val();
+    let scanpart = $(form).find('#Scanpart').val();
     let price = 0;
     if (!(/^[a-zA-Z]\w{1,65}$/.test(patientNameEN))) {
       $(form).find('#PatientNameEN').css("border","4px solid red");
@@ -2147,18 +2175,12 @@ module.exports = function ( jq ) {
       $(form).find('#Bodypart').notify("Study Desc. / Protocol Name ต้องไม่เว้นว่าง", "error");
       $(form).find('#Bodypart').focus();
       return false;
-    } else if (refferal === '0') {
-      $(form).find('#Bodypart').css("border","");
-      $(form).find('#Refferal').css("border","4px solid red");
-      $(form).find('#Refferal').notify("โปรดระบุแพทย์เจ้าของไช้", "error");
-      $(form).find('#Refferal').focus();
-      return false;
     } else {
       return true;
     }
   }
 
-  const doCreateNewCaseFirstStep = function(defualtValue) {
+  const doCreateNewCaseFirstStep = function(defualtValue, allSeries, allImageInstances) {
 		$('body').loading('start');
 		const main = require('../main.js');
 		let rqParams = {};
@@ -2167,13 +2189,14 @@ module.exports = function ( jq ) {
 		let apiUrl = '/api/cases/options/' + hospitalId;
 		common.doGetApi(apiUrl, rqParams).then((response)=>{
 			let options = response.Options;
+			let openStoneWebViewerCounter = 0;
 
 			let tableWrapper = $('<div id="FirstStepWrapper" style="width: 60%; position: absolute;"></div>');
 
 			let headerWrapper = $('<div style="width: 100%;" class="header-cell">ส่งอ่านผล</div>');
 			$(headerWrapper).appendTo($(tableWrapper));
 
-			let guideWrapper = $('<div style="width: 100%; padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 1/3 โปรดตรวจสอบและแก้ไขข้อมูล</div>');
+			let guideWrapper = $('<div style="width: 100%; padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 1/2 โปรดตรวจสอบและแก้ไขข้อมูล</div>');
 			$(guideWrapper).appendTo($(tableWrapper));
 
 			let table = $('<div style="display: table; width: 100%; padding: 10px; margin-top: -5px;"></div>');
@@ -2231,17 +2254,9 @@ module.exports = function ( jq ) {
 			$(tableRow).appendTo($(table));
 
 			tableRow = $('<div style="display: table-row;"></div>');
-			tableCell = $('<div style="display: table-cell;">Study Desc. / Protocol Name</div>');
+			tableCell = $('<div style="display: table-cell;">เลขประจำตัวประชาชน</div>');
 			$(tableCell).appendTo($(tableRow));
-			tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Bodypart"/></div>');
-			$(tableCell).find('#Bodypart').val(defualtValue.bodypart);
-			$(tableCell).appendTo($(tableRow));
-			$(tableRow).appendTo($(table));
-
-			tableRow = $('<div style="display: table-row;"></div>');
-			tableCell = $('<div style="display: table-cell;">แผนก</div>');
-			$(tableCell).appendTo($(tableRow));
-			tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Department"/></div>');
+			tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="CitizenID"/></div>');
 			$(tableCell).appendTo($(tableRow));
 			$(tableRow).appendTo($(table));
 
@@ -2256,26 +2271,41 @@ module.exports = function ( jq ) {
 			$(tableRow).appendTo($(table));
 
 			tableRow = $('<div style="display: table-row;"></div>');
-			tableCell = $('<div style="display: table-cell;">แพทย์เจ้าของไช้</div>');
+			tableCell = $('<div style="display: table-cell;">Study Desc. / Protocol Name</div>');
 			$(tableCell).appendTo($(tableRow));
-			tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Refferal"></select></div>');
-			options.refes.forEach((item) => {
-				$(tableCell).find('#Refferal').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
-			})
-			$(tableCell).find('#Refferal').append($('<option value="0">เพิ่มหมอ</option>'));
-			$(tableCell).find('#Refferal').on('change', (e)=>{
-				if ($(tableCell).find('#Refferal').val() == 0) {
-					doShowPopupRegisterNewRefferalUser();
-				}
-			})
+			tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Bodypart"/></div>');
+			$(tableCell).find('#Bodypart').val(defualtValue.bodypart);
+			$(tableCell).appendTo($(tableRow));
+			$(tableRow).appendTo($(table));
+
+			tableRow = $('<div style="display: table-row;"></div>');
+			tableCell = $('<div style="display: table-cell;">Scan Part</div>');
+			$(tableCell).appendTo($(tableRow));
+			tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Scanpart"/></div>');
+			$(tableCell).find('#Scanpart').val(defualtValue.scanpart);
+			$(tableCell).appendTo($(tableRow));
+			$(tableRow).appendTo($(table));
+
+			tableRow = $('<div style="display: table-row;"></div>');
+			tableCell = $('<div style="display: table-cell;">จำนวน Series / จำนวนรูป</div>');
+			$(tableCell).appendTo($(tableRow));
+			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
+			let previewCmd = $('<a href="#">ตรวจสอบรูป</a>');
+			$(previewCmd).on('click', function(evt){
+				openStoneWebViewerCounter += 1;
+				common.doOpenStoneWebViewer(defualtValue.studyInstanceUID);
+			});
+			$(tableCell).append(allSeries + ' / ' + allImageInstances);
+			$(tableCell).append('<span>   </span>');
+			$(tableCell).append($(previewCmd));
 			$(tableCell).appendTo($(tableRow));
 			$(tableRow).appendTo($(table));
 
 			let footerWrapper = $('<div class="header-cell"></div>');
-			let nextStepTwoCmd = $('<input type="button" value=" Next "/>');
+			let nextStepTwoCmd = $('<input type="button" value=" ต่อไป "/>');
 			$(nextStepTwoCmd).appendTo($(footerWrapper));
 			$(footerWrapper).append('<span>  </span>')
-			let cancelFirstStepCmd = $('<input type="button" value=" Cancel "/>');
+			let cancelFirstStepCmd = $('<input type="button" value=" ยกเลิก "/>');
 			$(cancelFirstStepCmd).appendTo($(footerWrapper));
 
 			$(footerWrapper).appendTo($(tableWrapper));
@@ -2287,18 +2317,32 @@ module.exports = function ( jq ) {
 			$(tableWrapper).css('left', -boxWidth);
 			$(tableWrapper).animate({	left: centerPos	}, 1000);
 
-			$(nextStepTwoCmd).click(async()=>{
-        let verified = doVerifyNewCaseDataFirstStep(table);
-        if (verified) {
-  				await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
-  				let nextTable = $('.mainfull').find('#SecondStepWrapper');
-  				if ($(nextTable).prop('id')) {
-  					$(nextTable).show();
-  					$(nextTable).animate({	left: centerPos	}, 1000);
-  				} else {
-  					doCreateNewCaseSecondStep(defualtValue, options);
-  				}
-        }
+			$(nextStepTwoCmd).click(()=>{
+				const goToSecondStep = async function() {
+					let verified = doVerifyNewCaseDataFirstStep(table);
+					if (verified) {
+						await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
+						let nextTable = $('.mainfull').find('#SecondStepWrapper');
+						if ($(nextTable).prop('id')) {
+							$(nextTable).show();
+							$(nextTable).animate({	left: centerPos	}, 1000);
+						} else {
+							doCreateNewCaseSecondStep(defualtValue, options);
+						}
+					}
+				}
+				if (openStoneWebViewerCounter > 0) {
+					goToSecondStep();
+				} else {
+					let confirmImageInstance = confirm('โปรดยืนยันว่าคุณได้ตรวจสอบจำนวน Series และจำนวนรูปภาพแล้วว่ามีครบถูกต้องคือ ' + allSeries + ' ซีรีส์ และ ' + allImageInstances + ' รูป');
+					if (confirmImageInstance) {
+						goToSecondStep();
+					} else {
+						alert('โปรตรวจสอบจำนวน Series และจำนวนรูปภาพ จากแท็บใหม่ที่ระบบฯ กำลังจะเปิดให้\nและกลับมาดำเนินการต่อในขั้นตอนต่อไป');
+						$(previewCmd).click();
+						openStoneWebViewerCounter += 1;
+					}
+				}
 			});
 
 			$(cancelFirstStepCmd).click(async()=>{
@@ -2309,6 +2353,34 @@ module.exports = function ( jq ) {
 			$('body').loading('stop');
 		});
 	}
+
+	function doVerifyNewCaseDataSecondStep(form){
+		let department = $(form).find('#Department').val();
+    let refferal = $(form).find('#Refferal').val();
+    let urgenttype = $(form).find('#Urgenttype').val();
+    let radiologist = $(form).find('#Radiologist').val();
+    let detail = $(form).find('#Detail').val();
+		if (refferal === '0') {
+			$(form).find('#Bodypart').css("border","");
+			$(form).find('#Refferal').css("border","4px solid red");
+			$(form).find('#Refferal').notify("โปรดระบุแพทย์เจ้าของไช้", "error");
+			$(form).find('#Refferal').focus();
+			return false;
+    } else if (urgenttype === '0') {
+      $(form).find('#Urgenttype').css("border","4px solid red");
+      $(form).find('#Urgenttype').notify("โปรดเลือกประเภทความเร่งด่วน", "error");
+      $(form).find('#Urgenttype').focus();
+      return false;
+    } else if (radiologist === '0') {
+      $(form).find('#Urgenttype').css("border","");
+      $(form).find('#Radiologist').css("border","4px solid red");
+      $(form).find('#Radiologist').notify("โปรดเลือกรังสีแพทย์", "error");
+      $(form).find('#Radiologist').focus();
+      return false;
+    } else {
+      return true;
+    }
+  }
 
 	const doCreateNewCaseSecondStep = function(defualtValue, options) {
 		$('body').loading('start');
@@ -2326,14 +2398,38 @@ module.exports = function ( jq ) {
 		let headerWrapper = $('<div style="width: 100%;" class="header-cell">ส่งอ่านผล</div>');
 		$(headerWrapper).appendTo($(tableWrapper));
 
-		let guideWrapper = $('<div style="width: 100%;  padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 2/3 โปรดแนบประวัติผู้ป่วย</div>');
+		let guideWrapper = $('<div style="width: 100%;  padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 2/2 โปรดกรอกข้อมูลให้สมบูรณ์พร้อมทั้งแนบประวัติผู้ป่วย</div>');
 		$(guideWrapper).appendTo($(tableWrapper));
 
 		let table = $('<div style="display: table; width: 100%; padding: 10px; margin-top: -5px;"></div>');
 		$(table).appendTo($(tableWrapper));
 
 		let tableRow = $('<div style="display: table-row;"></div>');
-		let tableCell = $('<div style="display: table-cell; width: 240px; height: 100%; vertical-align: middle;">ประวัติผู้ป่วย</div>');
+		let tableCell = $('<div style="display: table-cell;">แผนก</div>');
+		$(tableCell).appendTo($(tableRow));
+		tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Department"/></div>');
+		$(tableCell).appendTo($(tableRow));
+		$(tableRow).appendTo($(table));
+
+		tableRow = $('<div style="display: table-row;"></div>');
+		tableCell = $('<div style="display: table-cell;">แพทย์เจ้าของไช้</div>');
+		$(tableCell).appendTo($(tableRow));
+		tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Refferal"></select></div>');
+		$(tableCell).find('#Refferal').append($('<option value="-1">ไม่ระบุ</option>'));
+		options.refes.forEach((item) => {
+			$(tableCell).find('#Refferal').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
+		})
+		$(tableCell).find('#Refferal').append($('<option value="0">เพิ่มหมอ</option>'));
+		$(tableCell).find('#Refferal').on('change', (e)=>{
+			if ($(tableCell).find('#Refferal').val() == 0) {
+				doShowPopupRegisterNewRefferalUser();
+			}
+		})
+		$(tableCell).appendTo($(tableRow));
+		$(tableRow).appendTo($(table));
+
+		tableRow = $('<div style="display: table-row;"></div>');
+		tableCell = $('<div style="display: table-cell; width: 240px; height: 100%; vertical-align: middle;">ประวัติผู้ป่วย</div>');
 		let pthrnaDiv = $('<div><input type="checkbox" id="pthrna" value="0"><label for="pthrna"> ไม่มีภาพประวัติแนบ</label></div>');
 		$(tableCell).append($(pthrnaDiv));
 		$(tableCell).appendTo($(tableRow));
@@ -2353,14 +2449,41 @@ module.exports = function ( jq ) {
 		$(tableCell).appendTo($(tableRow));
 		$(tableRow).appendTo($(table));
 
+		tableRow = $('<div style="display: table-row;"></div>');
+    tableCell = $('<div style="display: table-cell;">ประเถทความเร่งด่วน</div>');
+    $(tableCell).appendTo($(tableRow));
+    tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Urgenttype"></select></div>');
+    options.urgents.forEach((item) => {
+      $(tableCell).find('#Urgenttype').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
+    })
+    $(tableCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
+    tableRow = $('<div style="display: table-row;"></div>');
+    tableCell = $('<div style="display: table-cell;">รังสีแพทย์</div>');
+    $(tableCell).appendTo($(tableRow));
+    tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Radiologist"></select></div>');
+    options.rades.forEach((item) => {
+      $(tableCell).find('#Radiologist').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
+    })
+    $(tableCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
+    tableRow = $('<div style="display: table-row;"></div>');
+    tableCell = $('<div style="display: table-cell; vertical-align: middle;">รายละเอียดเพิ่มเติม</div>');
+    $(tableCell).appendTo($(tableRow));
+    tableCell = $('<div style="display: table-cell; padding: 5px;"><textarea id="Detail" cols="25" rows="5"></textarea></div>');
+    $(tableCell).appendTo($(tableRow));
+    $(tableRow).appendTo($(table));
+
 		let footerWrapper = $('<div class="header-cell"></div>');
-		let backFirstStepCmd = $('<input type="button" value=" Back "/>');
+		let backFirstStepCmd = $('<input type="button" value=" กลับ "/>');
 		$(backFirstStepCmd).appendTo($(footerWrapper));
 		$(footerWrapper).append('<span>  </span>')
-		let nextStepTwoCmd = $('<input type="button" value=" Next "/>');
-		$(nextStepTwoCmd).appendTo($(footerWrapper));
+		let saveStepTwoCmd = $('<input type="button" value=" บันทึก "/>');
+		$(saveStepTwoCmd).appendTo($(footerWrapper));
 		$(footerWrapper).append('<span>  </span>')
-		let cancelFirstStepCmd = $('<input type="button" value=" Cancel "/>');
+		let cancelFirstStepCmd = $('<input type="button" value=" ยกเลิก "/>');
 		$(cancelFirstStepCmd).appendTo($(footerWrapper));
 
 		$(footerWrapper).appendTo($(tableWrapper));
@@ -2372,6 +2495,15 @@ module.exports = function ( jq ) {
 		$(tableWrapper).css('left', -boxWidth);
 		$(tableWrapper).animate({	left: centerPos	}, 1000);
 
+		$(pthrnaDiv).find('#pthrna').on('click', (evt)=>{
+			let pthrna = $(pthrnaDiv).find('#pthrna').prop('checked');
+			if (pthrna) {
+				$('.mainfull').find('#PatientHistoryBox').hide();
+			} else {
+				$('.mainfull').find('#PatientHistoryBox').show();
+			}
+		});
+
 		$(backFirstStepCmd).click(async()=>{
 			await $(tableWrapper).animate({	left: -boxWidth }, 1000);
 			let lastTable = $('.mainfull').find('#FirstStepWrapper');
@@ -2379,7 +2511,7 @@ module.exports = function ( jq ) {
 			$(lastTable).animate({ left: centerPos }, 1000);
 		});
 
-		$(nextStepTwoCmd).click(()=>{
+		$(saveStepTwoCmd).click(()=>{
 			const goToThirdStep = async()=>{
 				await $(tableWrapper).animate({ left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
   			let nextTable = $('.mainfull').find('#ThirdStepWrapper');
@@ -2387,7 +2519,7 @@ module.exports = function ( jq ) {
   				$(nextTable).show();
   				$(nextTable).animate({ left: centerPos }, 1000);
   			} else {
-  				doCreateNewCaseThirdStep(defualtValue, options, patientHistory);
+  				//doCreateNewCaseThirdStep(defualtValue, options, patientHistory);
   			}
 			}
       let patientHistory = patientHistoryBox.images();
@@ -2412,108 +2544,6 @@ module.exports = function ( jq ) {
 		$('body').loading('stop');
 	}
 
-  function doVerifyNewCaseDataThirdStep(form){
-    let urgenttype = $(form).find('#Urgenttype').val();
-    let radiologist = $(form).find('#Radiologist').val();
-    let detail = $(form).find('#Detail').val();
-    if (urgenttype === '0') {
-      $(form).find('#Urgenttype').css("border","4px solid red");
-      $(form).find('#Urgenttype').notify("โปรดเลือกประเภทความเร่งด่วน", "error");
-      $(form).find('#Urgenttype').focus();
-      return false;
-    } else if (radiologist === '0') {
-      $(form).find('#Urgenttype').css("border","");
-      $(form).find('#Radiologist').css("border","4px solid red");
-      $(form).find('#Radiologist').notify("โปรดเลือกรังสีแพทย์", "error");
-      $(form).find('#Radiologist').focus();
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-	const doCreateNewCaseThirdStep = function(defualtValue, options, phrImages) {
-		$('body').loading('start');
-		let tableWrapper = $('<div id="ThirdStepWrapper" style="width: 60%; position: absolute;"></div>');
-
-		let headerWrapper = $('<div style="width: 100%;" class="header-cell">ส่งอ่านผล</div>');
-		$(headerWrapper).appendTo($(tableWrapper));
-
-		let guideWrapper = $('<div style="width: 100%;  padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 3/3 โปรดเลือกประเถทความเร่งด่วน รังสีแพทย์ และรายละเอียดเพิ่มเติม</div>');
-		$(guideWrapper).appendTo($(tableWrapper));
-
-		let table = $('<div style="display: table; width: 100%; padding: 10px; margin-top: -5px;"></div>');
-		$(table).appendTo($(tableWrapper));
-
-    let tableRow = $('<div style="display: table-row;"></div>');
-    let tableCell = $('<div style="display: table-cell;">ประเถทความเร่งด่วน</div>');
-    $(tableCell).appendTo($(tableRow));
-    tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Urgenttype"></select></div>');
-    options.urgents.forEach((item) => {
-      $(tableCell).find('#Urgenttype').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
-    })
-    $(tableCell).appendTo($(tableRow));
-    $(tableRow).appendTo($(table));
-
-    tableRow = $('<div style="display: table-row;"></div>');
-    tableCell = $('<div style="display: table-cell;">รังสีแพทย์</div>');
-    $(tableCell).appendTo($(tableRow));
-    tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Radiologist"></select></div>');
-    options.rades.forEach((item) => {
-      $(tableCell).find('#Radiologist').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
-    })
-    $(tableCell).appendTo($(tableRow));
-    $(tableRow).appendTo($(table));
-
-    tableRow = $('<div style="display: table-row;"></div>');
-    tableCell = $('<div style="display: table-cell;">รายละเอียดเพิ่มเติม</div>');
-    $(tableCell).appendTo($(tableRow));
-    tableCell = $('<div style="display: table-cell; padding: 5px;"><textarea id="Detail" cols="25" rows="5"></textarea></div>');
-    $(tableCell).appendTo($(tableRow));
-    $(tableRow).appendTo($(table));
-
-		let footerWrapper = $('<div class="header-cell"></div>');
-		let backFirstStepCmd = $('<input type="button" value=" Back "/>');
-		$(backFirstStepCmd).appendTo($(footerWrapper));
-		$(footerWrapper).append('<span>  </span>')
-		let saveNewCaseCmd = $('<input type="button" value=" Save "/>');
-		$(saveNewCaseCmd).appendTo($(footerWrapper));
-		$(footerWrapper).append('<span>  </span>')
-		let cancelFirstStepCmd = $('<input type="button" value=" Cancel "/>');
-		$(cancelFirstStepCmd).appendTo($(footerWrapper));
-
-		$(footerWrapper).appendTo($(tableWrapper));
-
-		$('.mainfull').append($(tableWrapper));
-		let boxWidth = $(tableWrapper).width();
-		let parentWidth = $(tableWrapper).parent().width();
-		let centerPos = (parentWidth/2) - (boxWidth/2);
-		$(tableWrapper).css('left', -boxWidth);
-		$(tableWrapper).animate({	left: centerPos	}, 1000);
-
-		$(backFirstStepCmd).click(()=>{
-			$(tableWrapper).animate({	left: -boxWidth	}, 1000);
-			let lastTable = $('.mainfull').find('#SecondStepWrapper');
-			$(lastTable).show();
-			$(lastTable).animate({ left: centerPos }, 1000);
-		});
-
-		$(saveNewCaseCmd).click(async ()=>{
-      let verified = doVerifyNewCaseDataThirdStep(table);
-      if (verified) {
-  			await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000);
-  			doSaveNewCaseStep(defualtValue, options, phrImages);
-      }
-		});
-
-		$(cancelFirstStepCmd).click(async()=>{
-			await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000);
-			doLoadDicomFromOrthanc();
-		});
-
-		$('body').loading('stop');
-	}
-
   function doCreateNewCaseData(defualtValue, phrImages){
     let patientNameEN = $('.mainfull').find('#PatientNameEN').val();
     let patientNameTH = $('.mainfull').find('#PatientNameTH').val();
@@ -2521,13 +2551,15 @@ module.exports = function ( jq ) {
     let studyID = defualtValue.studyID;
     let patientSex = $('.mainfull').find('#Sex').val();
     let patientAge = $('.mainfull').find('#Age').val();
-    let patientRights = $('.mainfull').find('#Cliameright').val();
+    let patientCitizenID = $('.mainfull').find('#CitizenID').val();
+		let patientRights = $('.mainfull').find('#Cliameright').val();
     let price = 0;
     let hn = $('.mainfull').find('#HN').val();
     let acc = $('.mainfull').find('#ACC').val();
     let department = $('.mainfull').find('#Department').val();
     let drOwner = $('.mainfull').find('#Refferal').val();
     let bodyPart = $('.mainfull').find('#Bodypart').val();
+		let scanPart = $('.mainfull').find('#Scanpart').val();
     let drReader = $('.mainfull').find('#Radiologist').val();
     let urgentType = $('.mainfull').find('#Urgenttype').val();
     let detail = $('.mainfull').find('#Detail').val();
@@ -2754,7 +2786,6 @@ module.exports = function ( jq ) {
     doShowDicomResult,
     doCreateNewCaseFirstStep,
     doCreateNewCaseSecondStep,
-    doCreateNewCaseThirdStep,
     doSaveNewCaseStep,
     doShowPopupRegisterNewRefferalUser
 	}
