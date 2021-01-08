@@ -13,7 +13,9 @@ const dicomfilter = require('./mod/dicomfilter.js')($);
 const newcase = require('./mod/createnewcase.js')($);
 const common = require('./mod/commonlib.js')($);
 
-const caseReadWaitStatus = [1,2,3,4,7];
+const caseReadWaitStatus = [1];
+const caseResultWaitStatus = [2];
+const caseNegativeStatus = [3,4,7];
 const caseReadSuccessStatus = [5];
 const caseAllStatus = [1,2,3,4,5,6,7];
 
@@ -185,22 +187,38 @@ function doLoadMainPage(){
 			});
 			*/
 			$(document).on('opennewstatuscase', async (evt, data)=>{
+				let resultTitle = $('<div><h3>รายการเคสใหม่ (รอตอบรับจากรังสีแพทย์)</h3></div>');
+				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseReadWaitStatus };
-				console.log(rqParams);
-				try {
-					let response = await common.doCallApi('/api/cases/filter/hospital', rqParams);
-					console.log(response);
-					if (response.status.code === 200) {
-						let rwTable = await cases.doShowRwCaseList(response.Records);
-	  				$(".mainfull").empty().append($(rwTable));
-					} else {
-						$.notify("เกิดความผิดพลาด ไม่สามารถเรียกรายการเคสจากเซิร์ฟเวอร์ได้ในขณะนี้", "error");
-					}
-		  		$('body').loading('stop');
-				} catch(e) {
-			    console.log('Unexpected error occurred =>', e);
-			    $('body').loading('stop');
-		    }
+				cases.doLoadCases(rqParams);
+			});
+
+			$(document).on('openacceptedstatuscase', async (evt, data)=>{
+				let resultTitle = $('<div><h3>รายการเคสหมอตอบรับแล้ว(รอผลอ่าน)</h3></div>');
+				$(".mainfull").empty().append($(resultTitle));
+				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseResultWaitStatus };
+				cases.doLoadCases(rqParams);
+			});
+
+			$(document).on('opensuccessstatuscase', async (evt, data)=>{
+				let resultTitle = $('<div><h3>รายการเคสได้ผลอ่านแล้</h3></div>');
+				$(".mainfull").empty().append($(resultTitle));
+				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseReadSuccessStatus };
+				cases.doLoadCases(rqParams);
+			});
+			$(document).on('opennegativestatuscase', async (evt, data)=>{
+				let resultTitle = $('<div><h3>รายการเคสเคสไม่สมบูรณ์/รอคำสั่ง</h3></div>');
+				$(".mainfull").empty().append($(resultTitle));
+				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseNegativeStatus };
+				cases.doLoadCases(rqParams);
+			});
+			$(document).on('opensearchcase', async (evt, data)=>{
+				let resultTitle = $('<div><h3>ค้นหาเคส</h3></div>');
+				$(".mainfull").empty().append($(resultTitle));
+				/*
+				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseResultWaitStatus };
+				cases.doLoadCases(rqParams);
+				*/
 			});
 		});
 
@@ -812,6 +830,28 @@ module.exports = function ( jq ) {
 		แบบนี้จะผิด และจะเกิด Internal Error ขึ้นที่ orthanc
 	*/
 
+	const doLoadCases = async function(rqParams) {
+		$('body').loading('start');
+		try {
+			let response = await common.doCallApi('/api/cases/filter/hospital', rqParams);
+			console.log(response);
+			if (response.status.code === 200) {
+				if (response.Records.length > 0) {
+					let rwTable = await doShowCaseList(response.Records);
+					$(".mainfull").append($(rwTable));
+				} else {
+					$(".mainfull").append($('<div><h3>ไม่พบรายการเคส</h3></div>'));
+				}
+			} else {
+				$.notify("เกิดความผิดพลาด ไม่สามารถเรียกรายการเคสจากเซิร์ฟเวอร์ได้ในขณะนี้", "error");
+			}
+			$('body').loading('stop');
+		} catch(e) {
+			console.log('Unexpected error occurred =>', e);
+			$('body').loading('stop');
+		}
+	}
+
   const openCaseList = async function(e) {
 		$('body').loading('start');
 		currentTab = e.detail.eventname;
@@ -909,71 +949,6 @@ module.exports = function ( jq ) {
     }
 	}
 
-	const doShowRwCaseList = function(incidents) {
-		return new Promise(async function(resolve, reject) {
-			if ((incidents) && (incidents.length > 0)) {
-				/*
-				let filterIncidents = incidents.filter((item, ind) => {
-					if (caseReadWaitStatus.indexOf(item.case.casestatusId) >= 0) {
-						return item;
-					}
-				});
-				if (filterIncidents.length > 0) {
-					let showTable = await doShowCaseList(filterIncidents);
-					resolve(showTable);
-				} else {
-					resolve($('<div>Cases not found.</div>'));
-				}
-				*/
-
-				let showTable = await doShowCaseList(incidents);
-				resolve(showTable);
-			} else {
-				resolve($('<div>Cases not found.</div>'));
-			}
-		});
-  }
-
-  function doShowRsCaseList(incidents) {
-		return new Promise(async function(resolve, reject) {
-			if ((incidents) && (incidents.length > 0)) {
-				/*
-				let filterIncidents = incidents.filter((item, ind) => {
-					if (caseReadSuccessStatus.indexOf(item.case.casestatusId) >= 0) {
-						return item;
-					}
-				});
-				if (filterIncidents.length > 0) {
-					let showTable = await doShowCaseList(filterIncidents);
-					resolve(showTable);
-				} else {
-					resolve($('<div>Cases not found.</div>'));
-				}
-				*/
-				let showTable = await doShowCaseList(incidents);
-				resolve(showTable);
-			} else {
-				resolve($('<div>Cases not found.</div>'));
-			}
-		});
-  }
-
-	function doShowAllCaseList(incidents) {
-		console.log(incidents);
-		return new Promise(async function(resolve, reject) {
-			if ((incidents) && (incidents.length > 0)) {
-				if (incidents.length > 0) {
-					let showTable = await doShowCaseList(incidents);
-					resolve(showTable);
-				} else {
-					resolve($('<div>Cases not found.</div>'));
-				}
-			} else {
-				resolve($('<div>Cases not found.</div>'));
-			}
-		});
-	}
-
   function doShowCaseList(incidents) {
 		return new Promise(async function(resolve, reject) {
 			let rwTable = $('<table width="100%" cellpadding="5" cellspacing="0"></table>');
@@ -1011,6 +986,11 @@ module.exports = function ( jq ) {
 						let clockCountdownDiv = $('<div></div>');
 						$(clockCountdownDiv).countdownclock({countToHH: hh, countToMN: mn});
 						$(caseStatusCol).append($(clockCountdownDiv));
+					} else {
+						let caseId = incidents[i].case.id;
+						let expiredStatus = 4;
+						let expiredDescription = 'Not found Task on Case Task Cron Job.';
+						doUpdateCaseStatus(caseId, expiredStatus, expiredDescription);
 					}
 				}
 				let commandCol = $('<td align="center"></td>');
@@ -1619,7 +1599,7 @@ module.exports = function ( jq ) {
 	}
 
 	return {
-		doShowRwCaseList
+		doLoadCases
 	}
 }
 
@@ -1772,10 +1752,14 @@ module.exports = function ( jq ) {
 		let queryString = localStorage.getItem('dicomfilter');
 		doCallSearhOrthanc(queryString).then(async (studies) => {
 			$(".mainfull").empty();
-			//let resultTable = await doShowOrthancResult(studies, 0);
-			let resultTable = await doShowDicomResult(studies, 0);
-
-			$(".mainfull").append($(resultTable));
+			let resultTitle = $('<div><h3>รายการภาพในระบบที่ค้นพบ</h3></div>');
+			$(".mainfull").empty().append($(resultTitle));
+			if (studies.length > 0) {
+				let resultTable = await doShowDicomResult(studies, 0);
+				$(".mainfull").append($(resultTable));
+			} else {
+				$(".mainfull").append($('<div><h3>ไม่พบรายการภาพ</h3></div>'));
+			}
 			$('body').loading('stop');
 		});
 	}

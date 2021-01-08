@@ -415,6 +415,34 @@
     $('.menu-tab').removeClass('active');
   });
 
+  $('#AcceptedStatusSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#AcceptedStatusSubCmd').trigger('openacceptedstatuscase', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
+  });
+
+  $('#SuccessStatusSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#SuccessStatusSubCmd').trigger('opensuccessstatuscase', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
+  });
+
+  $('#NegativeStatusSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#NegativeStatusSubCmd').trigger('opennegativestatuscase', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
+  });
+
+  $('#SearchCaseSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#SearchCaseSubCmd').trigger('opensearchcase', [eventData]);
+    $('.menu-hide').removeClass('show');
+    $('.menu-tab').removeClass('active');
+  });
+
   $('#NavHeader').empty().append('<h4 style="text-align: center;">โรงพยาบาล' + yourUserdata.hospital.Hos_Name + '</h4>');
 
   let userFullName = yourUserdata.userinfo.User_NameEN + ' ' + yourUserdata.userinfo.User_LastNameEN + ' (' + yourUserdata.userinfo.User_NameTH + ' ' + yourUserdata.userinfo.User_LastNameTH + ')';
