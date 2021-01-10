@@ -1,0 +1,22 @@
+<!- example-plugin.html -->
+
+<script type="text/javascript" src="../../lib/jquery.js"></script>
+<script type="text/javascript" src="../../lib/jquery-ui.min.js"></script>
+<script type="text/javascript" src="jquery-example-plugin.js"></script>
+
+
+<div class="plugintest">
+    <span>1</span>
+    <span>2</span>
+    <span>3</span>
+    <span>4</span>
+</div>
+
+<script>
+    $(function(){
+        var myplugin=$(".plugintest > span").myplugin({
+            param:'somevalue'
+        });
+        myplugin.function1(1).function1(2).function1(3);
+    });
+</script>

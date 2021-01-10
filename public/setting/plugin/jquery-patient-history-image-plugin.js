@@ -1,3 +1,4 @@
+//https://learn.jquery.com/jquery-ui/widget-factory/how-to-use-the-widget-factory/
 $.widget( "custom.iconitem", {
   options: {
     elementType: 'icon',

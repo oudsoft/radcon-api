@@ -290,7 +290,7 @@ const RadCaseDef = {
 				type: Sequelize.STRING(150)
 			},
 			Case_ScanPart : {
-				type: Sequelize.STRING(50)
+				type: Sequelize.JSON
 			},
 			Case_Modality : {
 				type: Sequelize.STRING(40)
@@ -363,10 +363,38 @@ const RadLineUserDef = {
 
 // RIS interface
 const RadRisInterfaceDef = {
-	RisData : {
-		type: Sequelize.JSONB
-	}
-}
+		RisData : {
+			type: Sequelize.JSONB
+		}
+	};
+
+const RadScanPartRefDef = {
+			Code : {
+				type: Sequelize.STRING(10)
+			},
+			Name : {
+				type: Sequelize.STRING(100)
+			},
+			Unit : {
+				type: Sequelize.STRING(30)
+			},
+			Price : {
+				type: Sequelize.FLOAT,
+			},
+			Common : {
+				type: Sequelize.STRING(10)
+			},
+			RefPoint : {
+				type: Sequelize.STRING(10)
+			},
+			Modality : {
+				type: Sequelize.STRING(30)
+			},
+			MajorType : {
+				type: Sequelize.STRING(30)
+			}
+		};
+
 
 module.exports = {
 	RadUserTypeDef,
@@ -389,5 +417,6 @@ module.exports = {
 	RadCaseResponseDef,
 	RadCaseReportDef,
 	RadLineUserDef,
-	RadRisInterfaceDef
+	RadRisInterfaceDef,
+	RadScanPartRefDef
 }

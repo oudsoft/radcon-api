@@ -139,6 +139,7 @@ function doLoadMainPage(){
 	let jqueryNotifyUrl = '../lib/notify.min.js';
 	let patientHistoryPluginUrl = "../setting/plugin/jquery-patient-history-image-plugin.js";
 	let countdownclockPluginUrl = "../setting/plugin/jquery-countdown-clock-plugin.js";
+	let scanpartPluginUrl = "../setting/plugin/jquery-scanpart-plugin.js";
 
 	$('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
 	$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
@@ -149,9 +150,11 @@ function doLoadMainPage(){
 
 	$('head').append('<script src="' + patientHistoryPluginUrl + '"></script>');
 	$('head').append('<script src="' + countdownclockPluginUrl + '"></script>');
+	$('head').append('<script src="' + scanpartPluginUrl + '"></script>');
 
 	$('head').append('<link rel="stylesheet" href="../lib/tui-image-editor.min.css" type="text/css" />');
 	$('head').append('<link rel="stylesheet" href="../lib/tui-color-picker.css" type="text/css" />');
+	$('head').append('<link rel="stylesheet" href="./css/scanpart.css" type="text/css" />');
 
   $('body').append($('<div id="overlay"><div class="loader"></div></div>'));
 
@@ -1100,8 +1103,8 @@ module.exports = function ( jq ) {
 			let apiRes = await common.doCallApi(apiUrl, rqParams);
 			let response = apiRes.Records[0];
 			let resPatient = response.case.patient;
-  		let patient = {id: resPatient.Patient_HN, name: resPatient.Patient_NameEN, name_th: resPatient.Patient_NameTH, age: resPatient.Patient_Age, sex: resPatient.Patient_Sex};
-			let defualtValue = {id: response.case.id, patient: patient, bodypart: response.case.Case_BodyPart, studyID: response.case.Case_OrthancStudyID, acc: response.case.Case_ACC, mdl: response.case.Case_Modality};
+  		let patient = {id: resPatient.Patient_HN, name: resPatient.Patient_NameEN, name_th: resPatient.Patient_NameTH, age: resPatient.Patient_Age, sex: resPatient.Patient_Sex, patientCitizenID: resPatient.Patient_CitizenID};
+			let defualtValue = {id: response.case.id, patient: patient, bodypart: response.case.Case_BodyPart, scanpart: response.case.Case_ScanPart, studyID: response.case.Case_OrthancStudyID, acc: response.case.Case_ACC, mdl: response.case.Case_Modality};
 			defualtValue.pn_history = response.case.Case_PatientHRLink;
 			defualtValue.status = response.case.casestatusId;
 			defualtValue.urgent = response.case.urgenttypeId;
@@ -2264,11 +2267,27 @@ module.exports = function ( jq ) {
 			$(tableRow).appendTo($(table));
 
 			tableRow = $('<div style="display: table-row;"></div>');
-			tableCell = $('<div style="display: table-cell;">Scan Part</div>');
+			tableCell = $('<div style="display: table-cell; vertical-align: middle;">Scan Part</div>');
 			$(tableCell).appendTo($(tableRow));
-			tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Scanpart"/></div>');
-			$(tableCell).find('#Scanpart').val(defualtValue.scanpart);
+			//tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Scanpart"/></div>');
+			//$(tableCell).find('#Scanpart').val(defualtValue.scanpart);
+			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
+			let selectedResultBox = $('<div style="display: table-cell; padding: 5px;"></div>');
+			let scanpart = undefined;
+			let scanpartSettings = {
+        iconCmdUrl: '/images/case-incident.png',
+        loadOriginUrl: '/api/scanpartref/list',
+				addScanpartItemUrl: '/api/scanpartref/add',
+				externalStyle: {"font-family": "THSarabunNew", "font-size": "24px"},
+        successCallback: function(data) {
+					scanpart = data.selectedData;
+					console.log(scanpart);
+          $(selectedResultBox).append($(data.selectedBox));
+        }
+      };
+		  $(tableCell).scanpart(scanpartSettings);
 			$(tableCell).appendTo($(tableRow));
+			$(selectedResultBox).appendTo($(tableRow));
 			$(tableRow).appendTo($(table));
 
 			tableRow = $('<div style="display: table-row;"></div>');
