@@ -140,6 +140,7 @@ function doLoadMainPage(){
 	let patientHistoryPluginUrl = "../setting/plugin/jquery-patient-history-image-plugin.js";
 	let countdownclockPluginUrl = "../setting/plugin/jquery-countdown-clock-plugin.js";
 	let scanpartPluginUrl = "../setting/plugin/jquery-scanpart-plugin.js";
+	let customUrgentPlugin = "../setting/plugin/jquery-custom-urgent-plugin.js";
 
 	$('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
 	$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
@@ -151,6 +152,7 @@ function doLoadMainPage(){
 	$('head').append('<script src="' + patientHistoryPluginUrl + '"></script>');
 	$('head').append('<script src="' + countdownclockPluginUrl + '"></script>');
 	$('head').append('<script src="' + scanpartPluginUrl + '"></script>');
+	$('head').append('<script src="' + customUrgentPlugin + '"></script>');
 
 	$('head').append('<link rel="stylesheet" href="../lib/tui-image-editor.min.css" type="text/css" />');
 	$('head').append('<link rel="stylesheet" href="../lib/tui-color-picker.css" type="text/css" />');
@@ -286,17 +288,6 @@ function doShowFilterSetting() {
 			let newDicomFilter = JSON.parse(queryString);
 			localStorage.setItem('dicomfilter', JSON.stringify(newDicomFilter));
 			$("#dialog").find('#CloseUserProfile-Cmd').click();
-			//Re-Load Study from orthanc
-			//$('body').loading('stop');
-			/*
-			cases.doCallSearhOrthanc(queryString).then(async (studies) => {
-				$("#Dicom-Result").empty();
-  			//let resultTable = await cases.doShowOrthancResult(studies, 0);
-				let resultTable = await cases.doShowDicomResult(studies, 0);
-  			$("#Dicom-Result").append($(resultTable));
-				$('body').loading('stop');
-			});
-			*/
 			newcase.doLoadDicomFromOrthanc();
 		});
 	});
@@ -837,7 +828,7 @@ module.exports = function ( jq ) {
 		$('body').loading('start');
 		try {
 			let response = await common.doCallApi('/api/cases/filter/hospital', rqParams);
-			console.log(response);
+			//console.log(response);
 			if (response.status.code === 200) {
 				if (response.Records.length > 0) {
 					let rwTable = await doShowCaseList(response.Records);
@@ -993,7 +984,7 @@ module.exports = function ( jq ) {
 						let caseId = incidents[i].case.id;
 						let expiredStatus = 4;
 						let expiredDescription = 'Not found Task on Case Task Cron Job.';
-						doUpdateCaseStatus(caseId, expiredStatus, expiredDescription);
+						common.doUpdateCaseStatus(caseId, expiredStatus, expiredDescription);
 					}
 				}
 				let commandCol = $('<td align="center"></td>');
@@ -1100,24 +1091,35 @@ module.exports = function ( jq ) {
 		let rqParams = { username: username, id: caseid }
 		let apiUrl = '/api/cases/select/' + caseid;
 		try {
+
 			let apiRes = await common.doCallApi(apiUrl, rqParams);
 			let response = apiRes.Records[0];
 			let resPatient = response.case.patient;
   		let patient = {id: resPatient.Patient_HN, name: resPatient.Patient_NameEN, name_th: resPatient.Patient_NameTH, age: resPatient.Patient_Age, sex: resPatient.Patient_Sex, patientCitizenID: resPatient.Patient_CitizenID};
-			let defualtValue = {id: response.case.id, patient: patient, bodypart: response.case.Case_BodyPart, scanpart: response.case.Case_ScanPart, studyID: response.case.Case_OrthancStudyID, acc: response.case.Case_ACC, mdl: response.case.Case_Modality};
+			let defualtValue = {caseId: response.case.id, patient: patient, bodypart: response.case.Case_BodyPart, scanpart: response.case.Case_ScanPart, studyID: response.case.Case_OrthancStudyID, acc: response.case.Case_ACC, mdl: response.case.Case_Modality};
 			defualtValue.pn_history = response.case.Case_PatientHRLink;
 			defualtValue.status = response.case.casestatusId;
 			defualtValue.urgent = response.case.urgenttypeId;
+			defualtValue.urgenttype = response.case.urgenttype.UGType;
 			defualtValue.rights = response.case.cliamerightId;
 			defualtValue.primary_dr = response.case.Case_RefferalId;
 			defualtValue.dr_id = response.case.Case_RadiologistId;
 			defualtValue.detail = response.case.Case_DESC;
 			defualtValue.dept = response.case.Case_Department;
 			defualtValue.inc_price = response.case.Case_Price;
-			defualtValue.dicom_zip1 = '';
 			defualtValue.patientId = resPatient.id;
 			defualtValue.studyInstanceUID = response.case.Case_StudyInstanceUID;
-  		doOpenEditCase(defualtValue);
+			defualtValue.headerCreateCase = 'แก้ไขเคส';
+
+			let orthancRes = await common.doGetOrthancStudyDicom(defualtValue.studyID);
+			let seriesList = orthancRes.Series;
+			let patientName = orthancRes.PatientMainDicomTags.PatientName;
+			let allSeries = seriesList.length;
+			let allImageInstances = await newcase.doCallCountInstanceImage(seriesList, patientName);
+			newcase.doCreateNewCaseFirstStep(defualtValue, allSeries, allImageInstances);
+			/*
+  		//doOpenEditCase(defualtValue);
+			*/
   		$('body').loading('stop');
 		} catch(e) {
 	    console.log('Unexpected error occurred =>', e);
@@ -1154,6 +1156,7 @@ module.exports = function ( jq ) {
 		});
 	}
 
+	/* Remove */
   function doOpenEditCase(defualtValue) {
 		$("#dialog").load('form/newcase-dialog.html', async function(){
 			$('#dialog-title').text('แก้ไขเคส');
@@ -1212,6 +1215,7 @@ module.exports = function ( jq ) {
 		});
   }
 
+	/* Remove */
 	function doPrepareOptionForm(defualtValue){
 		return new Promise(async function(resolve, reject) {
 			const main = require('../main.js');
@@ -1286,6 +1290,7 @@ module.exports = function ( jq ) {
 		});
 	}
 
+	/* Remove */
 	async function doSaveEditCase(caseId, patientId){
 		let updateCaseData = doVerifyInputForm();
 		if (updateCaseData) {
@@ -1311,7 +1316,7 @@ module.exports = function ( jq ) {
 					let d = new Date().getTime();
 					let stampTime = util.formatDateTimeStr(d);
 					let changeRaioLog = 'Radio change from ' + updateCaseData.drReader + ' to ' + updateCaseData.radioId + ' by ' + userId + ' at ' + stampTime;
-					doUpdateCaseStatus(caseId, caseNewStatus, changeRaioLog).then((caseChangeStatusRes) => {
+					common.doUpdateCaseStatus(caseId, caseNewStatus, changeRaioLog).then((caseChangeStatusRes) => {
 						console.log(caseChangeStatusRes);
 						$.notify("บันทึกการแก้ไขเคสและปรับสถานะเคสเป็นเคสใหม่เรียบร้อยแล้ว", "info");
 						doCloseNewCaseBox();
@@ -1473,7 +1478,7 @@ module.exports = function ( jq ) {
 		let caseID = $('#caseID').val();
 		let newStatus = $('#newStatus').val();
 		let newDescription = $('#caseDescription').val();
-		doUpdateCaseStatus(caseID, newStatus, newDescription).then((response) => {
+		common.doUpdateCaseStatus(caseID, newStatus, newDescription).then((response) => {
 			if (currentTab === 'ReadWaitDiv') {
 				//openRwCaseList();
 				$("#ReadWaitTab").trigger("click");
@@ -1509,23 +1514,6 @@ module.exports = function ( jq ) {
 				$('body').loading('stop');
 			});
   	}
-	}
-
-	function doUpdateCaseStatus(id, newStatus, newDescription){
-		return new Promise(async function(resolve, reject) {
-			const main = require('../main.js');
-			let userdata = JSON.parse(main.doGetUserData());
-			let hospitalId = userdata.hospitalId;
-			let userId = userdata.userId;
-			let rqParams = { hospitalId: hospitalId, userId: userId, caseId: id, casestatusId: newStatus, caseDescription: newDescription};
-			let apiUrl = '/api/cases/status/' + id;
-			try {
-				let response = await common.doCallApi(apiUrl, rqParams);
-				resolve(response);
-			} catch(e) {
-	      reject(e);
-    	}
-		});
 	}
 
 	function doDeleteCase(id) {
@@ -1713,7 +1701,7 @@ module.exports = function ( jq ) {
 		rqParams.Case_OrthancStudyID = newCaseData.studyID;
 		rqParams.Case_ACC = newCaseData.acc;
 		rqParams.Case_BodyPart = newCaseData.bodyPart;
-		rqParams.Case_ScanPart = newCaseData.scanPart;
+		rqParams.Case_ScanPart = newCaseData.scanpartItem;
 		rqParams.Case_Modality = newCaseData.mdl;
 		rqParams.Case_Manufacturer = newCaseData.manufacturer;
 		rqParams.Case_ProtocolName = newCaseData.protocalName;
@@ -1730,6 +1718,84 @@ module.exports = function ( jq ) {
 		return rqParams;
 	}
 
+	const doGetOrthancStudyDicom = function(studyId) {
+		return new Promise(async function(resolve, reject) {
+			const main = require('../main.js');
+			const userdata = JSON.parse(main.doGetUserData());
+			let hospitalId = userdata.hospitalId;
+			let username = userdata.username;
+			let rqBody = '{"Level": "Study", "Expand": true, "Query": {"PatientName":"TEST"}}';
+			let orthancUri = '/studies/' + studyId;
+	  	let params = {method: 'get', uri: orthancUri, body: rqBody, hospitalId: hospitalId};
+	  	let orthancRes = await apiconnector.doCallOrthancApiByProxy(params);
+			resolve(orthancRes);
+		});
+	}
+
+	const doUpdateCaseStatus = function(id, newStatus, newDescription){
+		return new Promise(async function(resolve, reject) {
+			const main = require('../main.js');
+			let userdata = JSON.parse(main.doGetUserData());
+			let hospitalId = userdata.hospitalId;
+			let userId = userdata.userId;
+			let rqParams = { hospitalId: hospitalId, userId: userId, caseId: id, casestatusId: newStatus, caseDescription: newDescription};
+			let apiUrl = '/api/cases/status/' + id;
+			try {
+				let response = await doCallApi(apiUrl, rqParams);
+				resolve(response);
+			} catch(e) {
+	      reject(e);
+    	}
+		});
+	}
+
+	const doCreateNewCustomUrgent = function(ugData){
+		return new Promise(async function(resolve, reject) {
+			const main = require('../main.js');
+			let userdata = JSON.parse(main.doGetUserData());
+			let hospitalId = userdata.hospitalId;
+			let acceptStep = {dd: ugData.Accept.dd, hh: ugData.Accept.hh, mn: ugData.Accept.mn};
+			let workingStep = {dd: ugData.Working.dd, hh: ugData.Working.hh, mn: ugData.Working.mn};
+			let ugTypeData = {UGType: 'custom', UGType_Name: ugData.Accept.text, UGType_ColorCode: '', UGType_AcceptStep: JSON.stringify(acceptStep), UGType_WorkingStep: JSON.stringify(workingStep), hospitalId: hospitalId};
+			let apiUrl = '/api/urgenttypes/add';
+			try {
+				let response = await doCallApi(apiUrl, ugTypeData);
+				resolve(response);
+			} catch(e) {
+	      reject(e);
+    	}
+		});
+	}
+
+	const doCallSelectUrgentType = function(urgentId){
+		return new Promise(async function(resolve, reject) {
+			let apiUrl = '/api/urgenttypes/select/' + urgentId;
+			let rqParams = {};
+			try {
+				let response = await doCallApi(apiUrl, rqParams);
+				resolve(response);
+			} catch(e) {
+	      reject(e);
+    	}
+		});
+	}
+
+	const doUpdateCustomUrgent = function(ugData, ugentId) {
+		return new Promise(async function(resolve, reject) {
+			let acceptStep = {dd: ugData.Accept.dd, hh: ugData.Accept.hh, mn: ugData.Accept.mn};
+			let workingStep = {dd: ugData.Working.dd, hh: ugData.Working.hh, mn: ugData.Working.mn};
+			let ugTypeData = {UGType_AcceptStep: JSON.stringify(acceptStep), UGType_WorkingStep: JSON.stringify(workingStep)};
+			let rqParams = {id: ugentId, data: ugTypeData};
+			let apiUrl = '/api/urgenttypes/update';
+			try {
+				let response = await doCallApi(apiUrl, ugTypeData);
+				resolve(response);
+			} catch(e) {
+				reject(e);
+			}
+		});
+	}
+
   return {
 		doCallApi,
 		doGetApi,
@@ -1737,7 +1803,12 @@ module.exports = function ( jq ) {
 		doDownloadDicom,
     doDeleteDicom,
     doPreparePatientParams,
-    doPrepareCaseParams
+    doPrepareCaseParams,
+		doGetOrthancStudyDicom,
+		doUpdateCaseStatus,
+		doCreateNewCustomUrgent,
+		doCallSelectUrgentType,
+		doUpdateCustomUrgent
 	}
 }
 
@@ -1805,137 +1876,6 @@ module.exports = function ( jq ) {
 				});
 			});
   	});
-  }
-
-  const doShowOrthancResult = function(dj, startRef){
-		return new Promise(async function(resolve, reject) {
-			/* sort dj by studydatetime */
-			await dj.sort((a,b) => {
-				let av = util.getDatetimeValue(a.MainDicomTags.StudyDate, a.MainDicomTags.StudyTime);
-				let bv = util.getDatetimeValue(b.MainDicomTags.StudyDate, b.MainDicomTags.StudyTime);
-				if (av && bv) {
-					return bv - av;
-				} else {
-					return 0;
-				}
-			});
-			/* ================== */
-			let rsTable = $('<table width="100%" cellpadding="5" cellspacing="0"></table>');
-			let headRow = $('<tr style="background-color: green;"></tr>');
-			let headColumns = $('<td width="5%" align="center">No.</td><td width="15%" align="left">Study Date</td><td width="10%" align="left">HN</td><td width="15%" align="left">Name</td><td width="5%" align="left">Sex/Age</td><td width="5%" align="left">Modality</td><td width="20%" align="left">Study Desc. / Protocol Name</td><td width="*" align="center">Operation</td>');
-			$(rsTable).append($(headRow));
-			$(headRow).append($(headColumns));
-			var promiseList = new Promise(function(resolve2, reject2){
-				for (let i=0; i < dj.length; i++) {
-					const spacingBox = $('<span>&nbsp;</span>');
-					let desc, protoname, mld, sa, studydate, bdp;
-					if ((dj[i].MainDicomTags) && (dj[i].SamplingSeries)){
-						if (dj[i].MainDicomTags.StudyDescription) {
-							desc = '<div class="study-desc">' + dj[i].MainDicomTags.StudyDescription + '</div>';
-							bdp = dj[i].MainDicomTags.StudyDescription;
-						} else {
-							if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
-								bdp = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
-							} else {
-								bdp = '';
-							}
-							desc = '';
-						}
-						if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
-							protoname = '<div class="protoname">' + dj[i].SamplingSeries.MainDicomTags.ProtocolName + '</div>';
-						} else {
-							protoname = '';
-						}
-						if (dj[i].SamplingSeries.MainDicomTags.Modality) {
-							mld = dj[i].SamplingSeries.MainDicomTags.Modality;
-						} else {
-							mld = '';
-						}
-						if (dj[i].MainDicomTags.StudyDate) {
-							studydate = dj[i].MainDicomTags.StudyDate;
-							studydate = util.formatStudyDate(studydate);
-						} else {
-							studydate = '';
-						}
-						if (dj[i].PatientMainDicomTags.PatientSex) {
-							sa = dj[i].PatientMainDicomTags.PatientSex;
-						} else {
-							sa = '-';
-						}
-						if (dj[i].PatientMainDicomTags.PatientBirthDate) {
-							sa = sa + '/' + util.getAge(dj[i].PatientMainDicomTags.PatientBirthDate)
-						} else {
-							sa = sa + '/-';
-						}
-
-						let dataRow = $('<tr class="case-row"></tr>');
-						let dataColText = '';
-						dataColText += '<td align="center">'+ (i + 1 + startRef) + '</td>'
-						dataColText += '<td align="left">' + '<div style="float: left;">' + studydate + '</div><div style="background-color: gray; color: white; text-align: center; float: left; margin: -6px 10px; padding: 5px; border-radius: 5px;">' + util.formatStudyTime(dj[i].MainDicomTags.StudyTime) + '</div></td>'
-						dataColText += '<td align="left">' + dj[i].PatientMainDicomTags.PatientID + '</td>'
-						dataColText += '<td align="left">' + dj[i].PatientMainDicomTags.PatientName + '</td>'
-						dataColText += '<td align="left">' + sa + '</td>'
-						dataColText += '<td align="left">' + mld + '</td>';
-						dataColText += '<td align="left">' + desc +  protoname + '</td>'
-						let dataCol = $(dataColText);
-						$(dataRow).append($(dataCol));
-
-						operatingCol = $('<td align="center"></td>');
-						$(dataRow).append($(operatingCol));
-						let previewCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/preview-icon.png" title="เปิดดูรูปด้วย Web Viewer"/>');
-						//let instancePreview = dj[i].SamplingSeries.Instances[0];
-						$(previewCmd).on('click', function(evt){
-							common.doOpenStoneWebViewer(dj[i].MainDicomTags.StudyInstanceUID);
-						});
-						$(operatingCol).append($(previewCmd));
-
-						let patientProps = sa.split('/');
-						let defualtValue = {patient: {id: dj[i].PatientMainDicomTags.PatientID, name: dj[i].PatientMainDicomTags.PatientName, age: patientProps[1], sex: patientProps[0]}, bodypart: bdp, studyID: dj[i].ID, acc: dj[i].MainDicomTags.AccessionNumber, mdl: mld};
-						defualtValue.studyDesc = dj[i].MainDicomTags.StudyDescription;
-						defualtValue.protocalName = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
-						defualtValue.manufacturer = dj[i].SamplingSeries.MainDicomTags.Manufacturer;
-						defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
-						defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
-
-						let createNewCaseCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/doctor-icon.png" title="ส่งรังสีแพทย์เพื่ออ่านผล"/>');
-						$(createNewCaseCmd).on('click', function(evt){
-							doOpenCreateNewCase(defualtValue, dj[i].Series);
-						});
-
-						$(operatingCol).append($(spacingBox));
-						$(operatingCol).append($(createNewCaseCmd));
-
-						let downloadDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/zip-icon.png" title="ดาวน์โหลด zip ไฟล์"/>');
-						$(downloadDicomCmd).on('click', function(evt){
-							let dicomFilename = dj[i].PatientMainDicomTags.PatientName.split(' ');
-							dicomFilename = dicomFilename.join('_');
-							dicomFilename = dicomFilename + '-' + dj[i].MainDicomTags.StudyDate + '.zip';
-							common.doDownloadDicom(dj[i].ID, dicomFilename);
-						});
-
-						$(operatingCol).append($(spacingBox));
-						$(operatingCol).append($(downloadDicomCmd));
-
-						let deleteDicomCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/delete-icon.png" title="ลบรายการนี้"/>');
-						$(deleteDicomCmd).on('click', function(evt){
-							common.doDeleteDicom(dj[i].ID);
-						});
-
-						$(operatingCol).append($(spacingBox));
-						$(operatingCol).append($(deleteDicomCmd));
-
-						$(rsTable).append($(dataRow));
-					}
-				}
-				setTimeout(()=> {
-					resolve2($(rsTable));
-				}, 700);
-			});
-			Promise.all([promiseList]).then((ob)=>{
-				//resolve($(rsTable));
-				resolve(ob[0]);
-			});
-		});
   }
 
   const doCreateDicomHeaderRow = function() {
@@ -2075,6 +2015,7 @@ module.exports = function ( jq ) {
 						defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
 						defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
 						defualtValue.studyDate = dj[i].MainDicomTags.StudyDate;
+						defualtValue.headerCreateCase = 'ส่งอ่านผล';
  						let no = (i + 1 + startRef);
 						let studyDate = '<div style="float: left;">' + studydate + '</div>';
 						let studyTime = '<div style="background-color: gray; color: white; text-align: center; float: left; margin: -6px 10px; padding: 5px; border-radius: 5px;">' + util.formatStudyTime(dj[i].MainDicomTags.StudyTime) + '</div>';
@@ -2096,7 +2037,7 @@ module.exports = function ( jq ) {
 		});
 	}
 
-	function doCallCountInstanceImage(seriesList, patientNname){
+	const doCallCountInstanceImage = function(seriesList, patientNname){
 		return new Promise(async function(resolve, reject) {
 			$('body').loading('start');
 			const main = require('../main.js');
@@ -2122,7 +2063,7 @@ module.exports = function ( jq ) {
 		});
 	}
 
-  function doVerifyNewCaseDataFirstStep(form){
+  function doVerifyNewCaseDataFirstStep(form, scanparts){
     let patientNameEN = $(form).find('#PatientNameEN').val();
     let patientNameTH = $(form).find('#PatientNameTH').val();
     let hn = $(form).find('#HN').val();
@@ -2132,7 +2073,6 @@ module.exports = function ( jq ) {
 		let citizenID = $(form).find('#CitizenID').val();
     let cliameright = $(form).find('#Cliameright').val();
     let bodypart = $(form).find('#Bodypart').val();
-    let scanpart = $(form).find('#Scanpart').val();
     let price = 0;
     if (!(/^[a-zA-Z]\w{1,65}$/.test(patientNameEN))) {
       $(form).find('#PatientNameEN').css("border","4px solid red");
@@ -2163,6 +2103,14 @@ module.exports = function ( jq ) {
       $(form).find('#Bodypart').notify("Study Desc. / Protocol Name ต้องไม่เว้นว่าง", "error");
       $(form).find('#Bodypart').focus();
       return false;
+		} else if (cliameright <= 0) {
+			$(form).find('#Bodypart').css("border","");
+			$(form).find('#Cliameright').css("border","4px solid red");
+      $(form).find('#Cliameright').notify("โปรดระบุสิทธิ์ผู้ป่วย", "error");
+      $(form).find('#Cliameright').focus();
+		} else if (scanparts.length == 0) {
+			$(form).find('#Cliameright').css("border","");
+			$(form).notify("ต้องมี Scan Part อย่างน้อย 1 รายการ โปรดคลิกที่ไอคอนเครื่องหมาย + สีเขียว", "error");
     } else {
       return true;
     }
@@ -2175,13 +2123,13 @@ module.exports = function ( jq ) {
 		let userdata = JSON.parse(main.doGetUserData());
 		let hospitalId = userdata.hospitalId;
 		let apiUrl = '/api/cases/options/' + hospitalId;
-		common.doGetApi(apiUrl, rqParams).then((response)=>{
+		common.doGetApi(apiUrl, rqParams).then(async (response)=>{
 			let options = response.Options;
 			let openStoneWebViewerCounter = 0;
 
 			let tableWrapper = $('<div id="FirstStepWrapper" style="width: 60%; position: absolute;"></div>');
 
-			let headerWrapper = $('<div style="width: 100%;" class="header-cell">ส่งอ่านผล</div>');
+			let headerWrapper = $('<div style="width: 100%;" class="header-cell">' + defualtValue.headerCreateCase + '</div>');
 			$(headerWrapper).appendTo($(tableWrapper));
 
 			let guideWrapper = $('<div style="width: 100%; padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 1/2 โปรดตรวจสอบและแก้ไขข้อมูล</div>');
@@ -2245,6 +2193,7 @@ module.exports = function ( jq ) {
 			tableCell = $('<div style="display: table-cell;">เลขประจำตัวประชาชน</div>');
 			$(tableCell).appendTo($(tableRow));
 			tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="CitizenID"/></div>');
+			$(tableCell).find('#CitizenID').val(defualtValue.patient.patientCitizenID);
 			$(tableCell).appendTo($(tableRow));
 			$(tableRow).appendTo($(table));
 
@@ -2254,7 +2203,13 @@ module.exports = function ( jq ) {
 			tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Cliameright"></select></div>');
 			options.cliames.forEach((item) => {
 				$(tableCell).find('#Cliameright').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
-			})
+			});
+			if (defualtValue.rights) {
+				$(tableCell).find('#Cliameright').val(defualtValue.rights);
+			} else {
+				$(tableCell).find('#Cliameright').prepend($('<option value="0">ระบุสิทธิ์ผู้ป่วย</option>'));
+				$(tableCell).find('#Cliameright').val(0);
+			}
 			$(tableCell).appendTo($(tableRow));
 			$(tableRow).appendTo($(table));
 
@@ -2268,27 +2223,44 @@ module.exports = function ( jq ) {
 
 			tableRow = $('<div style="display: table-row;"></div>');
 			tableCell = $('<div style="display: table-cell; vertical-align: middle;">Scan Part</div>');
-			$(tableCell).appendTo($(tableRow));
-			//tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Scanpart"/></div>');
-			//$(tableCell).find('#Scanpart').val(defualtValue.scanpart);
-			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
-			let selectedResultBox = $('<div style="display: table-cell; padding: 5px;"></div>');
-			let scanpart = undefined;
+			$(tableCell).append('<span>   </span>');
+			let selectedResultBox = $('<div style="display: table-cell; id="SelectedResultBox" padding: 5px;"></div>');
+			let scanparts = [];
 			let scanpartSettings = {
         iconCmdUrl: '/images/case-incident.png',
         loadOriginUrl: '/api/scanpartref/list',
 				addScanpartItemUrl: '/api/scanpartref/add',
 				externalStyle: {"font-family": "THSarabunNew", "font-size": "24px"},
+				selectedMainJson: scanparts,
         successCallback: function(data) {
-					scanpart = data.selectedData;
-					console.log(scanpart);
-          $(selectedResultBox).append($(data.selectedBox));
-        }
+					scanparts = data.selectedData;
+          $(selectedResultBox).empty().append($(data.selectedBox));
+					$('.remove-item').empty();
+        },
+				updateSelectedItem: async function(content){
+					if (scanparts.length > 0) {
+						let key = '';
+						await scanparts.forEach(async (item, i) => {
+							let code = item.Code;
+							await scanpart.addSelectedItem(content, code, key);
+						});
+					}
+				}
       };
-		  $(tableCell).scanpart(scanpartSettings);
+
+		  let scanpart = $(tableCell).scanpart(scanpartSettings);
 			$(tableCell).appendTo($(tableRow));
-			$(selectedResultBox).appendTo($(tableRow));
+			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
+			$(tableCell).appendTo($(tableRow));
+			$(selectedResultBox).appendTo($(tableCell));
 			$(tableRow).appendTo($(table));
+			if ((defualtValue.scanpart) && (defualtValue.scanpart.length > 0)) {
+				scanparts = defualtValue.scanpart;
+				scanpart.setSelectedMainJson(defualtValue.scanpart);
+				let yourSelectScanpart = await scanpart.getSelectedListBox('');
+				$(yourSelectScanpart).find('.remove-item').empty();
+				$(selectedResultBox).append($(yourSelectScanpart));
+			}
 
 			tableRow = $('<div style="display: table-row;"></div>');
 			tableCell = $('<div style="display: table-cell;">จำนวน Series / จำนวนรูป</div>');
@@ -2323,7 +2295,7 @@ module.exports = function ( jq ) {
 
 			$(nextStepTwoCmd).click(()=>{
 				const goToSecondStep = async function() {
-					let verified = doVerifyNewCaseDataFirstStep(table);
+					let verified = doVerifyNewCaseDataFirstStep(table, scanparts);
 					if (verified) {
 						await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
 						let nextTable = $('.mainfull').find('#SecondStepWrapper');
@@ -2331,20 +2303,26 @@ module.exports = function ( jq ) {
 							$(nextTable).show();
 							$(nextTable).animate({	left: centerPos	}, 1000);
 						} else {
-							doCreateNewCaseSecondStep(defualtValue, options);
+							doCreateNewCaseSecondStep(defualtValue, options, scanparts);
 						}
 					}
 				}
 				if (openStoneWebViewerCounter > 0) {
 					goToSecondStep();
 				} else {
-					let confirmImageInstance = confirm('โปรดยืนยันว่าคุณได้ตรวจสอบจำนวน Series และจำนวนรูปภาพแล้วว่ามีครบถูกต้องคือ ' + allSeries + ' ซีรีส์ และ ' + allImageInstances + ' รูป');
-					if (confirmImageInstance) {
+					if (defualtValue.caseId) {
+						openStoneWebViewerCounter += 1;
 						goToSecondStep();
 					} else {
-						alert('โปรตรวจสอบจำนวน Series และจำนวนรูปภาพ จากแท็บใหม่ที่ระบบฯ กำลังจะเปิดให้\nและกลับมาดำเนินการต่อในขั้นตอนต่อไป');
-						$(previewCmd).click();
-						openStoneWebViewerCounter += 1;
+						let confirmImageInstance = confirm('โปรดยืนยันว่าคุณได้ตรวจสอบจำนวน Series และจำนวนรูปภาพแล้วว่ามีครบถูกต้องคือ ' + allSeries + ' ซีรีส์ และ ' + allImageInstances + ' รูป');
+						if (confirmImageInstance) {
+							openStoneWebViewerCounter += 1;
+							goToSecondStep();
+						} else {
+							alert('โปรตรวจสอบจำนวน Series และจำนวนรูปภาพ จากแท็บใหม่ที่ระบบฯ กำลังจะเปิดให้\nและกลับมาดำเนินการต่อในขั้นตอนต่อไป');
+							$(previewCmd).click();
+							openStoneWebViewerCounter += 1;
+						}
 					}
 				}
 			});
@@ -2364,18 +2342,18 @@ module.exports = function ( jq ) {
     let urgenttype = $(form).find('#Urgenttype').val();
     let radiologist = $(form).find('#Radiologist').val();
     let detail = $(form).find('#Detail').val();
-		if (refferal === '0') {
+		if (refferal <= 0) {
 			$(form).find('#Bodypart').css("border","");
 			$(form).find('#Refferal').css("border","4px solid red");
 			$(form).find('#Refferal').notify("โปรดระบุแพทย์เจ้าของไช้", "error");
 			$(form).find('#Refferal').focus();
 			return false;
-    } else if (urgenttype === '0') {
+    } else if (urgenttype <= 0) {
       $(form).find('#Urgenttype').css("border","4px solid red");
       $(form).find('#Urgenttype').notify("โปรดเลือกประเภทความเร่งด่วน", "error");
       $(form).find('#Urgenttype').focus();
       return false;
-    } else if (radiologist === '0') {
+    } else if (radiologist <= 0) {
       $(form).find('#Urgenttype').css("border","");
       $(form).find('#Radiologist').css("border","4px solid red");
       $(form).find('#Radiologist').notify("โปรดเลือกรังสีแพทย์", "error");
@@ -2386,7 +2364,7 @@ module.exports = function ( jq ) {
     }
   }
 
-	const doCreateNewCaseSecondStep = function(defualtValue, options) {
+	const doCreateNewCaseSecondStep = function(defualtValue, options, scanparts) {
 		$('body').loading('start');
 		const phProp = {
 			attachFileUploadApiUrl: '/api/uploadpatienthistory',
@@ -2399,7 +2377,7 @@ module.exports = function ( jq ) {
 
 		let tableWrapper = $('<div id="SecondStepWrapper" style="width: 60%; position: absolute;"></div>');
 
-		let headerWrapper = $('<div style="width: 100%;" class="header-cell">ส่งอ่านผล</div>');
+		let headerWrapper = $('<div style="width: 100%;" class="header-cell">' + defualtValue.headerCreateCase + '</div>');
 		$(headerWrapper).appendTo($(tableWrapper));
 
 		let guideWrapper = $('<div style="width: 100%;  padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 2/2 โปรดกรอกข้อมูลให้สมบูรณ์พร้อมทั้งแนบประวัติผู้ป่วย</div>');
@@ -2412,6 +2390,7 @@ module.exports = function ( jq ) {
 		let tableCell = $('<div style="display: table-cell;">แผนก</div>');
 		$(tableCell).appendTo($(tableRow));
 		tableCell = $('<div style="display: table-cell; padding: 5px;"><input type="text" id="Department"/></div>');
+		$(tableCell).find('#Department').val(defualtValue.dept);
 		$(tableCell).appendTo($(tableRow));
 		$(tableRow).appendTo($(table));
 
@@ -2424,6 +2403,11 @@ module.exports = function ( jq ) {
 			$(tableCell).find('#Refferal').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
 		})
 		$(tableCell).find('#Refferal').append($('<option value="0">เพิ่มหมอ</option>'));
+		if (defualtValue.primary_dr) {
+			$(tableCell).find('#Refferal').val(defualtValue.primary_dr);
+		} else {
+			$(tableCell).find('#Refferal').val(-1);
+		}
 		$(tableCell).find('#Refferal').on('change', (e)=>{
 			if ($(tableCell).find('#Refferal').val() == 0) {
 				doShowPopupRegisterNewRefferalUser();
@@ -2440,6 +2424,11 @@ module.exports = function ( jq ) {
 		tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
 
 		let patientHistoryBox = $('<div id="PatientHistoryBox"></div>').appendTo($(tableCell)).imagehistory( phProp ).data("custom-imagehistory");
+		if ((defualtValue.pn_history) && (defualtValue.pn_history.length > 0)) {
+			defualtValue.pn_history.forEach((item, i) => {
+				patientHistoryBox.images(item);
+			});
+		}
 
 		$(tableCell).appendTo($(tableRow));
 		$(tableRow).appendTo($(table));
@@ -2457,9 +2446,52 @@ module.exports = function ( jq ) {
     tableCell = $('<div style="display: table-cell;">ประเถทความเร่งด่วน</div>');
     $(tableCell).appendTo($(tableRow));
     tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Urgenttype"></select></div>');
-    options.urgents.forEach((item) => {
-      $(tableCell).find('#Urgenttype').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
-    })
+		if ((!defualtValue.urgenttype) || (defualtValue.urgenttype === 'standard')) {
+			//standard ugtype
+	    options.urgents.forEach((item) => {
+	      $(tableCell).find('#Urgenttype').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
+	    });
+			$(tableCell).find('#Urgenttype').append($('<option value="-1">กำหนดเวลารับผลอ่าน</option>'));
+			$(tableCell).find('#Urgenttype').on('change', (evt)=>{
+				let ugValue = $(tableWrapper).find('#Urgenttype').val();
+				if (ugValue == -1) {
+					let eventData = {name: 'usecustomurgent'};
+					$(tableWrapper).find('#Urgenttype').trigger('usecustomurgent', [eventData]);
+				}
+			});
+			if (defualtValue.urgent) {
+				$(tableCell).find('#Urgenttype').val(defualtValue.urgent);
+			} else {
+				$(tableCell).find('#Urgenttype').prepend($('<option value="0">ระบุประเถทความเร่งด่วน</option>'));
+				$(tableCell).find('#Urgenttype').val(0);
+			}
+			$('<div id="CustomUrgentPlugin"></div>').appendTo($(tableCell));
+		} else if ((defualtValue.urgenttype) || (defualtValue.urgenttype === 'custom')) {
+			//custom ugtype
+			/*
+			1. load custom urgentType
+			2. แสดงผลเป็น วันที่ เวลาที
+			3. จะให้ user แก้ไขได้หรือไม่
+			4. เมื่อลบเคส ต้องลย custom urgent ด้วย
+			*/
+			common.doCallSelectUrgentType(defualtValue.urgent).then((ugtypeRes)=>{
+				console.log(ugtypeRes);
+				let ugentId = ugtypeRes.Records[0].id;
+				let acceptStep = JSON.parse(ugtypeRes.Records[0].UGType_AcceptStep);
+				let acceptText = customurgent.displayCustomUrgentResult(acceptStep.dd, acceptStep.hh, acceptStep.mn);
+				let workingStep = JSON.parse(ugtypeRes.Records[0].UGType_WorkingStep);
+				let workingText = customurgent.displayCustomUrgentResult(workingStep.dd, workingStep.hh, workingStep.mn);
+				let ugData = {Accept: acceptStep, working: workingStep};
+				$('#CustomUrgentPlugin').append($('<div>ระยะเวลาตอบรับเคส ภายใน <b>' + acceptText + '</b></div>'));
+				$('#CustomUrgentPlugin').append($('<div>ระยะเวลาส่งผลอ่าน ภายใน <b>' + workingText + '</b></div>'));
+				let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
+				$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
+				$(editUrgentTypeButton).on('click', (evt)=>{
+					doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
+				});
+			})
+			$('#Urgenttype').remove();
+		}
     $(tableCell).appendTo($(tableRow));
     $(tableRow).appendTo($(table));
 
@@ -2469,7 +2501,13 @@ module.exports = function ( jq ) {
     tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Radiologist"></select></div>');
     options.rades.forEach((item) => {
       $(tableCell).find('#Radiologist').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
-    })
+    });
+		if (defualtValue.dr_id) {
+			$(tableCell).find('#Radiologist').val(defualtValue.dr_id);
+		} else {
+			$(tableCell).find('#Radiologist').prepend($('<option value="0">ระบุรังสีแพทย์</option>'));
+			$(tableCell).find('#Radiologist').val(0);
+		}
     $(tableCell).appendTo($(tableRow));
     $(tableRow).appendTo($(table));
 
@@ -2477,6 +2515,7 @@ module.exports = function ( jq ) {
     tableCell = $('<div style="display: table-cell; vertical-align: middle;">รายละเอียดเพิ่มเติม</div>');
     $(tableCell).appendTo($(tableRow));
     tableCell = $('<div style="display: table-cell; padding: 5px;"><textarea id="Detail" cols="25" rows="5"></textarea></div>');
+		$(tableCell).find('#Detail').val(defualtValue.detail);
     $(tableCell).appendTo($(tableRow));
     $(tableRow).appendTo($(table));
 
@@ -2522,7 +2561,11 @@ module.exports = function ( jq ) {
 	      if (verified) {
 					let phrImages =
 	  			await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000);
-	  			doSaveNewCaseStep(defualtValue, options, patientHistory);
+					if (defualtValue.caseId) {
+						doSaveUpdateCaseStep(defualtValue, options, patientHistory, scanparts);
+					} else {
+	  				doSaveNewCaseStep(defualtValue, options, patientHistory, scanparts);
+					}
 	      }
 			}
       if (patientHistory.length > 0){
@@ -2542,13 +2585,55 @@ module.exports = function ( jq ) {
 			doLoadDicomFromOrthanc();
 		});
 
+		$(tableWrapper).on('usecustomurgent', (evt) =>{
+			doOpenCustomUrgentPopup(tableWrapper,'new', defualtValue);
+		});
 		$('body').loading('stop');
 	}
 
-  function doCreateNewCaseData(defualtValue, phrImages){
+	function doOpenCustomUrgentPopup(tableWrapper, mode, defualtValue, ugentId, urgentData) {
+		let customurgentSettings = {
+			externalStyle:  {"font-family": "THSarabunNew", "font-size": "24px"},
+			successCallback: async function(ugData) {
+				let customUrgentRes = undefined
+				if (mode === 'new') {
+					customUrgentRes = await common.doCreateNewCustomUrgent(ugData);
+				} else if (mode === 'edit') {
+					customUrgentRes = await common.doUpdateCustomUrgent(ugData, ugentId);
+				}
+				//console.log(customUrgentRes);
+				if (customUrgentRes.status.code == 200) {
+					if (mode === 'new') {
+						defualtValue.urgent = customUrgentRes.Record.id
+						defualtValue.urgenttype = customUrgentRes.Record.UGType;
+						$('#Urgenttype').remove();
+					}
+					$('#CustomUrgentPlugin').empty();
+					$('#CustomUrgentPlugin').append($('<div>ระยะเวลาตอบรับเคส ภายใน <b>' + ugData.Accept.text + '</b></div>'));
+					$('#CustomUrgentPlugin').append($('<div>ระยะเวลาส่งผลอ่าน ภายใน <b>' + ugData.Working.text + '</b></div>'));
+					let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
+					$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
+					$(editUrgentTypeButton).on('click', (evt)=>{
+						doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
+					});
+				} else {
+					$.notify("ไม่สามารถบันทึกประเภทความเร่งด่วนใหม่เข้าสู่ระบบได้ในขณะนี้ โปรดใช้งานประเภทที่มีอยู่แล้วในรายการ", "info");
+				}
+			}
+		};
+		let customurgentBox = $(tableWrapper).find('#CustomUrgentPlugin');
+		let customurgent = $(customurgentBox).customurgent(customurgentSettings);
+		if (mode === 'edit') {
+			customurgent.editInputValue(urgentData);
+		}
+		return customurgent;
+	}
+
+  function doCreateNewCaseData(defualtValue, phrImages, scanparts){
     let patientNameEN = $('.mainfull').find('#PatientNameEN').val();
     let patientNameTH = $('.mainfull').find('#PatientNameTH').val();
     let patientHistory = phrImages;
+		let scanpartItem = scanparts;
     let studyID = defualtValue.studyID;
     let patientSex = $('.mainfull').find('#Sex').val();
     let patientAge = $('.mainfull').find('#Age').val();
@@ -2571,13 +2656,12 @@ module.exports = function ( jq ) {
     let stationName = defualtValue.stationName;
     let studyInstanceUID = defualtValue.studyInstanceUID;
     let radioId = drReader;
-    let newCase = {patientNameTH, patientNameEN, patientHistory, studyID, patientSex, patientAge, patientRights, patientCitizenID, price, hn, acc, department, drOwner, bodyPart, scanPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
+    let newCase = {patientNameTH, patientNameEN, patientHistory, scanpartItem, studyID, patientSex, patientAge, patientRights, patientCitizenID, price, hn, acc, department, drOwner, bodyPart, scanPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
     return newCase;
   }
 
-	const doSaveNewCaseStep = async function(defualtValue, options, phrImages){
-		let newCaseData = doCreateNewCaseData(defualtValue, phrImages);
-		console.log(newCaseData);
+	const doSaveNewCaseStep = async function(defualtValue, options, phrImages, scanparts){
+		let newCaseData = doCreateNewCaseData(defualtValue, phrImages, scanparts);
     $('body').loading('start');
     try {
       const main = require('../main.js');
@@ -2619,6 +2703,57 @@ module.exports = function ( jq ) {
       console.log('Unexpected error occurred =>', e);
       $('body').loading('stop');
     }
+	}
+
+	const doSaveUpdateCaseStep = async function (defualtValue, options, phrImages, scanparts){
+		const goToNextPage = function(statusId){
+			if (statusId == 1) {
+				$('#NewStatusSubCmd').click();
+			} else if (statusId == 2) {
+				$('#AcceptedStatusSubCmd').click();
+			} else if (statusId == 5) {
+				$('#SuccessStatusSubCmd').click();
+			} else if ((statusId == 3)||(statusId == 4)||(statusId == 7)) {
+				$('#NegativeStatusSubCmd').click();
+			}
+		}
+		let updateCaseData = doCreateNewCaseData(defualtValue, phrImages, scanparts);
+		if (updateCaseData) {
+			$('body').loading('start');
+			const main = require('../main.js');
+			const userdata = JSON.parse(main.doGetUserData());
+			const hospitalId = userdata.hospitalId;
+			const userId = userdata.id
+
+			let patientData =  common.doPreparePatientParams(updateCaseData);
+			let rqParams = {data: patientData, patientId: defualtValue.patientId};
+			let patientRes = await common.doCallApi('/api/patient/update', rqParams);
+
+			const urgenttypeId = updateCaseData.urgentType;
+			const cliamerightId = updateCaseData.patientRights
+			let casedata = common.doPrepareCaseParams(updateCaseData);
+			//rqParams = {data: casedata, hospitalId: hospitalId, userId: userId, patientId: patientId, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId};
+			rqParams = {id: defualtValue.caseId, data: casedata, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId};
+			let caseRes = await common.doCallApi('/api/cases/update', rqParams);
+			if (caseRes.status.code === 200) {
+				if (updateCaseData.drReader !== updateCaseData.radioId) {
+					let caseNewStatus = 1;
+					let d = new Date().getTime();
+					let stampTime = util.formatDateTimeStr(d);
+					let changeRaioLog = 'Radio change from ' + updateCaseData.drReader + ' to ' + updateCaseData.radioId + ' by ' + userId + ' at ' + stampTime;
+					common.doUpdateCaseStatus(caseId, caseNewStatus, changeRaioLog).then((caseChangeStatusRes) => {
+						$.notify("บันทึกการแก้ไขเคสและปรับสถานะเคสเป็นเคสใหม่เรียบร้อยแล้ว", "info");
+						goToNextPage(defualtValue.status);
+					});
+				} else {
+					$.notify("บันทึกการแก้ไขเคสเรียบร้อยแล้ว", "info");
+					goToNextPage(defualtValue.status);
+				}
+			} else {
+				$.notify("เกิดความผิดพลาด ไม่สามารถบันทึกการแก้ไขเคสได้ในขณะนี้", "error");
+			}
+			$('body').loading('stop');
+		}
 	}
 
   const doShowPopupRegisterNewRefferalUser = async function(){
@@ -2781,10 +2916,10 @@ module.exports = function ( jq ) {
   return {
     doLoadDicomFromOrthanc,
 		doCallSearhOrthanc,
-		doShowOrthancResult,
     doCreateDicomHeaderRow,
     doCreateDicomItemRow,
     doShowDicomResult,
+		doCallCountInstanceImage,
     doCreateNewCaseFirstStep,
     doCreateNewCaseSecondStep,
     doSaveNewCaseStep,

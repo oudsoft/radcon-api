@@ -71,3 +71,9 @@ input:checked + .slider:before {
 .search-mark {
   color: red;
 }
+
+.remove-item{
+  cursor: pointer;
+  color: red;
+  text-align: right;
+}

@@ -18,7 +18,7 @@ const doGenNewCaseOptions = function(hospitalId) {
     const promiseList = new Promise(async function(resolve, reject) {
       const userInclude = [{model: db.userinfoes, attributes: excludeColumn}];
       const clmes = await db.cliamerights.findAll({ attributes: ['id', 'CR_Name'] });
-      const urges = await db.urgenttypes.findAll({ attributes: ['id', 'UGType_Name'], where: {hospitalId: hospitalId} });
+      const urges = await db.urgenttypes.findAll({ attributes: ['id', 'UGType_Name'], where: {hospitalId: hospitalId, UGType: 'standard'} });
       //const radusers = await db.users.findAll({ attributes: excludeColumn, include: userInclude, where: {hospitalId: hospitalId, usertypeId: 4}});
       const refusers = await db.users.findAll({ attributes: excludeColumn, include: userInclude, where: {hospitalId: hospitalId, usertypeId: 5}});
       let cliames = [];
@@ -242,7 +242,7 @@ app.post('/filter/hospital', (req, res) => {
               whereClous = {hospitalId: hospitalId, Case_RefferalId: userId, casestatusId: { [db.Op.in]: statusId }};
             }
           }
-          const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
+          const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
           const orderby = [['id', 'DESC']];
           const cases = await Case.findAll({include: caseInclude, where: whereClous, order: orderby});
           const casesFormat = [];
@@ -297,7 +297,7 @@ app.post('/filter/radio', (req, res) => {
           const radusers = await db.users.findAll({include: userInclude, attributes: ['id', 'username'], where: {	id: raduserId}});
           if (radusers[0].userinfo.User_Hospitals) {
             const hospitals = JSON.parse(radusers[0].userinfo.User_Hospitals);
-            const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
+            const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
             const casesFormat = [];
             const promiseList = new Promise(function(resolve, reject) {
               hospitals.forEach(async (item, i) => {
@@ -369,7 +369,7 @@ app.post('/select/(:caseId)', (req, res) => {
       if (ur.length > 0){
         try {
           const caseId = req.params.caseId;
-          const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType_Name']}];
+          const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}];
           const cases = await Case.findAll({include: caseInclude, where: {id: caseId}});
           const casesFormat = [];
           const promiseList = new Promise(async function(resolve, reject) {
@@ -581,7 +581,7 @@ app.post('/search/radio', (req, res) => {
           const hospitalId = req.body.condition.hospitalId;
           const key = req.body.condition.key;
           const value = req.body.condition.value;
-          const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
+          const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
           const whereClous = {hospitalId: hospitalId, Case_RadiologistId: raduserId, casestatusId: { [db.Op.in]: statusId }};
           const cases = await Case.findAll({include: caseInclude, where: whereClous});
           let caseResults = [];

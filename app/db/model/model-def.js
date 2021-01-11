@@ -115,6 +115,13 @@ const RadOrthancDef = {
 
 //Hos_ID
 const RadUrgentTypeDef = {
+			UGType : {
+				type: Sequelize.STRING(20),
+				allowNull: false
+			},
+			/*
+				UGType -> standard / custom
+			*/
 			UGType_Name : {
 				type: Sequelize.STRING(80),
 				allowNull: false

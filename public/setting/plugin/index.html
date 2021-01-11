@@ -152,11 +152,14 @@
       };
   let scanpart = $('#ScanPart').scanpart(scanpartSettings);
   console.log(scanpart.hello(1234567));
-  console.log(scanpart.test());  
+  console.log(scanpart.test());
+  let selectedResultBox = $('<div></div>').prependTo($('#ScanPartWrapper'));
   function doSuccessSelect(data){
     console.log(data);
+    $(selectedResultBox).append($(data.selectedBox));
   }
-  function doSaveNewScanPartItem(data){
+  $(selectedResultBox).on('removeitem', async (evt, data)=>{
     console.log(data);
-  }
+  });
+
 </script>

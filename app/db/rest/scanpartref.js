@@ -49,7 +49,8 @@ app.post('/add', (req, res) => {
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        let newScanPartRefData = {RisData: req.body};
+        let newScanPartRefData = req.body;
+        log.info('newScanPartRefData=>', JSON.stringify(newScanPartRefData));
         let adScanPartRef = await ScanPartRef.create(newScanPartRefData);
         res.json({status: {code: 200}, Record: adScanPartRef});
       } else {
@@ -71,9 +72,9 @@ app.post('/update', (req, res) => {
       if (ur.length > 0){
         //const id = req.body.id;
         const id = 1;
-        let updateScanPartRef = {ScanPartRefData: req.body};
+        let updateScanPartRef = req.body;
         await ScanPartRef.update(updateScanPartRef, { where: { id: id } });
-        res.json({Result: "OK"});
+        res.json({status: {code: 200}});
       } else {
         log.info('Can not found user from token.');
         res.json({status: {code: 203}, error: 'Your token lost.'});
@@ -93,7 +94,7 @@ app.post('/delete', (req, res) => {
       if (ur.length > 0){
         const id = req.body.id;
         await ScanPartRef.destroy({ where: { id: id } });
-        res.json({Result: "OK"});
+        res.json({status: {code: 200}});
       } else {
         log.info('Can not found user from token.');
         res.json({status: {code: 203}, error: 'Your token lost.'});

@@ -37,12 +37,14 @@
       $(iconCmd).on('click', (evt)=>{
         doShowDialog();
       });
+      $this.selectedMainJson = [];
+      $this.selectedOptionJson = [];
       return $(iconCmd);
     }
 
     const setBoxToCenter = function(box) {
       $(box).css("position","absolute");
-      $(box).css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 4) + $(window).scrollTop()) + "px");
+      $(box).css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 8) + $(window).scrollTop()) + "px");
       $(box).css("left", Math.max(0, (($(window).width() - $(box).outerWidth()) / 4) +  $(window).scrollLeft()) + "px");
     }
 
@@ -120,7 +122,7 @@
         let foundIndex;
         let promiseList = new Promise(function(resolve2, reject2){
           let foundItems = $this.mainJson.filter((item , index)=>{
-            if (item.Code === code) {
+            if ((item) && (item.Code === code)) {
               foundIndex = index;
               return item;
             }
@@ -215,6 +217,8 @@
     const doCreateFoundList = function(foundItems, key) {
       return new Promise(async function(resolve, reject) {
         let foundListBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+        let headerFieldRow = doCreateHeaderField();
+        $(headerFieldRow).appendTo($(foundListBox));
         await foundItems.forEach((item, i) => {
           let itemRow = $('<div style="display: table-row; width: 100%; cursor: pointer; border: 2px solid green;" class="item-list"></div>');
           $(itemRow).appendTo($(foundListBox));
@@ -246,24 +250,59 @@
       });
     }
 
+    const doAddSelectedItem = function(modalContent, code, key){
+      return new Promise(async function(resolve, reject) {
+        let targetItem = await doGetItemByCodeFromMain(code);
+        if (targetItem) {
+          $this.selectedMainJson.push(targetItem.foundItem);
+          if ($this.selectedMainJson.length == 1) {
+            $this.mainJson = $this.mainJson.concat($this.optionJson);
+          }
+          doRemoveItemFromMainAt(targetItem.foundIndex);
+          let selectedList = await doCreateSelectedListBox(key);
+
+          $(modalContent).find('#SelectedItemBox').empty().append($(selectedList));
+          let eventData = {searchKey: key};
+          $(modalContent).find('#SearchScanPart').trigger('startsearch', [eventData]);
+        }
+        resolve($this.selectedMainJson);
+      });
+    }
+
+    const doCreateHeaderField = function() {
+      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
+      let fieldCell = $('<div style="display: table-cell; padding: 4px;">Code</div>');
+      $(fieldCell).appendTo($(headerFieldRow));
+      fieldCell = $('<div style="display: table-cell; padding: 4px;">Name</div>');
+      $(fieldCell).appendTo($(headerFieldRow));
+      fieldCell = $('<div style="display: table-cell; padding: 4px;">Price</div>');
+      $(fieldCell).appendTo($(headerFieldRow));
+      return $(headerFieldRow);
+    }
+
     const doCreateSelectedListBox = function(key){
       return new Promise(async function(resolve, reject) {
         let selectedBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+        let headerFieldRow = doCreateHeaderField();
+        $(headerFieldRow).append($('<div style="display: table-cell; padding: 4px;"></div>'));
+        $(headerFieldRow).appendTo($(selectedBox));
         await $this.selectedMainJson.forEach((item, i) => {
-          let itemRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
-          $(itemRow).appendTo($(selectedBox));
-          let itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
-          $(itemCell).appendTo($(itemRow));
-          itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Name + '</div>');
-          $(itemCell).appendTo($(itemRow));
-          itemCell = $('<div style="display: table-cell; padding: 4px; text-align: right;">' + formatNumberWithCommas(item.Price) + '</div>');
-          $(itemCell).appendTo($(itemRow));
-          let removeCmd = $('<div style="display: table-cell; cursor: pointer; color: red; text-align: right;">X</div>');
-          $(removeCmd).appendTo($(itemRow));
-          $(removeCmd).on('click', (evt)=>{
-            let eventData = {code: item.Code, searchKey: key};
-            $(itemRow).trigger('removeitem', [eventData]);
-          });
+          if (item) {
+            let itemRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
+            $(itemRow).appendTo($(selectedBox));
+            let itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
+            $(itemCell).appendTo($(itemRow));
+            itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Name + '</div>');
+            $(itemCell).appendTo($(itemRow));
+            itemCell = $('<div style="display: table-cell; padding: 4px; text-align: right;">' + formatNumberWithCommas(item.Price) + '</div>');
+            $(itemCell).appendTo($(itemRow));
+            let removeCmd = $('<div style="display: table-cell;" class="remove-item">X</div>');
+            $(removeCmd).appendTo($(itemRow));
+            $(removeCmd).on('click', (evt)=>{
+              let eventData = {code: item.Code, searchKey: key};
+              $(itemRow).trigger('removeitem', [eventData]);
+            });
+          }
         });
 
         resolve($(selectedBox));
@@ -277,7 +316,7 @@
       $(searchIcon).css({'margin-top': '4px'});
       let searchInputBox = $('<input type="text" id="SearchScanPart" class="search-input"/>');
       $(searchInputBox).css({'border': ''});
-      let cellForm = $('<div style="display: table-cell;  vertical-align: middle;"></div>');
+      let cellForm = $('<div style="display: table-cell; vertical-align: middle;"></div>');
       $(cellForm).append($(searchIcon)).appendTo($(searchForm));
       cellForm = $('<div style="display: table-cell"></div>');
       $(cellForm).append($(searchInputBox)).appendTo($(searchForm));
@@ -313,10 +352,6 @@
         $this.optionJson = await doGetOptionScanpart($this.originJson)
         //console.log($this.optionJson);
 
-        $this.selectedMainJson = [];
-
-        $this.selectedOptionJson = [];
-
         let modalContent = $('<div id="ModalContent"></div>');
         let guideBox = $('<divstyle="width: 100%; padding: 10px; margin-top: 10px; background: #ddd;>โปรดค้นหา Scan Part ที่ต้องการเพิ่มลงในเคส โดยพิมพ์ชื่อ Scan Part และเลือกรายการที่ปรากฎ</div>');
         $(guideBox).appendTo($(modalContent));
@@ -350,7 +385,6 @@
           settings.successCallback(eventData);
           $(modalWrapper).trigger('closedialog', [eventData]);
         });
-
         resolve($(modalWrapper));
       });
     }
@@ -443,6 +477,7 @@
       //$(content).center();
       setBoxToCenter(content);
       $(mainModal).show();
+      $(mainModal).find('#SearchScanPart').focus();
       $(mainModal).on('closedialog', (evt, data)=>{
         //console.log(data);
         $(mainModal).remove();
@@ -456,16 +491,7 @@
       $(mainModal).on('selectitem', async (evt, data)=>{
         let code = data.code;
         let key = data.searchKey;
-        let targetItem = await doGetItemByCodeFromMain(code);
-        $this.selectedMainJson.push(targetItem.foundItem);
-        if ($this.selectedMainJson.length == 1) {
-          $this.mainJson = $this.mainJson.concat($this.optionJson);
-        }
-        doRemoveItemFromMainAt(targetItem.foundIndex);
-        let selectedList = await doCreateSelectedListBox(key);
-        $(content).find('#SelectedItemBox').empty().append($(selectedList));
-        let eventData = {searchKey: key};
-        $(content).find('#SearchScanPart').trigger('startsearch', [eventData]);
+        await doAddSelectedItem(content, code, key);
       });
       $(mainModal).on('removeitem', async (evt, data)=>{
         let code = data.code;
@@ -490,23 +516,29 @@
       });
       $(mainModal).on('closenewitemdialog', async (evt, data)=>{
         $(mainModal).find('#CreateNewItemForm').remove();
-        let content = await doCreateModalContent();
-        $(mainModal).append($(content));
-        //$(newItemForm).center();
+        doShowDialog();
         setBoxToCenter(content);
       });
+      settings.updateSelectedItem(content);
     }
 
     let scanpartButton = init();
     this.append($(scanpartButton));
 
+    /* public method of plugin */
     let output = {
       hello: function(world) {return formatNumberWithCommas(world)},
       test: function() {return settings},
       getOriginJson: function(){ return originJson},
       getMainJson: function(){ return mainJson},
       getOptionJson: function() {return optionJson},
-      getSelectedMainJson: function() {return selectedMainJson}
+      getSelectedMainJson: function() {return $this.selectedMainJson},
+      setSelectedMainJson: function(value) { $this.selectedMainJson = value },
+      addSelectedItem: function(content, code, key){doAddSelectedItem(content, code, key)},
+      getSelectedListBox: async function(key) {
+        let listBox = await doCreateSelectedListBox(key);
+        return $(listBox);
+      }
     }
 
     return output;

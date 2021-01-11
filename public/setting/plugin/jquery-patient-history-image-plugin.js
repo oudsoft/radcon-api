@@ -277,7 +277,7 @@ $.widget( "custom.imagehistory", {
         imgUrl: data.link,
         onRemoveClick: function(e, imgDiv){$this.doRemoveImage(e, data.link, imgDiv)}
       };
-      $( "<div></div>" ).appendTo($("#ImageListDiv")).imageitem( uploadImageProp );
+      $( "<div></div>" ).appendTo(this.element.find("#ImageListDiv")).imageitem( uploadImageProp );
       return;
     }
 
