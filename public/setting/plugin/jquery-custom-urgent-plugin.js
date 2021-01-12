@@ -30,9 +30,14 @@
     var $this = this;
     var urgentFormHandle;
 
+
     const init = function() {
       $this.urgentFormHandle = undefined;
       doShowDialog();
+      /*
+      console.log($this.urgentFormHandle);
+      console.log(settings);
+      */
     }
 
     const setBoxToCenter = function(box) {

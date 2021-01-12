@@ -519,7 +519,15 @@
         doShowDialog();
         setBoxToCenter(content);
       });
+
       settings.updateSelectedItem(content);
+
+      $this.selectedMainJson.forEach(async (item, i) => {
+        let foundItem = await doGetItemByCodeFromMain(item.Code);
+        if (foundItem) {
+          doRemoveItemFromMainAt(foundItem.itemIndex);
+        }
+      });
     }
 
     let scanpartButton = init();

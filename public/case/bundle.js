@@ -1110,7 +1110,8 @@ module.exports = function ( jq ) {
 			defualtValue.patientId = resPatient.id;
 			defualtValue.studyInstanceUID = response.case.Case_StudyInstanceUID;
 			defualtValue.headerCreateCase = 'แก้ไขเคส';
-
+			defualtValue.createdAt = response.case.createdAt;
+			
 			let orthancRes = await common.doGetOrthancStudyDicom(defualtValue.studyID);
 			let seriesList = orthancRes.Series;
 			let patientName = orthancRes.PatientMainDicomTags.PatientName;
@@ -1796,6 +1797,78 @@ module.exports = function ( jq ) {
 		});
 	}
 
+	const doFillSigleDigit = function(x) {
+		if (Number(x) < 10) {
+			return '0' + x;
+		} else {
+			return '' + x;
+		}
+	}
+
+	const doDisplayCustomUrgentResult = function(dd, hh, mn, fromDate) {
+		let totalShiftTime = (dd * 24 * 60 * 60 * 1000) + (hh * 60 * 60 * 1000) + (mn * 60 * 1000);
+		let atDate;
+		if (fromDate) {
+			atDate = new Date(fromDate);
+		} else {
+			atDate = new Date();
+		}
+		let atTime = atDate.getTime() + totalShiftTime;
+		atTime = new Date(atTime);
+		let YY = atTime.getFullYear();
+		let MM = doFillSigleDigit(atTime.getMonth() + 1);
+		let DD = doFillSigleDigit(atTime.getDate());
+		let HH = doFillSigleDigit(atTime.getHours());
+		let MN = doFillSigleDigit(atTime.getMinutes());
+		let td = `${YY}-${MM}-${DD} : ${HH}.${MN}`;
+		return td;
+	}
+
+	const doFormatDateTimeCaseCreated = function(createdAt) {
+		let atTime = new Date(createdAt);
+		let YY = atTime.getFullYear();
+		let MM = doFillSigleDigit(atTime.getMonth() + 1);
+		let DD = doFillSigleDigit(atTime.getDate());
+		let HH = doFillSigleDigit(atTime.getHours());
+		let MN = doFillSigleDigit(atTime.getMinutes());
+		let td = `${YY}-${MM}-${DD} : ${HH}.${MN}`;
+		return td;
+	}
+
+	const formatNumberWithCommas = function(x) {
+		return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+	}
+
+	const doRenderScanpartSelectedBox = function(scanparts) {
+		return new Promise(async function(resolve, reject) {
+			const doCreateHeaderField = function() {
+	      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
+	      let fieldCell = $('<div style="display: table-cell; padding: 4px;">Code</div>');
+	      $(fieldCell).appendTo($(headerFieldRow));
+	      fieldCell = $('<div style="display: table-cell; padding: 4px;">Name</div>');
+	      $(fieldCell).appendTo($(headerFieldRow));
+	      fieldCell = $('<div style="display: table-cell; padding: 4px;">Price</div>');
+	      $(fieldCell).appendTo($(headerFieldRow));
+	      return $(headerFieldRow);
+	    };
+
+			let selectedBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+			let headerFieldRow = doCreateHeaderField();
+			$(headerFieldRow).appendTo($(selectedBox));
+			await scanparts.forEach((item, i) => {
+				let itemRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
+				$(itemRow).appendTo($(selectedBox));
+				let itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
+				$(itemCell).appendTo($(itemRow));
+				itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Name + '</div>');
+				$(itemCell).appendTo($(itemRow));
+				itemCell = $('<div style="display: table-cell; padding: 4px; text-align: right;">' + formatNumberWithCommas(item.Price) + '</div>');
+				$(itemCell).appendTo($(itemRow));
+			});
+			resolve($(selectedBox));
+		});
+	}
+
   return {
 		doCallApi,
 		doGetApi,
@@ -1808,7 +1881,12 @@ module.exports = function ( jq ) {
 		doUpdateCaseStatus,
 		doCreateNewCustomUrgent,
 		doCallSelectUrgentType,
-		doUpdateCustomUrgent
+		doUpdateCustomUrgent,
+		doFillSigleDigit,
+		doDisplayCustomUrgentResult,
+		doFormatDateTimeCaseCreated,
+		formatNumberWithCommas,
+		doRenderScanpartSelectedBox
 	}
 }
 
@@ -2016,6 +2094,8 @@ module.exports = function ( jq ) {
 						defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
 						defualtValue.studyDate = dj[i].MainDicomTags.StudyDate;
 						defualtValue.headerCreateCase = 'ส่งอ่านผล';
+						defualtValue.urgenttype = 'standard';
+
  						let no = (i + 1 + startRef);
 						let studyDate = '<div style="float: left;">' + studydate + '</div>';
 						let studyTime = '<div style="background-color: gray; color: white; text-align: center; float: left; margin: -6px 10px; padding: 5px; border-radius: 5px;">' + util.formatStudyTime(dj[i].MainDicomTags.StudyTime) + '</div>';
@@ -2225,7 +2305,7 @@ module.exports = function ( jq ) {
 			tableCell = $('<div style="display: table-cell; vertical-align: middle;">Scan Part</div>');
 			$(tableCell).append('<span>   </span>');
 			let selectedResultBox = $('<div style="display: table-cell; id="SelectedResultBox" padding: 5px;"></div>');
-			let scanparts = [];
+			let scanparts = defualtValue.scanpart;
 			let scanpartSettings = {
         iconCmdUrl: '/images/case-incident.png',
         loadOriginUrl: '/api/scanpartref/list',
@@ -2240,6 +2320,7 @@ module.exports = function ( jq ) {
 				updateSelectedItem: async function(content){
 					if (scanparts.length > 0) {
 						let key = '';
+						console.log(scanparts);
 						await scanparts.forEach(async (item, i) => {
 							let code = item.Code;
 							await scanpart.addSelectedItem(content, code, key);
@@ -2254,11 +2335,9 @@ module.exports = function ( jq ) {
 			$(tableCell).appendTo($(tableRow));
 			$(selectedResultBox).appendTo($(tableCell));
 			$(tableRow).appendTo($(table));
+
 			if ((defualtValue.scanpart) && (defualtValue.scanpart.length > 0)) {
-				scanparts = defualtValue.scanpart;
-				scanpart.setSelectedMainJson(defualtValue.scanpart);
-				let yourSelectScanpart = await scanpart.getSelectedListBox('');
-				$(yourSelectScanpart).find('.remove-item').empty();
+				let yourSelectScanpart = await common.doRenderScanpartSelectedBox(scanparts);
 				$(selectedResultBox).append($(yourSelectScanpart));
 			}
 
@@ -2445,53 +2524,58 @@ module.exports = function ( jq ) {
 		tableRow = $('<div style="display: table-row;"></div>');
     tableCell = $('<div style="display: table-cell;">ประเถทความเร่งด่วน</div>');
     $(tableCell).appendTo($(tableRow));
-    tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Urgenttype"></select></div>');
-		if ((!defualtValue.urgenttype) || (defualtValue.urgenttype === 'standard')) {
-			//standard ugtype
-	    options.urgents.forEach((item) => {
-	      $(tableCell).find('#Urgenttype').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
-	    });
+
+		/*
+		1. load custom urgentType  ***
+		2. แสดงผลเป็น วันที่ เวลาที  ***
+		3. จะให้ user แก้ไขได้หรือไม่ ***
+		4. เมื่อลบเคส ต้องลย custom urgent ด้วย
+		*/
+
+		//console.log(defualtValue);
+
+		if (defualtValue.urgenttype === 'standard') {
+    	tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Urgenttype"></select></div>');
+		  options.urgents.forEach((item) => {
+		    $(tableCell).find('#Urgenttype').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
+		  });
 			$(tableCell).find('#Urgenttype').append($('<option value="-1">กำหนดเวลารับผลอ่าน</option>'));
-			$(tableCell).find('#Urgenttype').on('change', (evt)=>{
+
+			$(tableCell).find('#Urgenttype').on('change', (evt) => {
 				let ugValue = $(tableWrapper).find('#Urgenttype').val();
+				if (!ugValue) {
+					ugValue = $(tableCell).find('#Urgenttype').val();
+				}
 				if (ugValue == -1) {
 					let eventData = {name: 'usecustomurgent'};
 					$(tableWrapper).find('#Urgenttype').trigger('usecustomurgent', [eventData]);
+				} else {
+					if (ugValue > 0) {
+						let ugentId = ugValue;
+						doControlShowCustomUrget(tableWrapper, ugValue, defualtValue, ugentId)
+						if (defualtValue.urgenttype === 'custom') {
+							$('#Urgenttype').remove();
+						}
+					}
 				}
 			});
-			if (defualtValue.urgent) {
+
+			if ((defualtValue.urgent) && (defualtValue.urgent > 0)) {
 				$(tableCell).find('#Urgenttype').val(defualtValue.urgent);
+				$(tableCell).find('#Urgenttype').change();
 			} else {
 				$(tableCell).find('#Urgenttype').prepend($('<option value="0">ระบุประเถทความเร่งด่วน</option>'));
 				$(tableCell).find('#Urgenttype').val(0);
 			}
-			$('<div id="CustomUrgentPlugin"></div>').appendTo($(tableCell));
-		} else if ((defualtValue.urgenttype) || (defualtValue.urgenttype === 'custom')) {
-			//custom ugtype
-			/*
-			1. load custom urgentType
-			2. แสดงผลเป็น วันที่ เวลาที
-			3. จะให้ user แก้ไขได้หรือไม่
-			4. เมื่อลบเคส ต้องลย custom urgent ด้วย
-			*/
-			common.doCallSelectUrgentType(defualtValue.urgent).then((ugtypeRes)=>{
-				console.log(ugtypeRes);
-				let ugentId = ugtypeRes.Records[0].id;
-				let acceptStep = JSON.parse(ugtypeRes.Records[0].UGType_AcceptStep);
-				let acceptText = customurgent.displayCustomUrgentResult(acceptStep.dd, acceptStep.hh, acceptStep.mn);
-				let workingStep = JSON.parse(ugtypeRes.Records[0].UGType_WorkingStep);
-				let workingText = customurgent.displayCustomUrgentResult(workingStep.dd, workingStep.hh, workingStep.mn);
-				let ugData = {Accept: acceptStep, working: workingStep};
-				$('#CustomUrgentPlugin').append($('<div>ระยะเวลาตอบรับเคส ภายใน <b>' + acceptText + '</b></div>'));
-				$('#CustomUrgentPlugin').append($('<div>ระยะเวลาส่งผลอ่าน ภายใน <b>' + workingText + '</b></div>'));
-				let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
-				$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
-				$(editUrgentTypeButton).on('click', (evt)=>{
-					doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
-				});
-			})
-			$('#Urgenttype').remove();
+		} else if (defualtValue.urgenttype === 'custom') {
+			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
+			let ugValue = defualtValue.urgent;
+			let ugentId = ugValue;
+			doControlShowCustomUrget(tableWrapper, ugValue, defualtValue, ugentId);
 		}
+
+		$('<div id="CustomUrgentPlugin"></div>').appendTo($(tableCell));
+
     $(tableCell).appendTo($(tableRow));
     $(tableRow).appendTo($(table));
 
@@ -2591,6 +2675,31 @@ module.exports = function ( jq ) {
 		$('body').loading('stop');
 	}
 
+	function doControlShowCustomUrget(tableWrapper, ugValue, defualtValue, ugentId) {
+		common.doCallSelectUrgentType(ugValue).then((ugtypeRes)=>{
+			let ugentId = ugtypeRes.Records[0].id;
+			let acceptStep = JSON.parse(ugtypeRes.Records[0].UGType_AcceptStep);
+			let acceptText = common.doDisplayCustomUrgentResult(acceptStep.dd, acceptStep.hh, acceptStep.mn, defualtValue.createdAt);
+			let workingStep = JSON.parse(ugtypeRes.Records[0].UGType_WorkingStep);
+			let workingText = common.doDisplayCustomUrgentResult(workingStep.dd, workingStep.hh, workingStep.mn, defualtValue.createdAt);
+			let ugData = {Accept: acceptStep, Working: workingStep};
+			$('#CustomUrgentPlugin').empty();
+			if (defualtValue.caseId) {
+				let createdAt = common.doFormatDateTimeCaseCreated(defualtValue.createdAt);
+				$('#CustomUrgentPlugin').append($('<div>เคสถูกส่งไป เมื่อ <b>' + createdAt + '</b></div>'));
+			}
+			$('#CustomUrgentPlugin').append($('<div>ระยะเวลาตอบรับเคส ภายใน <b>' + acceptText + '</b></div>'));
+			$('#CustomUrgentPlugin').append($('<div>ระยะเวลาส่งผลอ่าน ภายใน <b>' + workingText + '</b></div>'));
+			if (defualtValue.urgenttype === 'custom') {
+				let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
+				$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
+				$(editUrgentTypeButton).on('click', (evt)=>{
+					doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
+				});
+			}
+		});
+	}
+
 	function doOpenCustomUrgentPopup(tableWrapper, mode, defualtValue, ugentId, urgentData) {
 		let customurgentSettings = {
 			externalStyle:  {"font-family": "THSarabunNew", "font-size": "24px"},
@@ -2606,16 +2715,25 @@ module.exports = function ( jq ) {
 					if (mode === 'new') {
 						defualtValue.urgent = customUrgentRes.Record.id
 						defualtValue.urgenttype = customUrgentRes.Record.UGType;
-						$('#Urgenttype').remove();
+					} else if (mode === 'edit') {
+						defualtValue.urgent = ugentId;
+						defualtValue.urgenttype = 'custom';
 					}
+					$('#Urgenttype').remove();
 					$('#CustomUrgentPlugin').empty();
+					if (mode === 'edit') {
+						let createdAt = common.doFormatDateTimeCaseCreated(defualtValue.createdAt);
+						$('#CustomUrgentPlugin').append($('<div>เคสถูกส่งไป เมื่อ <b>' + createdAt + '</b></div>'));
+					}
 					$('#CustomUrgentPlugin').append($('<div>ระยะเวลาตอบรับเคส ภายใน <b>' + ugData.Accept.text + '</b></div>'));
 					$('#CustomUrgentPlugin').append($('<div>ระยะเวลาส่งผลอ่าน ภายใน <b>' + ugData.Working.text + '</b></div>'));
-					let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
-					$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
-					$(editUrgentTypeButton).on('click', (evt)=>{
-						doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
-					});
+					if (defualtValue.urgenttype === 'custom') {
+						let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
+						$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
+						$(editUrgentTypeButton).on('click', (evt)=>{
+							doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
+						});
+					}
 				} else {
 					$.notify("ไม่สามารถบันทึกประเภทความเร่งด่วนใหม่เข้าสู่ระบบได้ในขณะนี้ โปรดใช้งานประเภทที่มีอยู่แล้วในรายการ", "info");
 				}
@@ -2718,6 +2836,7 @@ module.exports = function ( jq ) {
 			}
 		}
 		let updateCaseData = doCreateNewCaseData(defualtValue, phrImages, scanparts);
+		updateCaseData.urgentType = defualtValue.urgent;
 		if (updateCaseData) {
 			$('body').loading('start');
 			const main = require('../main.js');
