@@ -29,9 +29,10 @@
     var optionJson = undefined;
     var selectedMainJson = undefined;
     var selectedOptionJson = undefined;
+    var inputKeyHandle = undefined;
 
     const init = function() {
-      var iconCmd = $('<img width="40px" heigth="auto"/>');
+      var iconCmd = $('<input type="button" value="เพิ่ม/ลด/แก้ไข Scan Part"/>');
       $(iconCmd).attr('src', settings.iconCmdUrl);
       $(iconCmd).css({'cursor': 'pointer'});
       $(iconCmd).on('click', (evt)=>{
@@ -39,6 +40,7 @@
       });
       $this.selectedMainJson = [];
       $this.selectedOptionJson = [];
+      $this.inputKeyHandle = undefined;
       return $(iconCmd);
     }
 
@@ -102,9 +104,21 @@
         let founds = [];
         var promiseList = new Promise(function(resolve2, reject2){
           $this.mainJson.forEach((item)=>{
-            let posFound = item.Name.indexOf(key);
-            if (posFound >= 0) {
-              founds.push(item);
+            let posFound;
+            if (Number(key) > 0) {
+              posFound = item.Code.indexOf(key);
+              if (posFound >= 0) {
+                founds.push(item);
+              }
+            } else if (key === '*') {
+              founds = $this.mainJson;
+            } else {
+              let keyUpper = key.toUpperCase();
+              let itemUpper = item.Name.toUpperCase();
+              posFound = itemUpper.indexOf(keyUpper);
+              if (posFound >= 0) {
+                founds.push(item);
+              }
             }
           });
           setTimeout(()=>{
@@ -201,6 +215,9 @@
       $(toggleSwitch).append($(input));
       $(toggleSwitch).append($(slider));
       $(input).on('click', async (evt)=>{
+
+        let key = $($this.inputKeyHandle).val();
+
         let isOn = $(input).prop('checked');
         if (isOn) {
           $this.mainJson = await doGetNormalAllScanpart($this.originJson);
@@ -210,6 +227,10 @@
         if ($this.selectedMainJson.length > 0) {
           $this.mainJson = $this.mainJson.concat($this.optionJson);
         }
+        if (key) {
+          let eventData = {searchKey: key};
+          $($this.inputKeyHandle).trigger('startsearch', [eventData]);
+        }
       });
       return $(toggleSwitch);
     }
@@ -218,15 +239,20 @@
       return new Promise(async function(resolve, reject) {
         let foundListBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
         let headerFieldRow = doCreateHeaderField();
+        $(headerFieldRow).find('#NoHeaderField').css({'width': '10%'});
+        $(headerFieldRow).find('#CodeHeaderField').css({'width': '15%'});
+        $(headerFieldRow).find('#NameHeaderField').css({'width': '50%'});
         $(headerFieldRow).appendTo($(foundListBox));
         await foundItems.forEach((item, i) => {
           let itemRow = $('<div style="display: table-row; width: 100%; cursor: pointer; border: 2px solid green;" class="item-list"></div>');
           $(itemRow).appendTo($(foundListBox));
-          let itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
+          let itemCell = $('<div style="display: table-cell; padding: 4px;">' + (i+1) + '</div>');
+          $(itemCell).appendTo($(itemRow));
+          itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
           $(itemCell).appendTo($(itemRow));
           itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Name.replace(key, '<span class="search-mark">' + key + '</span>') + '</div>');
           $(itemCell).appendTo($(itemRow));
-          itemCell = $('<div style="display: table-cell;  padding: 4px; text-align: right;">' + formatNumberWithCommas(item.Price) + '</div>');
+          itemCell = $('<div style="display: table-cell;  padding: 4px;">' + formatNumberWithCommas(item.Price) + '</div>');
           $(itemCell).appendTo($(itemRow));
           $(itemRow).on('click', (evt)=>{
             let eventData = {code: item.Code, searchKey: key};
@@ -235,6 +261,8 @@
         });
         let createNewItemRow = $('<div style="display: table-row; width: 100%; cursor: pointer; border: 2px solid green;" class="item-list"></div>');
         let createNewItemCell = $('<div style="display: table-cell; padding: 4px;"></div>');
+        $(createNewItemCell).appendTo($(createNewItemRow));
+        createNewItemCell = $('<div style="display: table-cell; padding: 4px;"></div>');
         $(createNewItemCell).appendTo($(createNewItemRow));
         createNewItemCell = $('<div style="display: table-cell; padding: 4px; width: 100%; text-align: center;">ไม่มีรายการที่ฉันต้องการเลือก</div>');
         $(createNewItemCell).appendTo($(createNewItemRow));
@@ -270,12 +298,14 @@
     }
 
     const doCreateHeaderField = function() {
-      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
-      let fieldCell = $('<div style="display: table-cell; padding: 4px;">Code</div>');
+      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: green; color: white;"></div>');
+      let fieldCell = $('<div id="NoHeaderField" style="display: table-cell; padding: 4px;">ลำดับที่</div>');
       $(fieldCell).appendTo($(headerFieldRow));
-      fieldCell = $('<div style="display: table-cell; padding: 4px;">Name</div>');
+      fieldCell = $('<div id="CodeHeaderField" style="display: table-cell; padding: 4px;">รหัส</div>');
       $(fieldCell).appendTo($(headerFieldRow));
-      fieldCell = $('<div style="display: table-cell; padding: 4px;">Price</div>');
+      fieldCell = $('<div id="NameHeaderField" style="display: table-cell; padding: 4px;">ชื่อ</div>');
+      $(fieldCell).appendTo($(headerFieldRow));
+      fieldCell = $('<div id="PriceHeaderField" style="display: table-cell; padding: 4px;">ราคา</div>');
       $(fieldCell).appendTo($(headerFieldRow));
       return $(headerFieldRow);
     }
@@ -286,26 +316,35 @@
         let headerFieldRow = doCreateHeaderField();
         $(headerFieldRow).append($('<div style="display: table-cell; padding: 4px;"></div>'));
         $(headerFieldRow).appendTo($(selectedBox));
-        await $this.selectedMainJson.forEach((item, i) => {
-          if (item) {
-            let itemRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
-            $(itemRow).appendTo($(selectedBox));
-            let itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
-            $(itemCell).appendTo($(itemRow));
-            itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Name + '</div>');
-            $(itemCell).appendTo($(itemRow));
-            itemCell = $('<div style="display: table-cell; padding: 4px; text-align: right;">' + formatNumberWithCommas(item.Price) + '</div>');
-            $(itemCell).appendTo($(itemRow));
-            let removeCmd = $('<div style="display: table-cell;" class="remove-item">X</div>');
-            $(removeCmd).appendTo($(itemRow));
-            $(removeCmd).on('click', (evt)=>{
-              let eventData = {code: item.Code, searchKey: key};
-              $(itemRow).trigger('removeitem', [eventData]);
-            });
+        var promiseList = new Promise(function(resolve2, reject2){
+          for (let i = 0; i < $this.selectedMainJson.length; i++) {
+            let item = $this.selectedMainJson[i];
+            if (item) {
+              let itemRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
+              $(itemRow).appendTo($(selectedBox));
+              let itemCell = $('<div style="display: table-cell; padding: 4px;">' + (i+1) + '</div>');
+              $(itemCell).appendTo($(itemRow));
+              itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
+              $(itemCell).appendTo($(itemRow));
+              itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Name + '</div>');
+              $(itemCell).appendTo($(itemRow));
+              itemCell = $('<div style="display: table-cell; padding: 4px;">' + formatNumberWithCommas(item.Price) + '</div>');
+              $(itemCell).appendTo($(itemRow));
+              let removeCmd = $('<div style="display: table-cell;" class="remove-item">X</div>');
+              $(removeCmd).appendTo($(itemRow));
+              $(removeCmd).on('click', (evt)=>{
+                let eventData = {code: item.Code, searchKey: key};
+                $(itemRow).trigger('removeitem', [eventData]);
+              });
+            }
           }
+          setTimeout(()=>{
+            resolve2($(selectedBox));
+          }, 500);
         });
-
-        resolve($(selectedBox));
+        Promise.all([promiseList]).then((ob)=>{
+          resolve(ob[0]);
+        });
       });
     }
 
@@ -315,6 +354,9 @@
       let searchIcon = $('<img width="40" height="auto" src="/images/search-icon.png"/>');
       $(searchIcon).css({'margin-top': '4px'});
       let searchInputBox = $('<input type="text" id="SearchScanPart" class="search-input"/>');
+
+      $this.inputKeyHandle = $(searchInputBox);
+
       $(searchInputBox).css({'border': ''});
       let cellForm = $('<div style="display: table-cell; vertical-align: middle;"></div>');
       $(cellForm).append($(searchIcon)).appendTo($(searchForm));
@@ -455,15 +497,29 @@
         let nameValue = $(nameInput).val();
         let unitValue = $(unitInput).val();
         let priceValue = $(priceInput).val();
-        let addItemData = {Code: codeValue, Name: nameValue, Unit: unitValue, Price: priceValue, Common: 'R', RefPoint: '', Modality: 'CT', MajorType: 'etc'};
-        doSaveNewScanpartItem(addItemData).then((addResponse)=>{
-          if (addResponse.status.code == 200) {
-            alert('บันทึกสำเร็จ');
-          } else {
-            alert('บันทึกขัดข้อง');
-          }
-          $(modalWrapper).trigger('closenewitemdialog', [eventData]);
-        });
+        if (codeValue === '') {
+          $(codeInput).css('border', '1px solid red');
+        } else if (nameValue === '') {
+          $(codeInput).css('border', '');
+          $(nameValue).css('border', '1px solid red');
+        } else if (unitValue === '') {
+          $(nameValue).css('border', '');
+          $(unitValue).css('border', '1px solid red');
+        } else if (Number(priceValue)) {
+          $(unitValue).css('border', '');
+          $(priceValue).css('border', '1px solid red');
+        } else {
+          $(priceValue).css('border', '');
+          let addItemData = {Code: codeValue, Name: nameValue, Unit: unitValue, Price: priceValue, Common: 'R', RefPoint: '', Modality: 'CT', MajorType: 'etc'};
+          doSaveNewScanpartItem(addItemData).then((addResponse)=>{
+            if (addResponse.status.code == 200) {
+              alert('บันทึกสำเร็จ');
+            } else {
+              alert('บันทึกขัดข้อง');
+            }
+            $(modalWrapper).trigger('closenewitemdialog', [eventData]);
+          });
+        }
       });
 
       return $(modalWrapper);

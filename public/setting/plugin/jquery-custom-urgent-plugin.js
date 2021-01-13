@@ -76,13 +76,37 @@
     }
 
     const doEditInputValue = function(ugData){
-      $($this.urgentFormHandle).find('#AcceptStep').find('#DaySelector').val(ugData.Accept.dd);
-      $($this.urgentFormHandle).find('#AcceptStep').find('#HourSelector').val(ugData.Accept.hh);
-      $($this.urgentFormHandle).find('#AcceptStep').find('#MinuteSelector').val(ugData.Accept.mn);
+      if (ugData.Accept.dd) {
+        $($this.urgentFormHandle).find('#AcceptStep').find('#DaySelector').val(ugData.Accept.dd);
+      } else {
+        $($this.urgentFormHandle).find('#AcceptStep').find('#DaySelector').val(0);
+      }
+      if (ugData.Accept.hh) {
+        $($this.urgentFormHandle).find('#AcceptStep').find('#HourSelector').val(ugData.Accept.hh);
+      } else {
+        $($this.urgentFormHandle).find('#AcceptStep').find('#HourSelector').val(0);
+      }
+      if (ugData.Accept.mn) {
+        $($this.urgentFormHandle).find('#AcceptStep').find('#MinuteSelector').val(ugData.Accept.mn);
+      } else {
+        $($this.urgentFormHandle).find('#AcceptStep').find('#MinuteSelector').val(0);
+      }
       $($this.urgentFormHandle).find('#AcceptStep').find('#DaySelector').change();
-      $($this.urgentFormHandle).find('#WorkingStep').find('#DaySelector').val(ugData.Working.dd);
-      $($this.urgentFormHandle).find('#WorkingStep').find('#HourSelector').val(ugData.Working.hh);
-      $($this.urgentFormHandle).find('#WorkingStep').find('#MinuteSelector').val(ugData.Working.mn);
+      if (ugData.Working.dd) {
+        $($this.urgentFormHandle).find('#WorkingStep').find('#DaySelector').val(ugData.Working.dd);
+      } else {
+        $($this.urgentFormHandle).find('#WorkingStep').find('#DaySelector').val(0);
+      }
+      if (ugData.Working.hh) {
+        $($this.urgentFormHandle).find('#WorkingStep').find('#HourSelector').val(ugData.Working.hh);
+      } else {
+        $($this.urgentFormHandle).find('#WorkingStep').find('#HourSelector').val(0);
+      }
+      if (ugData.Working.mn){
+        $($this.urgentFormHandle).find('#WorkingStep').find('#MinuteSelector').val(ugData.Working.mn);
+      } else {
+        $($this.urgentFormHandle).find('#WorkingStep').find('#MinuteSelector').val(0);
+      }
       $($this.urgentFormHandle).find('#WorkingStep').find('#DaySelector').change();
     }
 
@@ -147,7 +171,7 @@
       let workingStepBox = $('<div style="border: 2px solid #EEDD0D; padding: 5px;"></div>');
       $(workingStepBox).css('margin-top', '10px');
       $(workingStepBox).appendTo($(urgentFormBox));
-      let workingStepLabel = $('<div style="display: in-line;"><b>ระยะส่งผลอ่าน</b></div>');
+      let workingStepLabel = $('<div style="display: in-line;"><b>ระยะเวลาส่งผลอ่าน</b></div>');
       $(workingStepLabel).appendTo($(workingStepBox));
       $('<span>   </span>').appendTo($(workingStepLabel));
       let workingStepOption = $('<input type="checkbox" id="WorkingStepOption" value="0"><label for="WorkingStepOption"> ใช้ค่าเดียวกับระยะเวลาตอบรับเคส</label>');
@@ -280,7 +304,7 @@
           settings.successCallback(eventData);
           $(modalWrapper).trigger('closedialog', [eventData]);
         } else {
-          alert('ระบะเวลาส่งผลอ่านควรมากกว่าหรือเท่ากัาเดียวกับระยะเวลาตอบรับเคส');
+          alert('ระบะเวลาส่งผลอ่านต้องมากกว่าหรือเท่ากับกับระยะเวลาตอบรับเคส');
         }
       });
       return $(modalWrapper);

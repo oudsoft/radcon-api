@@ -846,6 +846,7 @@ module.exports = function ( jq ) {
 		}
 	}
 
+	/* Remove */
   const openCaseList = async function(e) {
 		$('body').loading('start');
 		currentTab = e.detail.eventname;
@@ -906,6 +907,7 @@ module.exports = function ( jq ) {
 		$('#CurrentPage').remove();
   }
 
+	/* Remove */
 	async function doCallSearchCasebyDate(startDate) {
 		$('body').loading('start');
 		const main = require('../main.js');
@@ -947,7 +949,7 @@ module.exports = function ( jq ) {
 		return new Promise(async function(resolve, reject) {
 			let rwTable = $('<table width="100%" cellpadding="5" cellspacing="0"></table>');
 			let headRow = $('<tr style="background-color: green;"></tr>');
-			let headColumns = $('<td width="10%" align="center">วันที่</td><td width="10%" align="center">ชื่อ</td><td width="5%" align="center">อายุ</td><td width="5%" align="center">เพศ</td><td width="10%" align="center">HN</td><td width="5%" align="center">Modality</td><td width="10%" align="center">Study Desc. / Protocol Name</td><td width="10%" align="center">ประเภทความด่วน</td><td width="10%" align="center">แพทย์ผู้ส่ง</td><td width="10%" align="center">รังสีแพทย์</td><td width="10%" align="center">สถานะเคส</td><td width="*" align="center">Control Case</td>');
+			let headColumns = $('<td width="10%" align="center">เวลาที่ส่งอ่าน</td><td width="10%" align="center">ชื่อ</td><td width="5%" align="center">เพศ/อายุ</td><td width="10%" align="center">HN</td><td width="5%" align="center">Mod.</td><td width="10%" align="center">Scan Part</td><td width="10%" align="center">ประเภทความด่วน</td><td width="10%" align="center">แพทย์ผู้ส่ง</td><td width="10%" align="center">รังสีแพทย์</td><td width="10%" align="center">สถานะเคส</td><td width="*" align="center">คำสั่ง</td>');
 			$(rwTable).append($(headRow));
 			$(headRow).append($(headColumns));
 			for (let i=0; i < incidents.length; i++) {
@@ -957,13 +959,18 @@ module.exports = function ( jq ) {
 				casedateSegment = casedateSegment.join('');
 				let casedate = util.formatStudyDate(casedateSegment);
 				let casetime = util.formatStudyTime(casedatetime[1].split(':').join(''));
-				$(dataRow).append($('<td align="center"><div class="tooltip">'+ casedate + '<span class="tooltiptext">' + casetime + '</span></div></td>'));
+				let caseScanparts = incidents[i].case.Case_ScanPart;
+				let yourSelectScanpartContent = $('<div></div>');
+				if ((caseScanparts) && (caseScanparts.length > 0)) {
+					yourSelectScanpartContent = await common.doRenderScanpartSelectedAbs(caseScanparts);
+				}
+				//$(dataRow).append($('<td align="center"><div class="tooltip">'+ casedate + '<span class="tooltiptext">' + casetime + '</span></div></td>'));
+				$(dataRow).append($('<td align="center">' + casedate + ' : ' + casetime + '</td>'));
 				$(dataRow).append($('<td align="center"><div class="tooltip">'+ incidents[i].case.patient.Patient_NameEN + '<span class="tooltiptext">' + incidents[i].case.patient.Patient_NameTH + '</span></div></td>'));
-				$(dataRow).append($('<td align="center">'+ incidents[i].case.patient.Patient_Age + '</td>'));
-				$(dataRow).append($('<td align="center">'+ incidents[i].case.patient.Patient_Sex + '</td>'));
+				$(dataRow).append($('<td align="center">'+ incidents[i].case.patient.Patient_Sex + '/' + incidents[i].case.patient.Patient_Age + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.patient.Patient_HN + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.Case_Modality + '</td>'));
-				$(dataRow).append($('<td align="center">'+ incidents[i].case.Case_ProtocolName + '</td>'));
+				$(dataRow).append($('<td align="center">'+ $(yourSelectScanpartContent).html() + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.urgenttype.UGType_Name + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].Refferal.User_NameTH + ' ' + incidents[i].Refferal.User_LastNameTH + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].Radiologist.User_NameTH + ' ' + incidents[i].Radiologist.User_LastNameTH + '</td>'));
@@ -1111,7 +1118,7 @@ module.exports = function ( jq ) {
 			defualtValue.studyInstanceUID = response.case.Case_StudyInstanceUID;
 			defualtValue.headerCreateCase = 'แก้ไขเคส';
 			defualtValue.createdAt = response.case.createdAt;
-			
+
 			let orthancRes = await common.doGetOrthancStudyDicom(defualtValue.studyID);
 			let seriesList = orthancRes.Series;
 			let patientName = orthancRes.PatientMainDicomTags.PatientName;
@@ -1757,7 +1764,7 @@ module.exports = function ( jq ) {
 			let hospitalId = userdata.hospitalId;
 			let acceptStep = {dd: ugData.Accept.dd, hh: ugData.Accept.hh, mn: ugData.Accept.mn};
 			let workingStep = {dd: ugData.Working.dd, hh: ugData.Working.hh, mn: ugData.Working.mn};
-			let ugTypeData = {UGType: 'custom', UGType_Name: ugData.Accept.text, UGType_ColorCode: '', UGType_AcceptStep: JSON.stringify(acceptStep), UGType_WorkingStep: JSON.stringify(workingStep), hospitalId: hospitalId};
+			let ugTypeData = {UGType: 'custom', UGType_Name: 'กำหนดเอง', UGType_ColorCode: '', UGType_AcceptStep: JSON.stringify(acceptStep), UGType_WorkingStep: JSON.stringify(workingStep), hospitalId: hospitalId};
 			let apiUrl = '/api/urgenttypes/add';
 			try {
 				let response = await doCallApi(apiUrl, ugTypeData);
@@ -1842,12 +1849,14 @@ module.exports = function ( jq ) {
 	const doRenderScanpartSelectedBox = function(scanparts) {
 		return new Promise(async function(resolve, reject) {
 			const doCreateHeaderField = function() {
-	      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
-	      let fieldCell = $('<div style="display: table-cell; padding: 4px;">Code</div>');
+	      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: green; color: white;"></div>');
+				let fieldCell = $('<div style="display: table-cell; padding: 4px;">ลำดับที่</div>');
 	      $(fieldCell).appendTo($(headerFieldRow));
-	      fieldCell = $('<div style="display: table-cell; padding: 4px;">Name</div>');
+	      fieldCell = $('<div style="display: table-cell; padding: 4px;">รหัส</div>');
 	      $(fieldCell).appendTo($(headerFieldRow));
-	      fieldCell = $('<div style="display: table-cell; padding: 4px;">Price</div>');
+	      fieldCell = $('<div style="display: table-cell; padding: 4px;">ชื่อ</div>');
+	      $(fieldCell).appendTo($(headerFieldRow));
+	      fieldCell = $('<div style="display: table-cell; padding: 4px;">ราคา</div>');
 	      $(fieldCell).appendTo($(headerFieldRow));
 	      return $(headerFieldRow);
 	    };
@@ -1858,7 +1867,9 @@ module.exports = function ( jq ) {
 			await scanparts.forEach((item, i) => {
 				let itemRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: #ccc;"></div>');
 				$(itemRow).appendTo($(selectedBox));
-				let itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
+				let itemCell = $('<div style="display: table-cell; padding: 4px;">' + (i+1) + '</div>');
+				$(itemCell).appendTo($(itemRow));
+				itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Code + '</div>');
 				$(itemCell).appendTo($(itemRow));
 				itemCell = $('<div style="display: table-cell; padding: 4px;">' + item.Name + '</div>');
 				$(itemCell).appendTo($(itemRow));
@@ -1866,6 +1877,83 @@ module.exports = function ( jq ) {
 				$(itemCell).appendTo($(itemRow));
 			});
 			resolve($(selectedBox));
+		});
+	}
+
+	/*
+	function doRenderScanpartSelectedAbs(scanparts) {
+		return new Promise(async function(resolve, reject) {
+			let scanPartBox = $('<div></div>');
+			let promiseList;
+			if (scanparts.length <= 2) {
+				promiseList = new Promise(function(resolve2, reject2){
+					for (let i=0; i < scanparts.length; i++){
+						let item = scanparts[i];
+						let scanPartItemBox = $('<div style="border: 1px solid green; border-radius: 3px; font-size: 20px; text-align: left;">' + item.Name + '</div>');
+						$(scanPartItemBox).appendTo($(scanPartBox));
+					}
+					setTimeout(()=>{
+            resolve2($(scanPartBox));
+          }, 500);
+        });
+
+			} else {
+				promiseList = new Promise(function(resolve3, reject3){
+					let showHiddenCmd = $('<div style="background-color: green; color: white;"> ... </div>');
+					let titleBox = $('<div style="display: block;></div>');
+					$(titleBox).appendTo($(scanPartBox));
+					let hideBox = $('<div style="display: none;"></div>');
+					$(hideBox).appendTo($(scanPartBox));
+					console.log($(scanPartBox).html());
+
+					for (let i=0; i < scanparts.length; i++){
+						let item = scanparts[i];
+						let itemBox = $('<div style="border: 1px solid green; border-radius: 3px; font-size: 20px; text-align: left;">' + item.Name + '</div>');
+						if (i <= 1) {
+							$(itemBox).appendTo($(titleBox));
+						} else {
+							$(itemBox).appendTo($(hideBox));
+						}
+						if (i == 1) {
+							$(itemBox).append($(showHiddenCmd));
+							$(showHiddenCmd).css({'right': '2px', 'bottom': '2px'});
+							$(showHiddenCmd).hover(()=>{$(hideBox).show()}, ()=>{$(hideBox).hide()});
+						}
+						console.log($(scanPartBox).html());
+					}
+					setTimeout(()=>{
+            resolve3($(scanPartBox));
+          }, 500);
+        });
+			}
+			Promise.all([promiseList]).then((ob)=>{
+				resolve(ob[0]);
+			});
+		});
+	}
+	*/
+
+	function doRenderScanpartSelectedAbs(scanparts) {
+		return new Promise(async function(resolve, reject) {
+			let scanPartBox = $('<div style="border: 1px solid green; border-radius: 3px;"></div>');
+			let	promiseList = new Promise(function(resolve2, reject2){
+				let joinText = '';
+				for (let i=0; i < scanparts.length; i++){
+					let item = scanparts[i];
+					if (i != (scanparts.length-1)) {
+						joinText += item.Name + ' / ';
+					} else {
+						joinText += item.Name;
+					}
+				}
+				$(scanPartBox).append($('<div style="font-size: 20px; text-align: left;">' + joinText + '</div>'));
+				setTimeout(()=>{
+          resolve2($(scanPartBox));
+        }, 500);
+      });
+			Promise.all([promiseList]).then((ob)=>{
+				resolve(ob[0]);
+			});
 		});
 	}
 
@@ -1886,7 +1974,8 @@ module.exports = function ( jq ) {
 		doDisplayCustomUrgentResult,
 		doFormatDateTimeCaseCreated,
 		formatNumberWithCommas,
-		doRenderScanpartSelectedBox
+		doRenderScanpartSelectedBox,
+		doRenderScanpartSelectedAbs
 	}
 }
 
@@ -1898,6 +1987,8 @@ module.exports = function ( jq ) {
   const apiconnector = require('./apiconnect.js')($);
   const util = require('./utilmod.js')($);
   const common = require('./commonlib.js')($);
+
+	const pageFontStyle = {"font-family": "THSarabunNew", "font-size": "24px"};
 
   const doLoadDicomFromOrthanc = function(){
 		$('body').loading('start');
@@ -2192,6 +2283,7 @@ module.exports = function ( jq ) {
 			$(form).find('#Cliameright').css("border","");
 			$(form).notify("ต้องมี Scan Part อย่างน้อย 1 รายการ โปรดคลิกที่ไอคอนเครื่องหมาย + สีเขียว", "error");
     } else {
+			$(form).find('#Cliameright').css("border","");
       return true;
     }
   }
@@ -2303,14 +2395,19 @@ module.exports = function ( jq ) {
 
 			tableRow = $('<div style="display: table-row;"></div>');
 			tableCell = $('<div style="display: table-cell; vertical-align: middle;">Scan Part</div>');
-			$(tableCell).append('<span>   </span>');
-			let selectedResultBox = $('<div style="display: table-cell; id="SelectedResultBox" padding: 5px;"></div>');
-			let scanparts = defualtValue.scanpart;
+			$(tableCell).appendTo($(tableRow));
+
+			let selectedResultBox = $('<div id="SelectedResultBox"></div>');
+			let scanparts = [];
+			if (defualtValue.scanpart) {
+				scanparts = defualtValue.scanpart;
+			}
+
 			let scanpartSettings = {
         iconCmdUrl: '/images/case-incident.png',
         loadOriginUrl: '/api/scanpartref/list',
 				addScanpartItemUrl: '/api/scanpartref/add',
-				externalStyle: {"font-family": "THSarabunNew", "font-size": "24px"},
+				externalStyle: pageFontStyle,
 				selectedMainJson: scanparts,
         successCallback: function(data) {
 					scanparts = data.selectedData;
@@ -2322,18 +2419,22 @@ module.exports = function ( jq ) {
 						let key = '';
 						console.log(scanparts);
 						await scanparts.forEach(async (item, i) => {
-							let code = item.Code;
-							await scanpart.addSelectedItem(content, code, key);
+							if (item) {
+								let code = item.Code;
+								await scanpart.addSelectedItem(content, code, key);
+							}
 						});
 					}
 				}
       };
 
-		  let scanpart = $(tableCell).scanpart(scanpartSettings);
-			$(tableCell).appendTo($(tableRow));
+			let scanpartButtonBox = $('<div id="ScanpartButtonBox" style="margin-top: 8px;"></div>');
+		  let scanpart = $(scanpartButtonBox).scanpart(scanpartSettings);
+
 			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
 			$(tableCell).appendTo($(tableRow));
 			$(selectedResultBox).appendTo($(tableCell));
+			$(scanpartButtonBox).appendTo($(tableCell));
 			$(tableRow).appendTo($(table));
 
 			if ((defualtValue.scanpart) && (defualtValue.scanpart.length > 0)) {
@@ -2393,7 +2494,7 @@ module.exports = function ( jq ) {
 						openStoneWebViewerCounter += 1;
 						goToSecondStep();
 					} else {
-						let confirmImageInstance = confirm('โปรดยืนยันว่าคุณได้ตรวจสอบจำนวน Series และจำนวนรูปภาพแล้วว่ามีครบถูกต้องคือ ' + allSeries + ' ซีรีส์ และ ' + allImageInstances + ' รูป');
+						let confirmImageInstance = confirm('โปรดยืนยันว่าคุณได้ตรวจสอบจำนวน Series มี ' + allSeries + ' ซีรีส์ และจำนวนภาพ มี ' + allImageInstances + ' ภาพ\nครบถูกต้องแล้ว');
 						if (confirmImageInstance) {
 							openStoneWebViewerCounter += 1;
 							goToSecondStep();
@@ -2421,7 +2522,7 @@ module.exports = function ( jq ) {
     let urgenttype = $(form).find('#Urgenttype').val();
     let radiologist = $(form).find('#Radiologist').val();
     let detail = $(form).find('#Detail').val();
-		if (refferal <= 0) {
+		if (refferal == 0) {
 			$(form).find('#Bodypart').css("border","");
 			$(form).find('#Refferal').css("border","4px solid red");
 			$(form).find('#Refferal').notify("โปรดระบุแพทย์เจ้าของไช้", "error");
@@ -2477,28 +2578,41 @@ module.exports = function ( jq ) {
 		tableCell = $('<div style="display: table-cell;">แพทย์เจ้าของไช้</div>');
 		$(tableCell).appendTo($(tableRow));
 		tableCell = $('<div style="display: table-cell; padding: 5px;"><select id="Refferal"></select></div>');
-		$(tableCell).find('#Refferal').append($('<option value="-1">ไม่ระบุ</option>'));
 		options.refes.forEach((item) => {
 			$(tableCell).find('#Refferal').append($('<option value="' + item.Value + '">' + item.DisplayText + '</option>'));
 		})
 		$(tableCell).find('#Refferal').append($('<option value="0">เพิ่มหมอ</option>'));
+		$(tableCell).find('#Refferal').prepend($('<option value="-1">เลือกหมอ</option>'));
+		$(tableCell).find('#Refferal').on('change', (evt)=>{
+			let selectedReff = $(tableWrapper).find('#Refferal').val();
+			if (selectedReff == 0) {
+				doShowPopupRegisterNewRefferalUser();
+			} else {
+				let reffnaChecked = $(tableWrapper).find('#reffna').prop('checked');
+				if (reffnaChecked) {
+					$(tableWrapper).find('#reffna').prop('checked', false);
+				}
+			}
+		})
+		let reffnaDiv = $('<div><input type="checkbox" id="reffna" value="0"><label for="reffna"> ไมระบุ</label></div>');
+		$(reffnaDiv).appendTo($(tableCell));
+
 		if (defualtValue.primary_dr) {
-			$(tableCell).find('#Refferal').val(defualtValue.primary_dr);
+			if (defualtValue.primary_dr > 0) {
+				$(tableCell).find('#Refferal').val(defualtValue.primary_dr);
+			} else {
+				$(tableCell).find('#Refferal').val(-1);
+				$(reffnaDiv).find('#reffna').click();
+			}
 		} else {
 			$(tableCell).find('#Refferal').val(-1);
 		}
-		$(tableCell).find('#Refferal').on('change', (e)=>{
-			if ($(tableCell).find('#Refferal').val() == 0) {
-				doShowPopupRegisterNewRefferalUser();
-			}
-		})
+
 		$(tableCell).appendTo($(tableRow));
 		$(tableRow).appendTo($(table));
 
 		tableRow = $('<div style="display: table-row;"></div>');
 		tableCell = $('<div style="display: table-cell; width: 240px; height: 100%; vertical-align: middle;">ประวัติผู้ป่วย</div>');
-		let pthrnaDiv = $('<div><input type="checkbox" id="pthrna" value="0"><label for="pthrna"> ไม่มีภาพประวัติแนบ</label></div>');
-		$(tableCell).append($(pthrnaDiv));
 		$(tableCell).appendTo($(tableRow));
 		tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
 
@@ -2508,7 +2622,20 @@ module.exports = function ( jq ) {
 				patientHistoryBox.images(item);
 			});
 		}
+		$(tableCell).append($('<br/>'));
+		let pthrnaDiv = $('<div style="width: 100%; marigin-top: 10px; float: left;"><input type="checkbox" id="pthrna" value="0"><label for="pthrna"> ไม่มีภาพประวัติแนบ</label></div>');
+		$(tableCell).append($(pthrnaDiv));
+		if ((!defualtValue.pn_history) || (defualtValue.pn_history.length == 0)) {
+			$(pthrnaDiv).find('#pthrna').click();
+		}
 
+		$(tableWrapper).on('newpatienthistoryimage', (evt)=>{
+			/*	ถ้ามีการเพิ่มภาพเข้าไ ต้องปลด checked ของ pthrna ออกด้วย 		*/
+			let pthrnaChecked = $(tableWrapper).find('#pthrna').prop('checked');
+			if (pthrnaChecked) {
+				$(tableWrapper).find('#pthrna').prop('checked', false);
+			}
+		});
 		$(tableCell).appendTo($(tableRow));
 		$(tableRow).appendTo($(table));
 
@@ -2631,6 +2758,15 @@ module.exports = function ( jq ) {
 			}
 		});
 
+		$(reffnaDiv).find('#reffna').on('click', (evt)=>{
+			let reffna = $(reffnaDiv).find('#reffna').prop('checked');
+			if (reffna) {
+				$('.mainfull').find('#Refferal').val(-1).hide();
+			} else {
+				$('.mainfull').find('#Refferal').val(0).show();
+			}
+		});
+
 		$(backFirstStepCmd).click(async()=>{
 			await $(tableWrapper).animate({	left: -boxWidth }, 1000);
 			let lastTable = $('.mainfull').find('#FirstStepWrapper');
@@ -2684,14 +2820,14 @@ module.exports = function ( jq ) {
 			let workingText = common.doDisplayCustomUrgentResult(workingStep.dd, workingStep.hh, workingStep.mn, defualtValue.createdAt);
 			let ugData = {Accept: acceptStep, Working: workingStep};
 			$('#CustomUrgentPlugin').empty();
-			if (defualtValue.caseId) {
+			if ((defualtValue.caseId) && (defualtValue.createdAt)) {
 				let createdAt = common.doFormatDateTimeCaseCreated(defualtValue.createdAt);
 				$('#CustomUrgentPlugin').append($('<div>เคสถูกส่งไป เมื่อ <b>' + createdAt + '</b></div>'));
 			}
 			$('#CustomUrgentPlugin').append($('<div>ระยะเวลาตอบรับเคส ภายใน <b>' + acceptText + '</b></div>'));
 			$('#CustomUrgentPlugin').append($('<div>ระยะเวลาส่งผลอ่าน ภายใน <b>' + workingText + '</b></div>'));
 			if (defualtValue.urgenttype === 'custom') {
-				let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
+				let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่าความเร่งด่วน "/>');
 				$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
 				$(editUrgentTypeButton).on('click', (evt)=>{
 					doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
@@ -2702,7 +2838,7 @@ module.exports = function ( jq ) {
 
 	function doOpenCustomUrgentPopup(tableWrapper, mode, defualtValue, ugentId, urgentData) {
 		let customurgentSettings = {
-			externalStyle:  {"font-family": "THSarabunNew", "font-size": "24px"},
+			externalStyle:  pageFontStyle,
 			successCallback: async function(ugData) {
 				let customUrgentRes = undefined
 				if (mode === 'new') {
@@ -2721,14 +2857,14 @@ module.exports = function ( jq ) {
 					}
 					$('#Urgenttype').remove();
 					$('#CustomUrgentPlugin').empty();
-					if (mode === 'edit') {
+					if ((mode === 'edit') && (defualtValue.createdAt)){
 						let createdAt = common.doFormatDateTimeCaseCreated(defualtValue.createdAt);
 						$('#CustomUrgentPlugin').append($('<div>เคสถูกส่งไป เมื่อ <b>' + createdAt + '</b></div>'));
 					}
 					$('#CustomUrgentPlugin').append($('<div>ระยะเวลาตอบรับเคส ภายใน <b>' + ugData.Accept.text + '</b></div>'));
 					$('#CustomUrgentPlugin').append($('<div>ระยะเวลาส่งผลอ่าน ภายใน <b>' + ugData.Working.text + '</b></div>'));
 					if (defualtValue.urgenttype === 'custom') {
-						let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่า "/>');
+						let editUrgentTypeButton = $('<input type="button" value=" แก้ไขค่าความเร่งด่วน "/>');
 						$(editUrgentTypeButton).appendTo($('#CustomUrgentPlugin'));
 						$(editUrgentTypeButton).on('click', (evt)=>{
 							doOpenCustomUrgentPopup(tableWrapper, 'edit', defualtValue, ugentId, ugData);
@@ -2765,7 +2901,8 @@ module.exports = function ( jq ) {
     let bodyPart = $('.mainfull').find('#Bodypart').val();
 		let scanPart = $('.mainfull').find('#Scanpart').val();
     let drReader = $('.mainfull').find('#Radiologist').val();
-    let urgentType = $('.mainfull').find('#Urgenttype').val();
+    //let urgentType = $('.mainfull').find('#Urgenttype').val();
+		let urgenttypeId = defualtValue.urgent;
     let detail = $('.mainfull').find('#Detail').val();
     let mdl = defualtValue.mdl;
     let studyDesc = defualtValue.studyDesc;
@@ -2774,7 +2911,7 @@ module.exports = function ( jq ) {
     let stationName = defualtValue.stationName;
     let studyInstanceUID = defualtValue.studyInstanceUID;
     let radioId = drReader;
-    let newCase = {patientNameTH, patientNameEN, patientHistory, scanpartItem, studyID, patientSex, patientAge, patientRights, patientCitizenID, price, hn, acc, department, drOwner, bodyPart, scanPart, drReader, urgentType, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
+    let newCase = {patientNameTH, patientNameEN, patientHistory, scanpartItem, studyID, patientSex, patientAge, patientRights, patientCitizenID, price, hn, acc, department, drOwner, bodyPart, scanPart, drReader, urgenttypeId, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
     return newCase;
   }
 
@@ -2805,7 +2942,7 @@ module.exports = function ( jq ) {
         patientRes = await common.doCallApi('/api/patient/update', rqParams);
       }
 
-      const urgenttypeId = newCaseData.urgentType;
+      const urgenttypeId = newCaseData.urgenttypeId;
       const cliamerightId = newCaseData.patientRights
       let casedata = common.doPrepareCaseParams(newCaseData);
       rqParams = {data: casedata, hospitalId: hospitalId, userId: userId, patientId: patientId, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId};
@@ -2836,7 +2973,6 @@ module.exports = function ( jq ) {
 			}
 		}
 		let updateCaseData = doCreateNewCaseData(defualtValue, phrImages, scanparts);
-		updateCaseData.urgentType = defualtValue.urgent;
 		if (updateCaseData) {
 			$('body').loading('start');
 			const main = require('../main.js');
@@ -2848,7 +2984,7 @@ module.exports = function ( jq ) {
 			let rqParams = {data: patientData, patientId: defualtValue.patientId};
 			let patientRes = await common.doCallApi('/api/patient/update', rqParams);
 
-			const urgenttypeId = updateCaseData.urgentType;
+			const urgenttypeId = updateCaseData.urgenttypeId;
 			const cliamerightId = updateCaseData.patientRights
 			let casedata = common.doPrepareCaseParams(updateCaseData);
 			//rqParams = {data: casedata, hospitalId: hospitalId, userId: userId, patientId: patientId, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId};
@@ -2956,7 +3092,7 @@ module.exports = function ( jq ) {
 		const userId = userdata.id
 
   	const spacingBox = $('<span>&nbsp;</span>');
-  	const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
+  	const inputStyleClass = pageFontStyle;
 
   	$('#HistoryDialogBox').empty();
 		let newUsername = await randomUsernameReq();

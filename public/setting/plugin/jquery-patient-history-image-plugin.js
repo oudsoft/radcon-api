@@ -96,6 +96,8 @@ $.widget( "custom.imageitem", {
 		$(imgDiv).append($(removeLink));
 
     this.element.append($(imgDiv));
+
+    this.element.trigger('newpatienthistoryimage');
   }
 });
 
