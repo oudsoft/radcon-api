@@ -13,9 +13,9 @@
     const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
     const modalStyleClass = {"display": "none", "position": "fixed", "z-index": "1", "left": "0",	"top": "0",	"width": "100%", "min-height": "100%", "overflow": "auto",	"background-color": "rgb(0,0,0)",	"background-color": "rgba(0,0,0,0.4)" };
     const modalContentWrapperClass = {"width": "60%", "background-color": "white"};
-    const modalHeaderClass = {"width": "100%", "height": "auto", "background-color": "green", "color": "white", "padding": "4px", "text-align": "left"};
+    const modalHeaderClass = {"width": "100%", "height": "auto", "background-color": "blue", "color": "white", "padding": "4px", "text-align": "left"};
     const modalContentClass = {"width": "100%", "height": "auto", "background-color": "white", "padding": "4px", "text-align": "left"};
-    const modalFooterClass = {"font-size": "30px", "width": "100%", "height": "auto", "background-color": "green", "padding": "4px", "text-align": "center"};
+    const modalFooterClass = {"font-size": "30px", "width": "100%", "height": "auto", "background-color": "blue", "padding": "4px", "text-align": "center"};
     // This is the easiest way to have default options.
     var settings = $.extend({
       // These are the defaults.
@@ -46,7 +46,8 @@
 
     const setBoxToCenter = function(box) {
       $(box).css("position","absolute");
-      $(box).css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 8) + $(window).scrollTop()) + "px");
+      $(box).css("top", "10px");
+      //$(box).css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 8) + $(window).scrollTop()) + "px");
       $(box).css("left", Math.max(0, (($(window).width() - $(box).outerWidth()) / 4) +  $(window).scrollLeft()) + "px");
     }
 
@@ -133,10 +134,11 @@
 
     const doGetItemByCodeFromMain = function(code) {
       return new Promise(function(resolve, reject) {
-        let foundIndex;
         let promiseList = new Promise(function(resolve2, reject2){
+          let foundIndex;
           let foundItems = $this.mainJson.filter((item , index)=>{
-            if ((item) && (item.Code === code)) {
+            //if ((item) && (item.Code === code)) {
+            if ((item.Code === code)) {
               foundIndex = index;
               return item;
             }
@@ -244,7 +246,7 @@
         $(headerFieldRow).find('#NameHeaderField').css({'width': '50%'});
         $(headerFieldRow).appendTo($(foundListBox));
         await foundItems.forEach((item, i) => {
-          let itemRow = $('<div style="display: table-row; width: 100%; cursor: pointer; border: 2px solid green;" class="item-list"></div>');
+          let itemRow = $('<div style="display: table-row; width: 100%; cursor: pointer; border: 2px solid blue;" class="item-list"></div>');
           $(itemRow).appendTo($(foundListBox));
           let itemCell = $('<div style="display: table-cell; padding: 4px;">' + (i+1) + '</div>');
           $(itemCell).appendTo($(itemRow));
@@ -259,7 +261,7 @@
             $(itemRow).trigger('selectitem', [eventData]);
           });
         });
-        let createNewItemRow = $('<div style="display: table-row; width: 100%; cursor: pointer; border: 2px solid green;" class="item-list"></div>');
+        let createNewItemRow = $('<div style="display: table-row; width: 100%; cursor: pointer; border: 2px solid blue;" class="item-list"></div>');
         let createNewItemCell = $('<div style="display: table-cell; padding: 4px;"></div>');
         $(createNewItemCell).appendTo($(createNewItemRow));
         createNewItemCell = $('<div style="display: table-cell; padding: 4px;"></div>');
@@ -281,24 +283,33 @@
     const doAddSelectedItem = function(modalContent, code, key){
       return new Promise(async function(resolve, reject) {
         let targetItem = await doGetItemByCodeFromMain(code);
-        if (targetItem) {
+        if (targetItem.foundItem) {
+
           $this.selectedMainJson.push(targetItem.foundItem);
+
+          doRemoveItemFromMainAt(targetItem.foundIndex);
           if ($this.selectedMainJson.length == 1) {
             $this.mainJson = $this.mainJson.concat($this.optionJson);
           }
-          doRemoveItemFromMainAt(targetItem.foundIndex);
+
           let selectedList = await doCreateSelectedListBox(key);
 
           $(modalContent).find('#SelectedItemBox').empty().append($(selectedList));
           let eventData = {searchKey: key};
           $(modalContent).find('#SearchScanPart').trigger('startsearch', [eventData]);
+        } else {
+          /*
+          console.log(code);
+          console.log($this.mainJson);
+          console.log($this.selectedMainJson);
+          */
         }
         resolve($this.selectedMainJson);
       });
     }
 
     const doCreateHeaderField = function() {
-      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: green; color: white;"></div>');
+      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: blue; color: white;"></div>');
       let fieldCell = $('<div id="NoHeaderField" style="display: table-cell; padding: 4px;">ลำดับที่</div>');
       $(fieldCell).appendTo($(headerFieldRow));
       fieldCell = $('<div id="CodeHeaderField" style="display: table-cell; padding: 4px;">รหัส</div>');
@@ -602,7 +613,24 @@
       getSelectedListBox: async function(key) {
         let listBox = await doCreateSelectedListBox(key);
         return $(listBox);
+      },
+      joinOptionToMain: function() {
+        $this.mainJson = $this.mainJson.concat($this.optionJson);
+      },
+      getItemByCodeFromMain: function(code){
+        return new Promise(async function(resolve, reject) {
+          doGetItemByCodeFromMain(code).then((mainItems)=>{
+            console.log(mainItems);
+            resolve(mainItems);
+          })
+        });
+      },
+      removeItemFromMainAt: function(atIndex){
+        doRemoveItemFromMainAt(atIndex);
       }
+      /*
+      ยังมีปัญหาเรื่อง remove รายการที่ถูกเลือกไปแล้ว ออกจาก main
+      */
     }
 
     return output;

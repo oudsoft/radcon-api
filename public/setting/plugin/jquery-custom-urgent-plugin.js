@@ -14,9 +14,9 @@
     const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
     const modalStyleClass = {"display": "none", "position": "fixed", "z-index": "1", "left": "0",	"top": "0",	"width": "100%", "min-height": "100%", "overflow": "auto",	"background-color": "rgb(0,0,0)",	"background-color": "rgba(0,0,0,0.4)" };
     const modalContentWrapperClass = {"width": "45%", "background-color": "white"};
-    const modalHeaderClass = {"width": "100%", "height": "auto", "background-color": "green", "color": "white", "padding": "4px", "text-align": "left"};
+    const modalHeaderClass = {"width": "100%", "height": "auto", "background-color": "blue", "color": "white", "padding": "4px", "text-align": "left"};
     const modalContentClass = {"width": "100%", "height": "auto", "background-color": "white", "padding": "4px", "text-align": "left"};
-    const modalFooterClass = {"font-size": "30px", "width": "100%", "height": "auto", "background-color": "green", "padding": "4px", "text-align": "center"};
+    const modalFooterClass = {"font-size": "30px", "width": "100%", "height": "auto", "background-color": "blue", "padding": "4px", "text-align": "center"};
 
     const dayOptions = [{id: 1, displayText: 'ภายในวันนี้'}, {id: 2, displayText: 'ภายในพรุ่งนี้'}, {id: 3, displayText: 'ภายใน 3 วัน'}, {id: 7, displayText: 'ภายใน 7 วัน'}];
 
@@ -42,7 +42,8 @@
 
     const setBoxToCenter = function(box) {
       $(box).css("position","absolute");
-      $(box).css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 8)/* + $(window).scrollTop()*/) + "px");
+      $(box).css("top", "10px");
+      //$(box).css("top", Math.max(0, (($(window).height() - $(this).outerHeight()) / 8)/* + $(window).scrollTop()*/) + "px");
       $(box).css("left", Math.max(0, (($(window).width() - $(box).outerWidth()) / 4) +  $(window).scrollLeft()) + "px");
     }
 
@@ -159,14 +160,12 @@
 
     const doCreateUrgentForm = function(){
       let urgentFormBox = $('<div></div>');
-      let acceptStepBox = $('<div style="border: 2px solid green; padding: 5px;"></div>');
+      let acceptStepBox = $('<div style="border: 2px solid blue; padding: 5px;"></div>');
       $(acceptStepBox).appendTo($(urgentFormBox));
       let acceptStepLabel = $('<div><b>ระยะเวลาตอบรับเคส</b></div>');
       $(acceptStepLabel).appendTo($(acceptStepBox));
       let acceptStepInput = doCreateUrgentInputPanel('AcceptStep');
       $(acceptStepInput).appendTo($(acceptStepBox));
-      //let acceptStepResultDisplay = $('<div id="AcceptStepResultDisplay" style="padding:4px; border: 1px solid black; background-color: #ccc; color: black; text-align: center; min-height: 38px; margin-top: 10px;"></div>');
-      //$(acceptStepResultDisplay).appendTo($(acceptStepBox));
 
       let workingStepBox = $('<div style="border: 2px solid #EEDD0D; padding: 5px;"></div>');
       $(workingStepBox).css('margin-top', '10px');
@@ -299,12 +298,13 @@
         let resultW = doDisplayCustomUrgentResult(ddW, hhW, mnW);
         $(urgentForm).find('#WorkingStepResultDisplay').text(resultW);
         let newTimeW = doCalNewTime(ddW, hhW, mnW);
-        if (newTimeW >= newTimeA) {
+        let critiriaMinute = (newTimeW - newTimeA)/(60 * 1000);
+        if (critiriaMinute >= 15) {
           eventData = {Accept: {dd: (ddA-1), hh: hhA, mn: mnA, text: resultA}, Working: {dd: (ddW-1), hh: hhW, mn: mnW, text: resultW}};
           settings.successCallback(eventData);
           $(modalWrapper).trigger('closedialog', [eventData]);
         } else {
-          alert('ระบะเวลาส่งผลอ่านต้องมากกว่าหรือเท่ากับกับระยะเวลาตอบรับเคส');
+          alert('ระบะเวลาส่งผลอ่านต้องมากกว่าระยะเวลาตอบรับเคสอย่างน้อย 15 นาที');
         }
       });
       return $(modalWrapper);

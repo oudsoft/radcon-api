@@ -1,0 +1,87 @@
+@font-face { font-family: THSarabunNew; src: url("../../font/THSarabunNew.ttf");}
+#NavHeader{
+  top: 10px;
+  /* background-color: #3cb344; */
+}
+
+#NavFooter{
+  position: absolute;
+  bottom: 0px;
+  width: 100%;
+  background-color: #1C79E2;
+}
+
+.menu-hide {
+  left: 0px;
+  height: 100vh;
+  /* position: fixed; */
+  z-index: 11;
+  top: 0px;
+  font-family: THSarabunNew;
+  font-size: 24px;
+}
+
+.NavTable{
+  display: table;
+  width: 100%;
+  font-family: THSarabunNew;
+  font-size: 24px;
+  margin-top: 10px;
+}
+.NavRow{
+  display: table-row block;
+  line-height: 25px;
+}
+.NavRow:hover {
+  background-color: white;
+  transition: all .5s ease;
+}
+.NavRowIconCell, .NavSubIconCell{
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+}
+.NavRowIconCell{width: 50px;}
+.NavSubIconCell{width: 70px;}
+.NavRowTextCell, .NavSubTextCell{
+  display: table-cell;
+  cursor: pointer;
+  width: 250px;
+  text-align: left;
+  vertical-align: middle;
+}
+.NavSub {
+  display: table-row;
+  line-height: 30px;
+}
+.NavSub:hover {
+  background-color: #59A6FC;
+  transition: all .5s ease;
+}
+.NavSubTextCell:hover {
+  /* background-color: #3cb344; */
+  transition: all .5s ease;
+}
+.NavActive {
+  background-color: #59A6FC;
+}
+.NavSubShow {
+  display: block;
+}
+.NavSubHide {
+  display: none;
+}
+.UserInfoCmd {
+  display: table-cell;
+  cursor: pointer;
+  width: 120px;
+  text-align: center;
+  vertical-align: middle;
+  padding: 2px;
+}
+.UserInfoCmd:hover {
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 0 5px;
+  background-color: rgba(0, 0, 255, 0.85);
+}

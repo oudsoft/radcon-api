@@ -402,6 +402,18 @@ const RadScanPartRefDef = {
 			}
 		};
 
+//User_LineID
+const RadScanPartAuxDef = {
+			StudyDesc : {
+				type: Sequelize.STRING(100)
+			},
+			ProtocolName : {
+				type: Sequelize.STRING(100)
+			},
+			Scanparts : {
+				type: Sequelize.JSON
+			}
+		};
 
 module.exports = {
 	RadUserTypeDef,
@@ -425,5 +437,6 @@ module.exports = {
 	RadCaseReportDef,
 	RadLineUserDef,
 	RadRisInterfaceDef,
-	RadScanPartRefDef
+	RadScanPartRefDef,
+	RadScanPartAuxDef
 }

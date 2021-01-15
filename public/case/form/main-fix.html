@@ -1,0 +1,97 @@
+<div class="wrapper">
+  <div class="row">
+    <div class="column side" id="MenuWrapper">
+      <div id="Menu"></div>
+    </div>
+
+    <div class="column middle">
+    	<div class="mainfull">
+
+    	</div>
+      <div class="footer">
+        <h4>Footer</h4>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+	console.log('So Good.');
+</script>
+
+<style>
+/* Header/Blog Title */
+.wrapper {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  /* border: 3px solid blue; */
+}
+
+.header {
+  padding: 5px;
+  text-align: center;
+  background: white;
+}
+
+.header h1, h2{
+  font-size: 50px;
+  font-family: THSarabunNew;
+  font-weight: bold;
+}
+
+.row {
+  display: table-row;
+  width: 100%;
+	min-height: 320px;
+}
+
+.mainfull {
+  min-height: 780px;
+  width: 100%;
+  font-family: THSarabunNew;
+  font-size: 24px;
+  font-weight: normal;
+}
+
+/* Create three unequal columns that floats next to each other */
+.column {
+  display: table-cell;
+  vertical-align: top;
+}
+
+/* Left and right column */
+.side {
+  width: 20%;
+  border: 1px solid black;
+  background-color: rgba(0, 0, 255, 0.85);
+  transition: all .6s ease-in-out;
+  overflow-y: hide;
+}
+
+/* Middle column */
+.middle {
+  width: 78%;
+  padding-left: 4px;
+}
+
+/* Footer */
+.footer {
+  padding: 5px;
+  text-align: center;
+  background: #ddd;
+  margin-top: 10px;
+  font-size: 24px;
+  font-family: THSarabunNew;
+  font-weight: normal;
+}
+
+.title-content {
+  padding: 3px;
+  height: 44px;
+  line-height:0.2;
+  border: 1px solid black;
+  background: #ddd;
+}
+
+</style>

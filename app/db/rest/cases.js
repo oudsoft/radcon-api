@@ -184,6 +184,23 @@ const doCreatetaskAction = function(caseId, userProfile, radioProfile, triggerPa
   });
 }
 
+const doSaveScanpartAux = function(scanpartAuxData, userId){
+  return new Promise(async function(resolve, reject) {
+    ////let scanpartAuxData = {StudyDesc: newCase.Case_StudyDescription,ProtocolName: newCase.Case_ProtocolName,Scanparts: newCase.Case_ScanPart};
+    const whereClous = {StudyDesc: scanpartAuxData.StudyDesc, ProtocolName: scanpartAuxData.ProtocolName};
+    const scanPartAuxs = await db.scanpartauxs.findAll({ attributes: excludeColumn, where: whereClous});
+    if (scanPartAuxs.length > 0) {
+      let auxId = scanPartAuxs[0].id;
+      let updateData = {Scanparts: scanpartAuxData.Scanparts};
+      await db.scanpartauxs.update(updateData, { where: { id: auxId } });
+      resolve(scanPartAuxs[0]);
+    } else {
+      let adAux = await db.scanpartauxs.create(scanpartAuxData);
+      await db.scanpartauxs.update({userId: userId}, { where: { id: adAux.id } });
+      resolve(adAux);
+    }
+  });
+}
 //List API
 app.post('/list', (req, res) => {
   let token = req.headers.authorization;
@@ -672,6 +689,11 @@ app.post('/add', (req, res) => {
           await Case.update(setupCaseTo, { where: { id: adCase.id } });
           await adCase.setCasestatus(newcaseStatus[0]);
 
+          const optionScanPartSave = req.body.option.scanpart.save;
+          if (optionScanPartSave == 1){
+            let scanpartAuxData = {StudyDesc: newCase.Case_StudyDescription,ProtocolName: newCase.Case_ProtocolName,Scanparts: newCase.Case_ScanPart};
+            let scanpartAux = await doSaveScanpartAux(scanpartAuxData, userId);
+          }
           // Notify Case Owner Feedback
           let refreshNewCase = {type: 'refresh', section: 'ReadWaitDiv', statusId: newcaseStatusId, caseId: adCase.id};
           await socket.sendMessage(refreshNewCase, ur[0].username);
@@ -746,10 +768,22 @@ app.post('/delete', (req, res) => {
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        /* casestatusId = 1, 7 จึงจะลบได้ */
+        /* casestatusId = 1, 4, 7 จึงจะลบได้ */
         /* เมือ่ลบแล้วให้ค้นหา task และลบ task ด้วย */
-        await Case.destroy({ where: { id: req.body.id } });
-        res.json({Result: "OK", status: {code: 200}});
+        /* ถ้า urgent เป็นแบบ custom ให้ลบ urgent ด้วย */
+        let targetCaseId = req.body.id;
+        const deleteCases = await Case.findAll({attributes: ['casestatusId'], include: {model: db.urgenttypes, attributes: ['id', 'UGType']}, where: {id: targetCaseId}});
+        log.info('deleteCases=>' + JSON.stringify(deleteCases));
+        if ((deleteCases[0].casestatusId == 1) || (deleteCases[0].casestatusId == 4) || (deleteCases[0].casestatusId == 7)) {
+          await Case.destroy({ where: { id:  targetCaseId} });
+          if (deleteCases[0].urgenttype.UGType === 'custom') {
+            db.urgenttypes.destroy({ where: { id:  deleteCases[0].urgenttype.id} });
+          }
+          tasks.removeTaskByCaseId(targetCaseId);
+          res.json({Result: "OK", status: {code: 200}});
+        } else {
+          res.json({Result: "Not OK", status: {code: 201}, notice: 'The is not on status condition for delete.'});
+        }
       } else {
         log.info('Can not found user from token.');
         res.json({status: {code: 203}, error: 'Your token lost.'});
@@ -781,6 +815,64 @@ app.post('/radio/socket/(:radioId)', async (req, res) => {
   const radioUsername = radUser[0].username;
   const radioSockets = await socket.filterUserSocket(radioUsername);
   res.json(radioSockets);
+});
+
+//Search closed case API
+app.post('/search/close', async (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        let whereClous = undefined;
+        let key = req.body.key;
+        if (key.name_en) {
+          whereClous = {Patient_NameEN: { [db.Op.iLike]: '%' + key.name_en + '%' }};
+        } else if (key.hn) {
+          whereClous = {Patient_HN: key.hn };
+        }
+        let patients = await db.patients.findAll({attributes: ['id', 'Patient_HN', 'Patient_NameEN'], where: whereClous });
+        if (patients.length > 0) {
+          let patientIds = [];
+          await patients.forEach((item, i) => {
+            patientIds.push(item.id);
+          });
+          const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
+          const orderby = [['id', 'DESC']];
+          const cases = await Case.findAll({include: caseInclude, where: {patientId: {[db.Op.in]: patientIds}, casestatusId: 6}, order: orderby});
+          const casesFormat = [];
+          const promiseList = new Promise(async function(resolve, reject) {
+            for (let i=0; i<cases.length; i++) {
+              let item = cases[i];
+              const radUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RadiologistId}});
+              const rades = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: radUser[0].userinfoId}});
+              const Radiologist = {id: item.Case_RadiologistId, User_NameTH: rades[0].User_NameTH, User_LastNameTH: rades[0].User_LastNameTH};
+              const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
+              const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
+              const Refferal = {id: item.Case_RefferalId, User_NameTH: refes[0].User_NameTH, User_LastNameTH: refes[0].User_LastNameTH};
+              casesFormat.push({case: item, Radiologist: Radiologist, Refferal: Refferal});
+            }
+            setTimeout(()=> {
+              resolve(casesFormat);
+            },500);
+          });
+          Promise.all([promiseList]).then((ob)=> {
+            res.json({status: {code: 200}, Records: ob[0]});
+          }).catch((err)=>{
+            log.error(error);
+            res.json({status: {code: 500}, error: err});
+          });
+        } else {
+          res.json({status: {code: 200}, Recodes: []});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
 });
 
 module.exports = ( dbconn, caseTask, monitor, websocket ) => {

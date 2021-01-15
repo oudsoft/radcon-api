@@ -12,6 +12,7 @@ const util = require('./mod/utilmod.js')($);
 const dicomfilter = require('./mod/dicomfilter.js')($);
 const newcase = require('./mod/createnewcase.js')($);
 const common = require('./mod/commonlib.js')($);
+const userprofile = require('./mod/userprofilelib.js')($);
 
 const caseReadWaitStatus = [1];
 const caseResultWaitStatus = [2];
@@ -133,6 +134,10 @@ function doUserLogout() {
 }
 
 function doLoadMainPage(){
+	/*
+		jquery loading api
+		https://carlosbonetti.github.io/jquery-loading/
+	*/
   let jqueryUiCssUrl = "../lib/jquery-ui.min.css";
 	let jqueryUiJsUrl = "../lib/jquery-ui.min.js";
 	let jqueryLoadingUrl = '../lib/jquery.loading.min.js';
@@ -162,16 +167,24 @@ function doLoadMainPage(){
 
   $('body').loading({overlay: $("#overlay"), stoppable: true});
   //$('body').loading('stop');
+	$('body').on('loading.start', function(event, loadingObj) {
+	  console.log('=== loading show ===');
+		//console.log(event);
+		//console.log(loadingObj);
+	});
 
+	$('body').on('loading.stop', function(event, loadingObj) {
+	  console.log('=== loading hide ===');
+	});
   $('#HistoryDialogBox').dialog({
     modal: true, autoOpen: false, width: 350, resizable: false, title: 'ประวัติผู้ป่วย'
   });
 
   let userdata = JSON.parse(doGetUserData());
 
-	$('#app').load('form/main.html', function(){
+	$('#app').load('form/main-fix.html', function(){
 
-		$('#Menu').load('form/menu.html', function(){
+		$('#Menu').load('form/menu-fix.html', function(){
 			$('.menu-tab').click(function(){
 				$('.menu-hide').toggleClass('show');
 				$('.menu-tab').toggleClass('active');
@@ -192,41 +205,92 @@ function doLoadMainPage(){
 			});
 			*/
 			$(document).on('opennewstatuscase', async (evt, data)=>{
-				let resultTitle = $('<div><h3>รายการเคสใหม่ (รอตอบรับจากรังสีแพทย์)</h3></div>');
+				let resultTitle = $('<div class="title-content"><h3>รายการเคสใหม่ (รอตอบรับจากรังสีแพทย์)</h3></div>');
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseReadWaitStatus };
 				cases.doLoadCases(rqParams);
 			});
 
 			$(document).on('openacceptedstatuscase', async (evt, data)=>{
-				let resultTitle = $('<div><h3>รายการเคสหมอตอบรับแล้ว(รอผลอ่าน)</h3></div>');
+				let resultTitle = $('<div class="title-content"><h3>รายการเคสหมอตอบรับแล้ว (รอผลอ่าน)</h3></div>');
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseResultWaitStatus };
 				cases.doLoadCases(rqParams);
 			});
 
 			$(document).on('opensuccessstatuscase', async (evt, data)=>{
-				let resultTitle = $('<div><h3>รายการเคสได้ผลอ่านแล้</h3></div>');
+				let resultTitle = $('<div class="title-content"><h3>รายการเคสได้ผลอ่านแล้ว</h3></div>');
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseReadSuccessStatus };
 				cases.doLoadCases(rqParams);
 			});
 			$(document).on('opennegativestatuscase', async (evt, data)=>{
-				let resultTitle = $('<div><h3>รายการเคสเคสไม่สมบูรณ์/รอคำสั่ง</h3></div>');
+				let resultTitle = $('<div class="title-content"><h3>รายการเคสไม่สมบูรณ์/รอคำสั่ง</h3></div>');
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseNegativeStatus };
 				cases.doLoadCases(rqParams);
 			});
 			$(document).on('opensearchcase', async (evt, data)=>{
-				let resultTitle = $('<div><h3>ค้นหาเคส</h3></div>');
-				$(".mainfull").empty().append($(resultTitle));
-				/*
-				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseResultWaitStatus };
-				cases.doLoadCases(rqParams);
-				*/
+				const doShowSearchResultCallback = async function(response){
+					$('body').loading('start');
+					let resultTitle = $('<div class="title-content"><h3>ผลการค้นหาเคสของคุณ</h3></div>');
+					$(".mainfull").empty().append($(resultTitle));
+					if (response.status.code === 200) {
+						if (response.Records.length > 0) {
+							let caseView = await cases.doShowCaseView(response.Records);
+							$(".mainfull").append($(caseView));
+						} else {
+							$(".mainfull").append($('<h4>ไม่พบรายการเคสตามเงื่อนไขที่คุณค้นหา</h4>'));
+						}
+					} else {
+						$.notify("ไม่สามารถค้นหาเคสในขณะนี้", "error");
+					}
+					$('body').loading('stop');
+				}
+				cases.doCreateSearchCaseForm(doShowSearchResultCallback);
 			});
 		});
 
+		$(document).on('openreportdesign', (evt, data)=>{
+			$('body').loading('start');
+			$(".mainfull").empty();
+			$(".mainfull").load('../report-design/index.html?hosid=' + data.hospitalId);
+			$('body').loading('stop');
+		});
+
+		$(document).on('openscanpartprofile', (evt, data)=>{
+			const deleteCallback = async function(scanpartAuxId) {
+				$('body').loading('start');
+				let rqParams = {id: scanpartAuxId};
+				let scanpartauxRes = await common.doCallApi('/api/scanpartaux/delete', rqParams);
+				if (scanpartauxRes.status.code == 200) {
+					$.notify("ลบรายการ Scan Part สำเร็จ", "success");
+					showScanpartAux();
+				} else {
+					$.notify("ไม่สามารถลบรายการ Scan Part ได้ในขณะนี้", "error");
+				}
+				$('body').loading('stop');
+			}
+
+			const showScanpartAux = async function() {
+				$('body').loading('start');
+				let resultTitle = $('<div class="title-content"><h3>รายการ Scan Part ของคุณ</h3></div>');
+				$(".mainfull").empty().append($(resultTitle));
+				let userId = userdata.id;
+				let rqParams = {userId: userId};
+	      let scanpartauxs = await common.doCallApi('/api/scanpartaux/user/list', rqParams);
+				if (scanpartauxs.Records.length > 0) {
+					let scanpartAuxBox = await userprofile.showScanpartProfile(scanpartauxs.Records, deleteCallback);
+					$(".mainfull").append($(scanpartAuxBox));
+				} else {
+					$(".mainfull").append($('<h4>ไม่พบรายการ Scan Part ของคุณ</h4>'));
+				}
+				$('body').loading('stop');
+			}
+			showScanpartAux();
+		});
+
+		/*
 		$("#EditUserInfoCmd").click(function(){
 			doShowUserProfile();
 		});
@@ -234,7 +298,7 @@ function doLoadMainPage(){
 		$("#UserLogoutCmd").click(function(){
 			doUserLogout();
 		});
-
+		*/
 		doUseFullPage();
 		newcase.doLoadDicomFromOrthanc();
 
@@ -251,7 +315,7 @@ function doLoadMainPage(){
 }
 
 function doUseFullPage() {
-	$(".row").hide();
+	$(".row").show();
 	$(".mainfull").show();
 	$(".mainfull").empty();
 }
@@ -384,7 +448,7 @@ function doSaveUserProfile(newUserInfo){
 				let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
 				yourUserdata.userinfo = newUserInfo;
 				localStorage.setItem('userdata', JSON.stringify(yourUserdata));
-				$.notify("บันทึกการแก้ไขจ้อมูลของคุณ่เข้าสู่ระบบสำเร็จ", "info");
+				$.notify("บันทึกการแก้ไขจ้อมูลของคุณ่เข้าสู่ระบบสำเร็จ", "success");
 				$("#dialog").find('#CloseUserProfile-Cmd').click();
 			});
 		} else {
@@ -411,7 +475,7 @@ module.exports = {
 	doGetWsm
 }
 
-},{"./mod/apiconnect.js":2,"./mod/case.js":3,"./mod/commonlib.js":4,"./mod/createnewcase.js":5,"./mod/dicomfilter.js":6,"./mod/jquery-ex.js":7,"./mod/utilmod.js":8,"jquery":9}],2:[function(require,module,exports){
+},{"./mod/apiconnect.js":2,"./mod/case.js":3,"./mod/commonlib.js":4,"./mod/createnewcase.js":5,"./mod/dicomfilter.js":7,"./mod/jquery-ex.js":8,"./mod/userprofilelib.js":9,"./mod/utilmod.js":10,"jquery":11}],2:[function(require,module,exports){
 /* apiconnect.js */
 
 const apiExt = ".php";
@@ -824,28 +888,113 @@ module.exports = function ( jq ) {
 		แบบนี้จะผิด และจะเกิด Internal Error ขึ้นที่ orthanc
 	*/
 
-	const doLoadCases = async function(rqParams) {
-		$('body').loading('start');
-		try {
-			let response = await common.doCallApi('/api/cases/filter/hospital', rqParams);
-			//console.log(response);
-			if (response.status.code === 200) {
-				if (response.Records.length > 0) {
-					let rwTable = await doShowCaseList(response.Records);
-					$(".mainfull").append($(rwTable));
+	const doLoadCases = function(rqParams) {
+		return new Promise(async function(resolve, reject) {
+			$('body').loading('start');
+			try {
+				let response = await common.doCallApi('/api/cases/filter/hospital', rqParams);
+				//console.log(response);
+				if (response.status.code === 200) {
+					if (response.Records.length > 0) {
+						let rwTable = await doShowCaseList(response.Records);
+						$(".mainfull").append($(rwTable));
+					} else {
+						$(".mainfull").append($('<div><h3>ไม่พบรายการเคส</h3></div>'));
+					}
 				} else {
-					$(".mainfull").append($('<div><h3>ไม่พบรายการเคส</h3></div>'));
+					$.notify("เกิดความผิดพลาด ไม่สามารถเรียกรายการเคสจากเซิร์ฟเวอร์ได้ในขณะนี้", "error");
 				}
-			} else {
-				$.notify("เกิดความผิดพลาด ไม่สามารถเรียกรายการเคสจากเซิร์ฟเวอร์ได้ในขณะนี้", "error");
+				$('body').loading('stop');
+				resolve({loadstatus: 'success'});
+			} catch(err) {
+				console.log('Unexpected error occurred =>', e);
+				$.notify("ต้องขออภัยอย่างแรง มีข้อความผิดพลาดเกิดขึ้น", "error");
+				$('body').loading('stop');
+				reject({error: err})
 			}
-			$('body').loading('stop');
-		} catch(e) {
-			console.log('Unexpected error occurred =>', e);
-			$('body').loading('stop');
-		}
+		});
 	}
 
+	const doCreateSearchCaseForm = function(resultCallback){
+		let formWrapper = $('<div id="SearchFormWrapper" style="width: 60%; position: absolute;"></div>');
+		let headerWrapper = $('<div style="width: 100%;" class="header-cell">ค้นหาเคส</div>');
+		$(headerWrapper).appendTo($(formWrapper));
+
+		let guideWrapper = $('<div style="width: 98%; padding: 10px; margin-top: 10px; background: #ddd;">สามารถค้นหาเคสได้ด้วยชื่อภาษาอังกฤษ หรือ HN ของผู้ป่วย</div>');
+		$(guideWrapper).appendTo($(formWrapper));
+
+		let form = $('<div style="display: table; width: 100%; padding: 10px; margin-top: -5px;"></div>');
+		$(form).appendTo($(formWrapper));
+
+		let tableRow = $('<div style="display: table-row;"></div>');
+		let tableCell = $('<div style="display: table-cell; width: 240px;">ขื่อภาษาอังกฤษผู้ป่วย</div>');
+		$(tableCell).appendTo($(tableRow));
+		tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
+		let patientNameENKeyBox = $('<input type="text" id="PatientNameENKey"/>');
+		$(tableCell).append($(patientNameENKeyBox));
+		$(tableCell).appendTo($(tableRow));
+		$(tableRow).appendTo($(form));
+
+		tableRow = $('<div style="display: table-row;"></div>');
+		tableCell = $('<div style="display: table-cell; width: 240px;">HN ผู้ป่วย</div>');
+		$(tableCell).appendTo($(tableRow));
+		tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
+		let patientHNKeyBox = $('<input type="text" id="PatientHNKey"/>');
+		$(tableCell).append($(patientHNKeyBox));
+		$(tableCell).appendTo($(tableRow));
+		$(tableRow).appendTo($(form));
+
+		let footerWrapper = $('<div class="header-cell"></div>');
+		let searchCmd = $('<input type="button" value=" ค้นหา "/>');
+		$(searchCmd).appendTo($(footerWrapper));
+		$(footerWrapper).append('<span>  </span>')
+		let cancelCmd = $('<input type="button" value=" ยกเลิก "/>');
+		$(cancelCmd).appendTo($(footerWrapper));
+		$(footerWrapper).appendTo($(formWrapper));
+
+		$('.mainfull').empty().append($(formWrapper));
+		let boxWidth = $(formWrapper).width();
+		let parentWidth = $(formWrapper).parent().width();
+		let sideWidth = $('.side').width();
+		let centerPos = (parentWidth/2) - (boxWidth/2) + (sideWidth);
+		let rightPos = parentWidth + (sideWidth) + 22;
+		$(formWrapper).css('left', -boxWidth);
+		$(formWrapper).animate({	left: centerPos	}, 1000);
+
+		$(searchCmd).click(async()=>{
+			let searchParams = undefined;
+			let patientNameENKey = $(patientNameENKeyBox).val();
+			let patientHNKey = $(patientHNKeyBox).val();
+			if ((patientHNKey === '') && (patientNameENKey === '')) {
+				$(patientNameENKeyBox).css('border', '1px solid red');
+				$(patientHNKeyBox).css('border', '1px solid red');
+				$.notify("จำเป็นต้องมีค่าในช่องใดช่องหนึ่ง", "error");
+			} else {
+				$('body').loading('start');
+				if (patientNameENKey !== '') {
+					searchParams = {key: {name_en: patientNameENKey}};
+				} else if (patientHNKey !== '') {
+					searchParams = {key: {hn: patientHNKey}};
+				}
+				try {
+					let response = await common.doCallApi('/api/cases/search/close', searchParams);
+					await $(formWrapper).animate({	left: rightPos }, 1000);
+					$('body').loading('stop');
+					resultCallback(response);
+				} catch(e) {
+					$.notify("ขออภัยอย่างแรง มีความผิดพลาดเกิดขึ้น", "error");
+			    console.log('Unexpected error occurred =>', e);
+			    $('body').loading('stop');
+		    }
+			}
+		});
+		$(cancelCmd).click(async(evt)=>{
+			await $(formWrapper).animate({	left: rightPos }, 1000);
+			newcase.doLoadDicomFromOrthanc();
+		});
+
+		return $(formWrapper);
+	}
 	/* Remove */
   const openCaseList = async function(e) {
 		$('body').loading('start');
@@ -945,15 +1094,173 @@ module.exports = function ( jq ) {
     }
 	}
 
-  function doShowCaseList(incidents) {
+	function doCreateHeaderFieldCaseList() {
+		let headerRow = $('<div style="display: table-row; width: 100%; background-color: blue;"></div>');
+		let headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>เวลาที่ส่งอ่าน</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>ชื่อผู้ป่วย</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>เพศ/อายุ</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>HN</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>Mod.</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>Scan Part</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>ประเภทความด่วน</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>แพทย์ผู้ส่ง</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>รังสีแพทย์</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>สถานะเคส</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		$(headColumn).append('<span>คำสั่ง</span>');
+		$(headColumn).appendTo($(headerRow));
+
+		return $(headerRow);
+	}
+
+	function doCreateCaseItemCommand(caseItem) {
+		let cmdColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		let operationCmdButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/arrow-down-icon.png" title="คลิกเพื่อเปิดรายการคำสั่งใช้งานของคุณ"/>');
+		$(operationCmdButton).click(function() {
+			$('.operation-row').each((index, child) => {
+				if ($(child).css('display') !== 'none') {
+					$(child).slideUp();
+				}
+			});
+			let operationVisible = $('#' + incidents[i].case.id).css('display');
+			if (operationVisible === 'none') {
+				$('#' + incidents[i].case.id).slideDown();
+			} else {
+				$('#' + incidents[i].case.id).slideUp();
+			}
+		});
+		$(operationCmdButton).appendTo($(cmdColumn));
+
+		return $(cmdColumn);
+	}
+
+	function doCreateCaseItemRow(caseItem) {
 		return new Promise(async function(resolve, reject) {
+			let casedatetime = caseItem.case.createdAt.split('T');
+			let casedateSegment = casedatetime[0].split('-');
+			casedateSegment = casedateSegment.join('');
+			let casedate = util.formatStudyDate(casedateSegment);
+			let casetime = util.formatStudyTime(casedatetime[1].split(':').join(''));
+			let patientName = caseItem.case.patient.Patient_NameEN/* + caseItem.case.patient.Patient_NameTH*/;
+			let patientSA = caseItem.case.patient.Patient_Sex + '/' + caseItem.case.patient.Patient_Age;
+			let patientHN = caseItem.case.patient.Patient_HN;
+			let caseMODA = caseItem.case.Case_Modality;
+			let caseScanparts = caseItem.case.Case_ScanPart;
+			let yourSelectScanpartContent = $('<div></div>');
+			if ((caseScanparts) && (caseScanparts.length > 0)) {
+				yourSelectScanpartContent = await common.doRenderScanpartSelectedAbs(caseScanparts);
+			}
+			let caseUG = caseItem.case.urgenttype.UGType_Name;
+			let caseREFF = caseItem.Refferal.User_NameTH + ' ' + caseItem.Refferal.User_LastNameTH;
+			let caseRADI = caseItem.Radiologist.User_NameTH + ' ' + caseItem.Radiologist.User_LastNameTH;
+			let caseSTAT = caseItem.case.casestatus.CS_Name_EN;
+			let caseCMD = doCreateCaseItemCommand(caseItem);
+
+			let itemRow = $('<div style="display: table-row; width: 100%;"></div>');
+			let itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append('<span>'+ casedate + ' : ' + casetime +'</span>');
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(patientName);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(patientSA);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(patientHN);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(caseMODA);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append($(yourSelectScanpartContent));
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(caseUG);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(caseREFF);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(caseRADI);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append(caseSTAT);
+			$(itemColumn).appendTo($(itemRow));
+
+			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			$(itemColumn).append($(caseCMD));
+			$(itemColumn).appendTo($(itemRow));
+
+			resolve($(itemRow));
+		});
+	}
+
+	const doShowCaseView = function(incidents) {
+		return new Promise(async function(resolve, reject) {
+			let rowStyleClass = {"font-family": "THSarabunNew", "font-size": "22px"};
+			let caseView = $('<div style="display: table; width: 100%;"></div>');
+			let headView = doCreateHeaderFieldCaseList();
+			$(headView).appendTo($(caseView));
+			for (let i=0; i < incidents.length; i++) {
+				let itemView = await doCreateCaseItemRow(incidents[i]);
+				$(itemView).appendTo($(caseView));
+			}
+			resolve($(caseView));
+		});
+	}
+
+  const doShowCaseList = function(incidents) {
+		return new Promise(async function(resolve, reject) {
+			let rowStyleClass = {"font-family": "THSarabunNew", "font-size": "22px"};
 			let rwTable = $('<table width="100%" cellpadding="5" cellspacing="0"></table>');
-			let headRow = $('<tr style="background-color: green;"></tr>');
-			let headColumns = $('<td width="10%" align="center">เวลาที่ส่งอ่าน</td><td width="10%" align="center">ชื่อ</td><td width="5%" align="center">เพศ/อายุ</td><td width="10%" align="center">HN</td><td width="5%" align="center">Mod.</td><td width="10%" align="center">Scan Part</td><td width="10%" align="center">ประเภทความด่วน</td><td width="10%" align="center">แพทย์ผู้ส่ง</td><td width="10%" align="center">รังสีแพทย์</td><td width="10%" align="center">สถานะเคส</td><td width="*" align="center">คำสั่ง</td>');
+			let headRow = $('<tr style="background-color: blue;"></tr>');
+			$(headRow).css(rowStyleClass);
+			let headColumns = $('<td width="15%" align="center">เวลาที่ส่งอ่าน</td><td width="10%" align="center">ชื่อ</td><td width="5%" align="center">เพศ/อายุ</td><td width="8%" align="center">HN</td><td width="5%" align="center">Mod.</td><td width="15%" align="center">Scan Part</td><td width="10%" align="center">ประเภทความด่วน</td><td width="10%" align="center">แพทย์ผู้ส่ง</td><td width="10%" align="center">รังสีแพทย์</td><td width="10%" align="center">สถานะเคส</td><td width="*" align="center">คำสั่ง</td>');
 			$(rwTable).append($(headRow));
 			$(headRow).append($(headColumns));
 			for (let i=0; i < incidents.length; i++) {
 				let dataRow = $('<tr class="case-row"></tr>');
+				$(dataRow).css(rowStyleClass);
 				let casedatetime = incidents[i].case.createdAt.split('T');
 				let casedateSegment = casedatetime[0].split('-');
 				casedateSegment = casedateSegment.join('');
@@ -970,7 +1277,10 @@ module.exports = function ( jq ) {
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.patient.Patient_Sex + '/' + incidents[i].case.patient.Patient_Age + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.patient.Patient_HN + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.Case_Modality + '</td>'));
-				$(dataRow).append($('<td align="center">'+ $(yourSelectScanpartContent).html() + '</td>'));
+				//$(dataRow).append($('<td align="center">'+ $(yourSelectScanpartContent).html() + '</td>'));
+				let scanpartCol = $('<td align="center"></td>');
+				$(dataRow).append($(scanpartCol));
+				$(scanpartCol).append($(yourSelectScanpartContent));
 				$(dataRow).append($('<td align="center">'+ incidents[i].case.urgenttype.UGType_Name + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].Refferal.User_NameTH + ' ' + incidents[i].Refferal.User_LastNameTH + '</td>'));
 				$(dataRow).append($('<td align="center">'+ incidents[i].Radiologist.User_NameTH + ' ' + incidents[i].Radiologist.User_LastNameTH + '</td>'));
@@ -998,7 +1308,7 @@ module.exports = function ( jq ) {
 				$(commandCol).appendTo($(dataRow));
 				$(rwTable).append($(dataRow));
 
-				let operationCmdButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/operation-icon.png" title="Your command case processing."/>');
+				let operationCmdButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/arrow-down-icon.png" title="คลิกเพื่อเปิดรายการคำสั่งใช้งานของคุณ"/>');
 				$(operationCmdButton).click(function() {
 					$('.operation-row').each((index, child) => {
 						if ($(child).css('display') !== 'none') {
@@ -1505,20 +1815,19 @@ module.exports = function ( jq ) {
   	let userConfirm = confirm('โปรดยืนยันเพื่อลบรายการนี้ โดยคลิกปุ่ม ตกลง หรือ OK');
   	if (userConfirm == true){
   		$('body').loading('start');
-  		let newStatus = 'cancel';
 			doDeleteCase(caseID).then((response) => {
-				if (currentTab === 'ReadWaitDiv') {
-					//openRwCaseList();
-					$("#ReadWaitTab").trigger("click");
-				} else if (currentTab === 'ReadSuccessDiv') {
-					//openRsCaseList();
-					$("#ReadSuccessTab").trigger("click");
-				} else if (currentTab === 'AllCasesDiv') {
-					$("#AllCasesTab").trigger("click");
+				if (response.status.code == 200) {
+					$('#NegativeStatusSubCmd').click();
+					$.notify("ลบรายการเคสสำเร็จ", "success");
+				} else if (response.status.code == 201) {
+					$.notify("ไม่สามารถลบรายการเคสได้ เนื่องจากเคสไม่อยู่ในสถานะที่จะลบได้", "warn");
+				} else {
+					$.notify("เกิดข้อผิดพลาด ไม่สามารถลบรายการเคสได้", "error");
 				}
 				$('body').loading('stop');
 			}).catch((err) => {
 				console.log(err);
+				$.notify("ต้องขออภัยอย่างแรง มีข้อผิดพลาดเกิดขึ้น", "error");
 				$('body').loading('stop');
 			});
   	}
@@ -1598,11 +1907,14 @@ module.exports = function ( jq ) {
 	}
 
 	return {
-		doLoadCases
+		doLoadCases,
+		doShowCaseView,
+		doShowCaseList,
+		doCreateSearchCaseForm
 	}
 }
 
-},{"../main.js":1,"./apiconnect.js":2,"./commonlib.js":4,"./createnewcase.js":5,"./utilmod.js":8}],4:[function(require,module,exports){
+},{"../main.js":1,"./apiconnect.js":2,"./commonlib.js":4,"./createnewcase.js":5,"./utilmod.js":10}],4:[function(require,module,exports){
 /* commonlib.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -1804,6 +2116,23 @@ module.exports = function ( jq ) {
 		});
 	}
 
+	const doLoadScanpartAux = function(studyDesc, protocolName){
+		return new Promise(async function(resolve, reject) {
+			const main = require('../main.js');
+			let userdata = JSON.parse(main.doGetUserData());
+			let hospitalId = userdata.hospitalId;
+			let userId = userdata.userId;
+			let rqParams = { hospitalId: hospitalId, userId: userId, studyDesc: studyDesc, protocolName: protocolName};
+			let apiUrl = '/api/scanpartaux/select';
+			try {
+				let response = await doCallApi(apiUrl, rqParams);
+				resolve(response);
+			} catch(e) {
+	      reject(e);
+    	}
+		});
+	}
+
 	const doFillSigleDigit = function(x) {
 		if (Number(x) < 10) {
 			return '0' + x;
@@ -1843,13 +2172,17 @@ module.exports = function ( jq ) {
 	}
 
 	const formatNumberWithCommas = function(x) {
-		return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		if (x) {
+			return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+		} else {
+			return undefined;
+		}
 	}
 
 	const doRenderScanpartSelectedBox = function(scanparts) {
 		return new Promise(async function(resolve, reject) {
 			const doCreateHeaderField = function() {
-	      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: green; color: white;"></div>');
+	      let headerFieldRow = $('<div style="display: table-row;  width: 100%; border: 2px solid black; background-color: blue; color: white;"></div>');
 				let fieldCell = $('<div style="display: table-cell; padding: 4px;">ลำดับที่</div>');
 	      $(fieldCell).appendTo($(headerFieldRow));
 	      fieldCell = $('<div style="display: table-cell; padding: 4px;">รหัส</div>');
@@ -1889,7 +2222,7 @@ module.exports = function ( jq ) {
 				promiseList = new Promise(function(resolve2, reject2){
 					for (let i=0; i < scanparts.length; i++){
 						let item = scanparts[i];
-						let scanPartItemBox = $('<div style="border: 1px solid green; border-radius: 3px; font-size: 20px; text-align: left;">' + item.Name + '</div>');
+						let scanPartItemBox = $('<div style="border: 1px solid blue; border-radius: 3px; font-size: 20px; text-align: left;">' + item.Name + '</div>');
 						$(scanPartItemBox).appendTo($(scanPartBox));
 					}
 					setTimeout(()=>{
@@ -1899,7 +2232,7 @@ module.exports = function ( jq ) {
 
 			} else {
 				promiseList = new Promise(function(resolve3, reject3){
-					let showHiddenCmd = $('<div style="background-color: green; color: white;"> ... </div>');
+					let showHiddenCmd = $('<div style="background-color: blue; color: white;"> ... </div>');
 					let titleBox = $('<div style="display: block;></div>');
 					$(titleBox).appendTo($(scanPartBox));
 					let hideBox = $('<div style="display: none;"></div>');
@@ -1908,7 +2241,7 @@ module.exports = function ( jq ) {
 
 					for (let i=0; i < scanparts.length; i++){
 						let item = scanparts[i];
-						let itemBox = $('<div style="border: 1px solid green; border-radius: 3px; font-size: 20px; text-align: left;">' + item.Name + '</div>');
+						let itemBox = $('<div style="border: 1px solid blue; border-radius: 3px; font-size: 20px; text-align: left;">' + item.Name + '</div>');
 						if (i <= 1) {
 							$(itemBox).appendTo($(titleBox));
 						} else {
@@ -1935,7 +2268,8 @@ module.exports = function ( jq ) {
 
 	function doRenderScanpartSelectedAbs(scanparts) {
 		return new Promise(async function(resolve, reject) {
-			let scanPartBox = $('<div style="border: 1px solid green; border-radius: 3px;"></div>');
+			let scanPartBox = $('<div></div>');
+			let scanpartStyle = {'border': '1px solid blue', 'border-radius': '3px', 'font-size': '20px', 'text-align': 'left', 'padding': '2px'};
 			let	promiseList = new Promise(function(resolve2, reject2){
 				let joinText = '';
 				for (let i=0; i < scanparts.length; i++){
@@ -1946,10 +2280,11 @@ module.exports = function ( jq ) {
 						joinText += item.Name;
 					}
 				}
-				$(scanPartBox).append($('<div style="font-size: 20px; text-align: left;">' + joinText + '</div>'));
+				$(scanPartBox).append($('<div>' + joinText + '</div>'));
+				$(scanPartBox).css(scanpartStyle);
 				setTimeout(()=>{
           resolve2($(scanPartBox));
-        }, 500);
+        }, 100);
       });
 			Promise.all([promiseList]).then((ob)=>{
 				resolve(ob[0]);
@@ -1970,6 +2305,7 @@ module.exports = function ( jq ) {
 		doCreateNewCustomUrgent,
 		doCallSelectUrgentType,
 		doUpdateCustomUrgent,
+		doLoadScanpartAux,
 		doFillSigleDigit,
 		doDisplayCustomUrgentResult,
 		doFormatDateTimeCaseCreated,
@@ -1979,7 +2315,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"../main.js":1,"./apiconnect.js":2,"./utilmod.js":8}],5:[function(require,module,exports){
+},{"../main.js":1,"./apiconnect.js":2,"./utilmod.js":10}],5:[function(require,module,exports){
 /* createnewcase.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -1987,6 +2323,7 @@ module.exports = function ( jq ) {
   const apiconnector = require('./apiconnect.js')($);
   const util = require('./utilmod.js')($);
   const common = require('./commonlib.js')($);
+	const newreffuser = require('./createnewrefferal.js')($);
 
 	const pageFontStyle = {"font-family": "THSarabunNew", "font-size": "24px"};
 
@@ -1995,7 +2332,7 @@ module.exports = function ( jq ) {
 		let queryString = localStorage.getItem('dicomfilter');
 		doCallSearhOrthanc(queryString).then(async (studies) => {
 			$(".mainfull").empty();
-			let resultTitle = $('<div><h3>รายการภาพในระบบที่ค้นพบ</h3></div>');
+			let resultTitle = $('<div class="title-content"><h3>รายการภาพในระบบที่ค้นพบ</h3></div>');
 			$(".mainfull").empty().append($(resultTitle));
 			if (studies.length > 0) {
 				let resultTable = await doShowDicomResult(studies, 0);
@@ -2304,7 +2641,7 @@ module.exports = function ( jq ) {
 			let headerWrapper = $('<div style="width: 100%;" class="header-cell">' + defualtValue.headerCreateCase + '</div>');
 			$(headerWrapper).appendTo($(tableWrapper));
 
-			let guideWrapper = $('<div style="width: 100%; padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 1/2 โปรดตรวจสอบและแก้ไขข้อมูล</div>');
+			let guideWrapper = $('<div style="width: 98%; padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 1/2 โปรดตรวจสอบและแก้ไขข้อมูล</div>');
 			$(guideWrapper).appendTo($(tableWrapper));
 
 			let table = $('<div style="display: table; width: 100%; padding: 10px; margin-top: -5px;"></div>');
@@ -2413,15 +2750,26 @@ module.exports = function ( jq ) {
 					scanparts = data.selectedData;
           $(selectedResultBox).empty().append($(data.selectedBox));
 					$('.remove-item').empty();
+					if (scanparts.length > 1) {
+						$(saveScanpartOptionDiv).show();
+					} else {
+						$(saveScanpartOptionDiv).hide();
+					}
         },
 				updateSelectedItem: async function(content){
 					if (scanparts.length > 0) {
 						let key = '';
-						console.log(scanparts);
+						if (scanparts.length >= 1) {
+							scanpart.joinOptionToMain();
+						}
 						await scanparts.forEach(async (item, i) => {
 							if (item) {
 								let code = item.Code;
 								await scanpart.addSelectedItem(content, code, key);
+								let foundItem = await scanpart.getItemByCodeFromMain(code);
+								if (foundItem.foundIndex) {
+									scanpart.removeItemFromMainAt(foundItem.foundIndex);
+								}
 							}
 						});
 					}
@@ -2431,15 +2779,33 @@ module.exports = function ( jq ) {
 			let scanpartButtonBox = $('<div id="ScanpartButtonBox" style="margin-top: 8px;"></div>');
 		  let scanpart = $(scanpartButtonBox).scanpart(scanpartSettings);
 
+			let saveScanpartOptionDiv = $('<div style="display: none;"><input type="checkbox" id="SaveScanpartOption" value="0"><label for="SaveScanpartOption"> บันทึกรายการ Scan Part ไว้ใช้งานในครั้งต่อไป</label></div>');
+
 			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
 			$(tableCell).appendTo($(tableRow));
 			$(selectedResultBox).appendTo($(tableCell));
 			$(scanpartButtonBox).appendTo($(tableCell));
+			$(saveScanpartOptionDiv).appendTo($(tableCell));
 			$(tableRow).appendTo($(table));
 
-			if ((defualtValue.scanpart) && (defualtValue.scanpart.length > 0)) {
+			const scanpartAutoGuide = async function(){
 				let yourSelectScanpart = await common.doRenderScanpartSelectedBox(scanparts);
 				$(selectedResultBox).append($(yourSelectScanpart));
+				$(saveScanpartOptionDiv).show();
+			}
+
+			if ((defualtValue.scanpart) && (defualtValue.scanpart.length > 0)) {
+				scanpartAutoGuide();
+			} else {
+				let studyDesc = defualtValue.studyDesc;
+				let protocalName = defualtValue.protocalName;
+				let auxScanpart = await common.doLoadScanpartAux(studyDesc, protocalName);
+				if ((auxScanpart.Records) && (auxScanpart.Records.length > 0)) {
+					scanparts = auxScanpart.Records[0].Scanparts;
+					scanpartAutoGuide();
+				} else {
+					$(saveScanpartOptionDiv).hide();
+				}
 			}
 
 			tableRow = $('<div style="display: table-row;"></div>');
@@ -2469,7 +2835,9 @@ module.exports = function ( jq ) {
 			$('.mainfull').empty().append($(tableWrapper));
 			let boxWidth = $(tableWrapper).width();
 			let parentWidth = $(tableWrapper).parent().width();
-			let centerPos = (parentWidth/2) - (boxWidth/2);
+			let sideWidth = $('.side').width();
+			let centerPos = (parentWidth/2) - (boxWidth/2) + (sideWidth);
+			let rightPos = parentWidth + (sideWidth) + 22;
 			$(tableWrapper).css('left', -boxWidth);
 			$(tableWrapper).animate({	left: centerPos	}, 1000);
 
@@ -2477,7 +2845,7 @@ module.exports = function ( jq ) {
 				const goToSecondStep = async function() {
 					let verified = doVerifyNewCaseDataFirstStep(table, scanparts);
 					if (verified) {
-						await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000, ()=>{$(tableWrapper).hide();});
+						await $(tableWrapper).animate({	left: rightPos }, 1000, ()=>{$(tableWrapper).hide();});
 						let nextTable = $('.mainfull').find('#SecondStepWrapper');
 						if ($(nextTable).prop('id')) {
 							$(nextTable).show();
@@ -2508,7 +2876,7 @@ module.exports = function ( jq ) {
 			});
 
 			$(cancelFirstStepCmd).click(async()=>{
-				await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000);
+				await $(tableWrapper).animate({	left: rightPos }, 1000);
 				doLoadDicomFromOrthanc();
 			});
 
@@ -2560,7 +2928,7 @@ module.exports = function ( jq ) {
 		let headerWrapper = $('<div style="width: 100%;" class="header-cell">' + defualtValue.headerCreateCase + '</div>');
 		$(headerWrapper).appendTo($(tableWrapper));
 
-		let guideWrapper = $('<div style="width: 100%;  padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 2/2 โปรดกรอกข้อมูลให้สมบูรณ์พร้อมทั้งแนบประวัติผู้ป่วย</div>');
+		let guideWrapper = $('<div style="width: 98%;  padding: 10px; margin-top: 10px; background: #ddd;">ขั้นตอนที่ 2/2 โปรดกรอกข้อมูลให้สมบูรณ์พร้อมทั้งแนบประวัติผู้ป่วย</div>');
 		$(guideWrapper).appendTo($(tableWrapper));
 
 		let table = $('<div style="display: table; width: 100%; padding: 10px; margin-top: -5px;"></div>');
@@ -2586,7 +2954,7 @@ module.exports = function ( jq ) {
 		$(tableCell).find('#Refferal').on('change', (evt)=>{
 			let selectedReff = $(tableWrapper).find('#Refferal').val();
 			if (selectedReff == 0) {
-				doShowPopupRegisterNewRefferalUser();
+				newreffuser.doShowPopupRegisterNewRefferalUser();
 			} else {
 				let reffnaChecked = $(tableWrapper).find('#reffna').prop('checked');
 				if (reffnaChecked) {
@@ -2625,10 +2993,11 @@ module.exports = function ( jq ) {
 		$(tableCell).append($('<br/>'));
 		let pthrnaDiv = $('<div style="width: 100%; marigin-top: 10px; float: left;"><input type="checkbox" id="pthrna" value="0"><label for="pthrna"> ไม่มีภาพประวัติแนบ</label></div>');
 		$(tableCell).append($(pthrnaDiv));
+		/*
 		if ((!defualtValue.pn_history) || (defualtValue.pn_history.length == 0)) {
 			$(pthrnaDiv).find('#pthrna').click();
 		}
-
+		*/
 		$(tableWrapper).on('newpatienthistoryimage', (evt)=>{
 			/*	ถ้ามีการเพิ่มภาพเข้าไ ต้องปลด checked ของ pthrna ออกด้วย 		*/
 			let pthrnaChecked = $(tableWrapper).find('#pthrna').prop('checked');
@@ -2651,13 +3020,6 @@ module.exports = function ( jq ) {
 		tableRow = $('<div style="display: table-row;"></div>');
     tableCell = $('<div style="display: table-cell;">ประเถทความเร่งด่วน</div>');
     $(tableCell).appendTo($(tableRow));
-
-		/*
-		1. load custom urgentType  ***
-		2. แสดงผลเป็น วันที่ เวลาที  ***
-		3. จะให้ user แก้ไขได้หรือไม่ ***
-		4. เมื่อลบเคส ต้องลย custom urgent ด้วย
-		*/
 
 		//console.log(defualtValue);
 
@@ -2745,7 +3107,9 @@ module.exports = function ( jq ) {
 		$('.mainfull').append($(tableWrapper));
 		let boxWidth = $(tableWrapper).width();
 		let parentWidth = $(tableWrapper).parent().width();
-		let centerPos = (parentWidth/2) - (boxWidth/2);
+		let sideWidth = $('.side').width();
+		let centerPos = (parentWidth/2) - (boxWidth/2) + (sideWidth);
+		let rightPos = parentWidth + (sideWidth) + 22;
 		$(tableWrapper).css('left', -boxWidth);
 		$(tableWrapper).animate({	left: centerPos	}, 1000);
 
@@ -2779,8 +3143,7 @@ module.exports = function ( jq ) {
 			const goToSaveCaseStep = async()=>{
 				let verified = doVerifyNewCaseDataSecondStep(table);
 	      if (verified) {
-					let phrImages =
-	  			await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000);
+	  			await $(tableWrapper).animate({	left: rightPos }, 1000);
 					if (defualtValue.caseId) {
 						doSaveUpdateCaseStep(defualtValue, options, patientHistory, scanparts);
 					} else {
@@ -2801,7 +3164,7 @@ module.exports = function ( jq ) {
 		});
 
 		$(cancelFirstStepCmd).click(async()=>{
-			await $(tableWrapper).animate({	left: parentWidth + 10 }, 1000);
+			await $(tableWrapper).animate({	left: rightPos }, 1000);
 			doLoadDicomFromOrthanc();
 		});
 
@@ -2901,9 +3264,17 @@ module.exports = function ( jq ) {
     let bodyPart = $('.mainfull').find('#Bodypart').val();
 		let scanPart = $('.mainfull').find('#Scanpart').val();
     let drReader = $('.mainfull').find('#Radiologist').val();
-    //let urgentType = $('.mainfull').find('#Urgenttype').val();
+    let urgentType = $('.mainfull').find('#Urgenttype').val();
 		let urgenttypeId = defualtValue.urgent;
+		if (urgentType) {
+			urgenttypeId = urgentType;
+		}
     let detail = $('.mainfull').find('#Detail').val();
+		let wantSaveScanpart = 0;
+		let saveScanpartOption = $('.mainfull').find('#SaveScanpartOption').prop('checked');
+		if (saveScanpartOption) {
+			wantSaveScanpart = 1;
+		}
     let mdl = defualtValue.mdl;
     let studyDesc = defualtValue.studyDesc;
     let protocalName = defualtValue.protocalName;
@@ -2911,7 +3282,8 @@ module.exports = function ( jq ) {
     let stationName = defualtValue.stationName;
     let studyInstanceUID = defualtValue.studyInstanceUID;
     let radioId = drReader;
-    let newCase = {patientNameTH, patientNameEN, patientHistory, scanpartItem, studyID, patientSex, patientAge, patientRights, patientCitizenID, price, hn, acc, department, drOwner, bodyPart, scanPart, drReader, urgenttypeId, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId};
+		let option = {scanpart: {save: wantSaveScanpart}}; //0 or 1
+    let newCase = {patientNameTH, patientNameEN, patientHistory, scanpartItem, studyID, patientSex, patientAge, patientRights, patientCitizenID, price, hn, acc, department, drOwner, bodyPart, scanPart, drReader, urgenttypeId, detail, mdl, studyDesc, protocalName, manufacturer, stationName, studyInstanceUID, radioId, option: option};
     return newCase;
   }
 
@@ -2945,10 +3317,10 @@ module.exports = function ( jq ) {
       const urgenttypeId = newCaseData.urgenttypeId;
       const cliamerightId = newCaseData.patientRights
       let casedata = common.doPrepareCaseParams(newCaseData);
-      rqParams = {data: casedata, hospitalId: hospitalId, userId: userId, patientId: patientId, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId};
+      rqParams = {data: casedata, hospitalId: hospitalId, userId: userId, patientId: patientId, urgenttypeId: urgenttypeId, cliamerightId: cliamerightId, option: newCaseData.option};
       let caseRes = await common.doCallApi('/api/cases/add', rqParams);
       if (caseRes.status.code === 200) {
-        $.notify("บันทึกเคสใหม่เข้าสู่ระบบเรียบร้อยแล้ว", "info");
+        $.notify("บันทึกเคสใหม่เข้าสู่ระบบเรียบร้อยแล้ว", "success");
 				$('#NewStatusSubCmd').click();
       } else {
         $.notify("เกิดความผิดพลาด ไม่สามารถบันทึกเคสใหม่เข้าสู่ระบบได้ในขณะนี้", "error");
@@ -2997,11 +3369,11 @@ module.exports = function ( jq ) {
 					let stampTime = util.formatDateTimeStr(d);
 					let changeRaioLog = 'Radio change from ' + updateCaseData.drReader + ' to ' + updateCaseData.radioId + ' by ' + userId + ' at ' + stampTime;
 					common.doUpdateCaseStatus(caseId, caseNewStatus, changeRaioLog).then((caseChangeStatusRes) => {
-						$.notify("บันทึกการแก้ไขเคสและปรับสถานะเคสเป็นเคสใหม่เรียบร้อยแล้ว", "info");
+						$.notify("บันทึกการแก้ไขเคสและปรับสถานะเคสเป็นเคสใหม่เรียบร้อยแล้ว", "success");
 						goToNextPage(defualtValue.status);
 					});
 				} else {
-					$.notify("บันทึกการแก้ไขเคสเรียบร้อยแล้ว", "info");
+					$.notify("บันทึกการแก้ไขเคสเรียบร้อยแล้ว", "success");
 					goToNextPage(defualtValue.status);
 				}
 			} else {
@@ -3010,6 +3382,28 @@ module.exports = function ( jq ) {
 			$('body').loading('stop');
 		}
 	}
+
+  return {
+    doLoadDicomFromOrthanc,
+		doCallSearhOrthanc,
+    doCreateDicomHeaderRow,
+    doCreateDicomItemRow,
+    doShowDicomResult,
+		doCallCountInstanceImage,
+    doCreateNewCaseFirstStep,
+    doCreateNewCaseSecondStep,
+    doSaveNewCaseStep
+	}
+}
+
+},{"../main.js":1,"./apiconnect.js":2,"./commonlib.js":4,"./createnewrefferal.js":6,"./utilmod.js":10}],6:[function(require,module,exports){
+/*createnewrefferal.js*/
+module.exports = function ( jq ) {
+	const $ = jq;
+
+  const util = require('./utilmod.js')($);
+  const apiconnector = require('./apiconnect.js')($);
+  const common = require('./commonlib.js')($);
 
   const doShowPopupRegisterNewRefferalUser = async function(){
 		$('body').loading('start');
@@ -3092,7 +3486,7 @@ module.exports = function ( jq ) {
 		const userId = userdata.id
 
   	const spacingBox = $('<span>&nbsp;</span>');
-  	const inputStyleClass = pageFontStyle;
+  	const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
 
   	$('#HistoryDialogBox').empty();
 		let newUsername = await randomUsernameReq();
@@ -3169,20 +3563,11 @@ module.exports = function ( jq ) {
   }
 
   return {
-    doLoadDicomFromOrthanc,
-		doCallSearhOrthanc,
-    doCreateDicomHeaderRow,
-    doCreateDicomItemRow,
-    doShowDicomResult,
-		doCallCountInstanceImage,
-    doCreateNewCaseFirstStep,
-    doCreateNewCaseSecondStep,
-    doSaveNewCaseStep,
     doShowPopupRegisterNewRefferalUser
 	}
 }
 
-},{"../main.js":1,"./apiconnect.js":2,"./commonlib.js":4,"./utilmod.js":8}],6:[function(require,module,exports){
+},{"../main.js":1,"./apiconnect.js":2,"./commonlib.js":4,"./utilmod.js":10}],7:[function(require,module,exports){
 /* dicomfilter.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -3386,7 +3771,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"./utilmod.js":8}],7:[function(require,module,exports){
+},{"./utilmod.js":10}],8:[function(require,module,exports){
 const $ = require('jquery');
 
 $.ajaxSetup({
@@ -3457,7 +3842,64 @@ $.fn.doLoadServiceworker = function(noti) {
   DOMException: Failed to register a ServiceWorker for scope ('https://192.168.1.108:8443/webapp/') with script ('https://192.168.1.108:8443/webapp/sw.js?hash=159800668'): An SSL certificate error occurred when fetching the script.
 */
 
-},{"jquery":9}],8:[function(require,module,exports){
+},{"jquery":11}],9:[function(require,module,exports){
+/* userprofilelib.js */
+module.exports = function ( jq ) {
+	const $ = jq;
+
+  const util = require('./utilmod.js')($);
+  const apiconnector = require('./apiconnect.js')($);
+  const common = require('./commonlib.js')($);
+
+  const showScanpartProfile = function(scanpartAuxs, deleteCallback){
+    return new Promise(function(resolve, reject) {
+      let scanpartBox = $('<div style="display: table; width: 100%; border-collapse: collapse; padding: 5px;"></div>');
+      let headRow = $('<div style="display: table-row; width: 100%; background-color: blue; color: white;"></div>');
+      $(headRow).appendTo($(scanpartBox));
+      $(headRow).append($('<div style="display: table-cell;">ลำดับที่</div>'));
+      $(headRow).append($('<div style="display: table-cell;">Study Description</div>'));
+      $(headRow).append($('<div style="display: table-cell;">Protocol Name</div>'));
+      $(headRow).append($('<div style="display: table-cell;">Scan Part</div>'));
+      $(headRow).append($('<div style="display: table-cell;">คำสั่ง</div>'));
+      let promiseList = new Promise(async function(resolve2, reject2){
+        for (let i=0; i < scanpartAuxs.length; i++) {
+          let item = scanpartAuxs[i];
+          let itemRow = $('<div style="display: table-row; width: 100%"></div>');
+          $(itemRow).appendTo($(scanpartBox));
+          $(itemRow).append($('<div style="display: table-cell; vertical-align: middle;">' + (i+1) + '</div>'));
+          $(itemRow).append($('<div style="display: table-cell; vertical-align: middle;">' + item.StudyDesc + '</div>'));
+          $(itemRow).append($('<div style="display: table-cell; vertical-align: middle;">' + item.ProtocolName + '</div>'));
+          let scanPartCell = $('<div style="display: table-cell; vertical-align: middle;"></div>');
+          let scanPartBox = await common.doRenderScanpartSelectedBox(item.Scanparts);
+          $(scanPartBox).appendTo($(scanPartCell));
+          $(itemRow).append($(scanPartCell));
+          let scanPartCmdCell = $('<div style="display: table-cell; vertical-align: middle;"></div>');
+          let deleteCmd = $('<img class="pacs-command" data-toggle="tooltip" src="../images/delete-icon.png" title="ลบรายการนี้"/>');
+          $(deleteCmd).appendTo($(scanPartCmdCell));
+          $(itemRow).append($(scanPartCmdCell));
+          $(deleteCmd).on('click', (evt)=>{
+            let yourComfirm = confirm('โปรดยืนยันการลบรายการโดยคลิก ตกลง หรือ OK');
+            if (yourComfirm) {
+              deleteCallback(item.id);
+            }
+          });
+        }
+        setTimeout(()=>{
+          resolve2($(scanpartBox));
+        }, 500);
+      });
+      Promise.all([promiseList]).then((ob)=>{
+				resolve(ob[0]);
+			});
+    });
+  }
+
+  return {
+    showScanpartProfile
+  }
+}
+
+},{"./apiconnect.js":2,"./commonlib.js":4,"./utilmod.js":10}],10:[function(require,module,exports){
 /* utilmod.js */
 
 module.exports = function ( jq ) {
@@ -3938,7 +4380,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.5.1
  * https://jquery.com/

@@ -106,16 +106,16 @@ input[type='checkbox'] {
 	padding: 5px;
 }
 .pacs-command {
-	width: 35px;
+	width: 25px;
 	height: auto;
 	cursor: pointer;
 	padding: 4px;
 }
 .pacs-command-dd {
-	width: 45px;
+	width: 30px;
 	height: auto;
 	cursor: pointer;
-	padding: 5px;
+	padding: 3px;
 }
 
 .header-cell {
@@ -123,7 +123,7 @@ input[type='checkbox'] {
 	font-weight: bold;
 	color: white;
 	text-align: center;
-	background-color: green;
+	background-color: blue;
 	box-shadow: 0px 5px 5px gray;
 	-moz-box-shadow: 0px 5px 5px gray, ;
 	-webkit-box-shadow: 0px 5px 5px gray;
@@ -155,7 +155,7 @@ input[type='checkbox'] {
 }
 
 .button-bw {
-	background-color: green; /* Green */
+	background-color: blue;
 	color: white;
 }
 
@@ -192,7 +192,7 @@ input[type='checkbox'] {
 
 .modal-header {
 	padding: 2px 2px;
-	background-color: green;
+	background-color: blue;
 	color: white;
 	display: block;
 	width: 100%;
@@ -203,7 +203,7 @@ input[type='checkbox'] {
 
 .modal-footer {
 	padding: 2px 2px;
-	background-color: green;
+	background-color: blue;
 	color: white;
 	display: block;
 	width: 100%;

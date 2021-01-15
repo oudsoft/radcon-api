@@ -52,7 +52,7 @@ module.exports = function (app) {
 		var filename = req.files[0].originalname;
 		var fullnames = filename.split('.');
 
-		var newFileName = genUniqueID() + '.jpg';
+		var newFileName = genUniqueID() + '.' + fullnames[1];
 		var imgPath = req.files[0].destination + '/' + req.files[0].filename;
 		var newPath = req.files[0].destination + '/'  + newFileName;
 		var readStream = fs.createReadStream(imgPath);

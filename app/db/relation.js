@@ -119,6 +119,9 @@ const risinterfaces = sequelize.define('risinterfaces', Def. RadRisInterfaceDef)
 
 const scanpartrefs = sequelize.define('scanpartrefs', Def. RadScanPartRefDef);
 
+const scanpartauxs = sequelize.define('scanpartauxs', Def. RadScanPartAuxDef);
+scanpartauxs.belongsTo(users);
+
 module.exports =  {
   sequelize,
   Op,
@@ -144,5 +147,6 @@ module.exports =  {
   casereports,
   lineusers,
   risinterfaces,
-  scanpartrefs
+  scanpartrefs,
+  scanpartauxs
 }

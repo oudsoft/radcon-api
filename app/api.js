@@ -79,6 +79,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	const casereport = require('./db/rest/casereport.js')(webSocketServer, db, log);
 	const risinterface = require('./db/rest/risinterface.js')(db, log);
 	const scanpartref = require('./db/rest/scanpartref.js')(db, log);
+	const scanpartaux = require('./db/rest/scanpartaux.js')(db, log);
 
 	apiApp.use('/external', externalapiproxy);
 	apiApp.use('/orthancproxy', orthancproxy);
@@ -108,6 +109,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	apiApp.use('/bot', botApp);
 	apiApp.use('/ris', risinterface);
 	apiApp.use('/scanpartref', scanpartref);
+	apiApp.use('/scanpartaux', scanpartaux);
 
 	const publicDir = path.normalize(__dirname + '/..' + '/public');
 	const internalHTTP = 'http-server ' + publicDir;

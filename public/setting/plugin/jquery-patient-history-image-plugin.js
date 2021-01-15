@@ -40,6 +40,8 @@ $.widget( "custom.iconitem", {
   }
 });
 
+const validImageTypes = ['image/gif', 'image/jpeg', 'image/png'];
+
 $.widget( "custom.imageitem", {
   options: {
     elementType: 'image',
@@ -80,7 +82,20 @@ $.widget( "custom.imageitem", {
 		$(imgDiv).css({'float': 'left'});
 
 		let hsImage = new Image();
-    hsImage.src = this.options.imgUrl;
+    if (this.options.fileType) {
+      if (!validImageTypes.includes(this.options.fileType)) {
+        if (this.options.fileType.toUpperCase() === 'APPLICATION/PDF') {
+          hsImage.src = '/images/pdf-icon.png';
+        } else {
+          hsImage.src = '/images/otherfile-icon.png';
+        }
+      } else {
+        hsImage.src = this.options.imgUrl;
+      }
+    } else {
+      hsImage.src = this.options.imgUrl;
+    }
+
     $(hsImage).css({"width": this.options.width, "height": this.options.height, "border": this.options.border, "cursor": this.options.cursor});
     $(hsImage).on("click", function(e){
 			window.open($this.options.imgUrl, '_blank');
@@ -111,7 +126,7 @@ $.widget( "custom.imagehistory", {
     top: 0,
     width: '200',
     height: 'auto',
-    border: '2px solid green',
+    border: '2px solid blue',
   },
   _setOption: function( key, value ) {
     this.options[key] = value;
@@ -179,7 +194,7 @@ $.widget( "custom.imagehistory", {
       var fileSize = e.currentTarget.files[0].size;
       var fileType = e.currentTarget.files[0].type;
       if (fileSize <= defSize) {
-        $this.doUploadImage(fileBrowser, imageListBox);
+        $this.doUploadImage(fileBrowser, imageListBox, fileType);
       } else {
         $(imageListBox).append('<div>' + 'File not excess ' + defSize + ' Byte.' + '</div>');
       }
@@ -187,7 +202,7 @@ $.widget( "custom.imagehistory", {
     $(fileBrowser).appendTo($(imageListBox));
     $(fileBrowser).click();
   },
-  doUploadImage: function(fileBrowser, imageListBox) {
+  doUploadImage: function(fileBrowser, imageListBox, fileType) {
     let $this = this;
     var uploadUrl = $this.options.attachFileUploadApiUrl;
     $(fileBrowser).simpleUpload(uploadUrl, {
@@ -196,6 +211,7 @@ $.widget( "custom.imagehistory", {
         setTimeout(() => {
           $this.doAppendNewImageData(data);
           let uploadImageProp = {
+            fileType: fileType,
             imgUrl: data.link,
             onRemoveClick: function(e, imgDiv){$this.doRemoveImage(e, data.link, imgDiv)}
           };
