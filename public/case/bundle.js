@@ -254,7 +254,8 @@ function doLoadMainPage(){
 		$(document).on('openreportdesign', (evt, data)=>{
 			$('body').loading('start');
 			$(".mainfull").empty();
-			$(".mainfull").load('../report-design/index.html?hosid=' + data.hospitalId);
+			let reportDesignUrl = '../report-design/index.html?hosid=' + data.hospitalId;
+			window.location.replace(reportDesignUrl);
 			$('body').loading('stop');
 		});
 
@@ -2332,7 +2333,14 @@ module.exports = function ( jq ) {
 		let queryString = localStorage.getItem('dicomfilter');
 		doCallSearhOrthanc(queryString).then(async (studies) => {
 			$(".mainfull").empty();
-			let resultTitle = $('<div class="title-content"><h3>รายการภาพในระบบที่ค้นพบ</h3></div>');
+			let resultTitle = $('<div class="title-content"></div>');
+			let logoPage = $('<img src="/images/orthanc-icon-1.png" width="40px" height="auto" style="float: left;"/>');
+			$(logoPage).appendTo($(resultTitle));
+			//$(resultTitle).append($('<span>  </span>'));
+			let titleResult = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>รายการภาพในระบบที่ค้นพบ</h3></div>');
+			$(titleResult).appendTo($(resultTitle));
+
+
 			$(".mainfull").empty().append($(resultTitle));
 			if (studies.length > 0) {
 				let resultTable = await doShowDicomResult(studies, 0);
@@ -2389,7 +2397,7 @@ module.exports = function ( jq ) {
 		const tableRow = $('<div style="display: table-row;"></div>');
 		for (var i = 0; i < headerLabels.length; i++) {
 			let item = headerLabels[i];
-	    let tableHeader = $('<div style="display: table-cell;" class="header-cell">' + item + '</div>');
+	    let tableHeader = $('<div style="display: table-cell; vertical-align: middle;" class="header-cell">' + item + '</div>');
 			$(tableHeader).appendTo($(tableRow));
 		}
 		return $(tableRow);
@@ -2398,28 +2406,28 @@ module.exports = function ( jq ) {
 	const doCreateDicomItemRow = function(no, studyDate, studyTime, hn, name, sa, mdl, sdd, defualtValue, dicomSeries, dicomID){
 		const tableRow = $('<div style="display: table-row; padding: 2px;" class="case-row"></div>');
 
-		let dicomValue = $('<div style="display: table-cell; padding: 2px; text-align: center;">' + no + '</div>');
+		let dicomValue = $('<div style="display: table-cell; padding: 2px; text-align: center; vertical-align: middle;">' + no + '</div>');
 		$(dicomValue).appendTo($(tableRow));
 
-		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + studyDate + studyTime + '</div>');
+		dicomValue = $('<div style="display: table-cell; padding: 2px; vertical-align: middle;">' + studyDate + studyTime + '</div>');
 		$(dicomValue).appendTo($(tableRow));
 
-		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + hn + '</div>');
+		dicomValue = $('<div style="display: table-cell; padding: 2px; vertical-align: middle;">' + hn + '</div>');
 		$(dicomValue).appendTo($(tableRow));
 
-		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + name + '</div>');
+		dicomValue = $('<div style="display: table-cell; padding: 2px; vertical-align: middle;">' + name + '</div>');
 		$(dicomValue).appendTo($(tableRow));
 
-		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + sa + '</div>');
+		dicomValue = $('<div style="display: table-cell; padding: 2px; vertical-align: middle;">' + sa + '</div>');
 		$(dicomValue).appendTo($(tableRow));
 
-		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + mdl + '</div>');
+		dicomValue = $('<div style="display: table-cell; padding: 2px; vertical-align: middle;">' + mdl + '</div>');
 		$(dicomValue).appendTo($(tableRow));
 
-		dicomValue = $('<div style="display: table-cell; padding: 2px;">' + sdd + '</div>');
+		dicomValue = $('<div style="display: table-cell; padding: 2px; vertical-align: middle;">' + sdd + '</div>');
 		$(dicomValue).appendTo($(tableRow));
 
-		let operationField = $('<div style="display: table-cell; padding: 2px; text-align: center;"></div>');
+		let operationField = $('<div style="display: table-cell; padding: 2px; text-align: center; vertical-align: middle;"></div>');
 		$(operationField).appendTo($(tableRow));
 
 		let previewCmd = $('<img class="pacs-command-dd" data-toggle="tooltip" src="../images/preview-icon.png" title="เปิดดูรูปด้วย Web Viewer"/>');
@@ -2467,7 +2475,7 @@ module.exports = function ( jq ) {
 				}
 			});
 
-			const table = $('<div style="display: table; width: 100%;"></div>');
+			const table = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
 			const tableHeader = doCreateDicomHeaderRow();
 			$(tableHeader).appendTo($(table));
 
