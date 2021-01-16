@@ -246,7 +246,6 @@ app.post('/filter/hospital', (req, res) => {
           let whereClous;
           if (filterDate) {
             let startDate = new Date(filterDate.from);
-            log.info(startDate);
             if (ur[0].usertypeId !== 5) {
               whereClous = {hospitalId: hospitalId, userId: userId, casestatusId: { [db.Op.in]: statusId }, createdAt: { [db.Op.gte]: startDate}};
             } else {
@@ -818,52 +817,88 @@ app.post('/radio/socket/(:radioId)', async (req, res) => {
 });
 
 //Search closed case API
-app.post('/search/close', async (req, res) => {
+app.post('/search/key', async (req, res) => {
   let token = req.headers.authorization;
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        let whereClous = undefined;
+        let hospitalId = req.body.hospitalId;
+        let userId = req.body.userId;
+        let casewhereClous = {hospitalId: { [db.Op.eq]: hospitalId}, userId: { [db.Op.eq]: userId}};
+        let patientwhereClous = {hospitalId: { [db.Op.eq]: hospitalId}};
         let key = req.body.key;
-        if (key.name_en) {
-          whereClous = {Patient_NameEN: { [db.Op.iLike]: '%' + key.name_en + '%' }};
-        } else if (key.hn) {
-          whereClous = {Patient_HN: key.hn };
+
+        if ((key.fromDateKeyValue) && (key.toDateKeyValue)) {
+          let fromDateWithZ = new Date(key.fromDateKeyValue);
+          let toDateWithZ = new Date(key.toDateKeyValue);
+          casewhereClous.createdAt = { [db.Op.gte]: new Date(fromDateWithZ)};
+          casewhereClous.createdAt = { [db.Op.lte]: new Date(toDateWithZ)};
+        } else {
+          if (key.fromDateKeyValue) {
+            let fromDateWithZ = new Date(key.fromDateKeyValue);
+            casewhereClous.createdAt = { [db.Op.eq]: new Date(fromDateWithZ)};
+          }
+          if (key.toDateKeyValue) {
+            let toDateWithZ = new Date(key.toDateKeyValue);
+            casewhereClous.createdAt = { [db.Op.eq]: new Date(toDateWithZ)};
+          }
         }
-        let patients = await db.patients.findAll({attributes: ['id', 'Patient_HN', 'Patient_NameEN'], where: whereClous });
-        if (patients.length > 0) {
+        if ((key.bodypartKeyValue !== '') && (key.bodypartKeyValue !== '*')) {
+          casewhereClous.Case_BodyPart = { [db.Op.iLike]: '%' + key.bodypartKeyValue + '%' };
+          //casewhereClous.Case_StudyDescription = { [db.Op.iLike]: '%' + key.bodypartKeyValue + '%' };
+          //casewhereClous.Case_ProtocolName = { [db.Op.iLike]: '%' + key.bodypartKeyValue + '%' };
+        }
+        if (key.caseStatusKeyValue > 0) {
+          casewhereClous.casestatusId = { [db.Op.eq]: key.caseStatusKeyValue};
+        }
+
+        if ((key.patientNameENKeyValue !== '') && (key.patientNameENKeyValue !== '*')) {
+          patientwhereClous.Patient_NameEN = { [db.Op.iLike]: '%' + key.patientNameENKeyValue + '%' };
+        }
+        if ((key.patientHNKeyValue !== '') && (key.patientHNKeyValue !== '*')) {
+          patientwhereClous.Patient_HN = { [db.Op.iLike]: '%' + key.patientHNKeyValue + '%' };
+        }
+
+        let patients = undefined;
+        if ((patientwhereClous.hasOwnProperty('Patient_NameEN')) || (patientwhereClous.hasOwnProperty('Patient_HN'))) {
+          patients = await db.patients.findAll({attributes: ['id'], where: patientwhereClous });
+        }
+        if ((patients) && (patients.length > 0)) {
           let patientIds = [];
           await patients.forEach((item, i) => {
             patientIds.push(item.id);
           });
-          const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
-          const orderby = [['id', 'DESC']];
-          const cases = await Case.findAll({include: caseInclude, where: {patientId: {[db.Op.in]: patientIds}, casestatusId: 6}, order: orderby});
-          const casesFormat = [];
-          const promiseList = new Promise(async function(resolve, reject) {
-            for (let i=0; i<cases.length; i++) {
-              let item = cases[i];
-              const radUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RadiologistId}});
-              const rades = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: radUser[0].userinfoId}});
-              const Radiologist = {id: item.Case_RadiologistId, User_NameTH: rades[0].User_NameTH, User_LastNameTH: rades[0].User_LastNameTH};
-              const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
-              const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
-              const Refferal = {id: item.Case_RefferalId, User_NameTH: refes[0].User_NameTH, User_LastNameTH: refes[0].User_LastNameTH};
-              casesFormat.push({case: item, Radiologist: Radiologist, Refferal: Refferal});
-            }
-            setTimeout(()=> {
-              resolve(casesFormat);
-            },500);
-          });
-          Promise.all([promiseList]).then((ob)=> {
-            res.json({status: {code: 200}, Records: ob[0]});
-          }).catch((err)=>{
-            log.error(error);
-            res.json({status: {code: 500}, error: err});
-          });
-        } else {
-          res.json({status: {code: 200}, Recodes: []});
+          casewhereClous.patientId = {[db.Op.in]: patientIds};
         }
+
+        const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}];
+        const orderby = [['id', 'DESC']];
+        const cases = await Case.findAll({include: caseInclude, where: [casewhereClous], order: orderby});
+
+        const casesFormat = [];
+        const promiseList = new Promise(async function(resolve, reject) {
+          for (let i=0; i<cases.length; i++) {
+            let item = cases[i];
+            const radUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RadiologistId}});
+            const rades = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: radUser[0].userinfoId}});
+            const Radiologist = {id: item.Case_RadiologistId, User_NameTH: rades[0].User_NameTH, User_LastNameTH: rades[0].User_LastNameTH};
+            /*
+            const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
+            const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
+            const Refferal = {id: item.Case_RefferalId, User_NameTH: refes[0].User_NameTH, User_LastNameTH: refes[0].User_LastNameTH};
+            */
+
+            casesFormat.push({case: item, Radiologist: Radiologist/*, Refferal: Refferal*/ });
+          }
+          setTimeout(()=> {
+            resolve(casesFormat);
+          },500);
+        });
+        Promise.all([promiseList]).then((ob)=> {
+          res.json({status: {code: 200}, Records: ob[0], key: key});
+        }).catch((err)=>{
+          reject(err);
+        });
       } else {
         log.info('Can not found user from token.');
         res.json({status: {code: 203}, error: 'Your token lost.'});

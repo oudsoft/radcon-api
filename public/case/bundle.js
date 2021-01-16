@@ -205,49 +205,84 @@ function doLoadMainPage(){
 			});
 			*/
 			$(document).on('opennewstatuscase', async (evt, data)=>{
-				let resultTitle = $('<div class="title-content"><h3>รายการเคสใหม่ (รอตอบรับจากรังสีแพทย์)</h3></div>');
+				let resultTitle = $('<div class="title-content"></div>');
+				let logoPage = $('<img src="/images/case-incident-icon.png" width="40px" height="auto" style="float: left;"/>');
+				$(logoPage).appendTo($(resultTitle));
+				let titleResult = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>รายการเคสใหม่ (รอตอบรับจากรังสีแพทย์)</h3></div>');
+				$(titleResult).appendTo($(resultTitle));
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseReadWaitStatus };
 				cases.doLoadCases(rqParams);
 			});
 
 			$(document).on('openacceptedstatuscase', async (evt, data)=>{
-				let resultTitle = $('<div class="title-content"><h3>รายการเคสหมอตอบรับแล้ว (รอผลอ่าน)</h3></div>');
+				let resultTitle = $('<div class="title-content"></div>');
+				let logoPage = $('<img src="/images/case-incident-icon.png" width="40px" height="auto" style="float: left;"/>');
+				$(logoPage).appendTo($(resultTitle));
+				let titleResult = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>รายการเคสหมอตอบรับแล้ว (รอผลอ่าน)</h3></div>');
+				$(titleResult).appendTo($(resultTitle));
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseResultWaitStatus };
 				cases.doLoadCases(rqParams);
 			});
 
 			$(document).on('opensuccessstatuscase', async (evt, data)=>{
-				let resultTitle = $('<div class="title-content"><h3>รายการเคสได้ผลอ่านแล้ว</h3></div>');
+				let resultTitle = $('<div class="title-content"></div>');
+				let logoPage = $('<img src="/images/case-incident-icon.png" width="40px" height="auto" style="float: left;"/>');
+				$(logoPage).appendTo($(resultTitle));
+				let titleResult = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>รายการเคสได้ผลอ่านแล้ว</h3></div>');
+				$(titleResult).appendTo($(resultTitle));
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseReadSuccessStatus };
 				cases.doLoadCases(rqParams);
 			});
 			$(document).on('opennegativestatuscase', async (evt, data)=>{
-				let resultTitle = $('<div class="title-content"><h3>รายการเคสไม่สมบูรณ์/รอคำสั่ง</h3></div>');
+				let resultTitle = $('<div class="title-content"></div>');
+				let logoPage = $('<img src="/images/case-incident-icon.png" width="40px" height="auto" style="float: left;"/>');
+				$(logoPage).appendTo($(resultTitle));
+				let titleResult = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>รายการเคสไม่สมบูรณ์/รอคำสั่ง</h3></div>');
+				$(titleResult).appendTo($(resultTitle));
 				$(".mainfull").empty().append($(resultTitle));
 				let rqParams = { hospitalId: userdata.hospitalId, userId: userdata.id, statusId: caseNegativeStatus };
 				cases.doLoadCases(rqParams);
 			});
 			$(document).on('opensearchcase', async (evt, data)=>{
-				const doShowSearchResultCallback = async function(response){
-					$('body').loading('start');
-					let resultTitle = $('<div class="title-content"><h3>ผลการค้นหาเคสของคุณ</h3></div>');
-					$(".mainfull").empty().append($(resultTitle));
-					if (response.status.code === 200) {
-						if (response.Records.length > 0) {
-							let caseView = await cases.doShowCaseView(response.Records);
+				const doShowSearchResultCallback = function(response){
+					return new Promise(async function(resolve, reject) {
+						$('body').loading('start');
+						let resultTitle = $('<div class="title-content"></div>');
+						let logoPage = $('<img src="/images/case-incident-icon.png" width="40px" height="auto" style="float: left;"/>');
+						$(logoPage).appendTo($(resultTitle));
+						let titleResult = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>ผลการค้นหาเคสของคุณ</h3></div>');
+						$(titleResult).appendTo($(resultTitle));
+						$(".mainfull").empty().append($(resultTitle));
+						if (response.status.code === 200) {
+							let caseView = await cases.doShowCaseView(response.Records, response.key, doShowSearchResultCallback);
 							$(".mainfull").append($(caseView));
+
+							if (response.Records.length == 0) {
+								$(".mainfull").append($('<h4>ไม่พบรายการเคสตามเงื่อนไขที่คุณค้นหา</h4>'));
+							}
 						} else {
-							$(".mainfull").append($('<h4>ไม่พบรายการเคสตามเงื่อนไขที่คุณค้นหา</h4>'));
+							$.notify("ไม่สามารถค้นหาเคสในขณะนี้", "error");
 						}
-					} else {
-						$.notify("ไม่สามารถค้นหาเคสในขณะนี้", "error");
-					}
-					$('body').loading('stop');
+						$('body').loading('stop');
+						resolve();
+					});
 				}
-				cases.doCreateSearchCaseForm(doShowSearchResultCallback);
+
+				$('body').loading('start');
+				let toDayFormat = util.getTodayDevFormat();
+
+				let defaultSearchKey = {fromDateKeyValue: toDayFormat, patientNameENKeyValue: '*', patientHNKeyValue: '*', bodypartKeyValue: '*', caseStatusKeyValue: 0};
+				let defaultSearchParam = {key: defaultSearchKey, hospitalId: userdata.hospitalId, userId: userdata.id};
+
+				let response = await common.doCallApi('/api/cases/search/key', defaultSearchParam);
+
+
+				await doShowSearchResultCallback(response);
+
+				$('body').loading('stop');
 			});
 		});
 
@@ -875,7 +910,15 @@ module.exports = function ( jq ) {
 	const caseReadWaitStatus = [1,2,3,4,7];
 	const caseReadSuccessStatus = [5];
 	const caseAllStatus = [1,2,3,4,5,6,7];
-
+	const allCaseStatus = [
+		{value: 1, DisplayText: 'เคสใหม่ (รอหมอตอบรับ)'},
+		{value: 2, DisplayText: 'หมอตอบรับแล้ว่ (รอผลอ่าน)'},
+		{value: 3, DisplayText: 'หมอไม่ตอบรับ'},
+		{value: 4, DisplayText: 'หมดอายุตามความเร่งด่วน'},
+		{value: 5, DisplayText: 'ได้ผลอ่านแล้ว'},
+		{value: 6, DisplayText: 'ปิดเคสไปแล้ว'},
+		{value: 7, DisplayText: 'เคสถูกยกเลิก'},
+	];
 
 	let currentTab = undefined;
 
@@ -894,7 +937,7 @@ module.exports = function ( jq ) {
 			$('body').loading('start');
 			try {
 				let response = await common.doCallApi('/api/cases/filter/hospital', rqParams);
-				//console.log(response);
+				console.log(response);
 				if (response.status.code === 200) {
 					if (response.Records.length > 0) {
 						let rwTable = await doShowCaseList(response.Records);
@@ -916,86 +959,135 @@ module.exports = function ( jq ) {
 		});
 	}
 
-	const doCreateSearchCaseForm = function(resultCallback){
-		let formWrapper = $('<div id="SearchFormWrapper" style="width: 60%; position: absolute;"></div>');
-		let headerWrapper = $('<div style="width: 100%;" class="header-cell">ค้นหาเคส</div>');
-		$(headerWrapper).appendTo($(formWrapper));
+	const doCreateSearchCaseFormRow = function(key, searchResultCallback){
+		let searchFormRow = $('<div style="display: table-row; width: 100%; background-color: blue;"></div>');
+		let formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		let toDateKeyBox = $('<div style="text-align: left;"><span style="float: left;">ถึง</span></div>');
+		$(toDateKeyBox).appendTo($(formField));
+		let toDateKey = $('<input type="text" id="ToDateKey" size="6" style="float: left; margin-left: 24px;"/>');
+		if (key.toDateKeyValue) {
+			let arrTmps = key.toDateKeyValue.split('-');
+			toDateTextValue = arrTmps[2] + '-' + arrTmps[1] + '-' + arrTmps[0];
+			$(toDateKey).val(toDateTextValue);
+		}
+		$(toDateKey).appendTo($(toDateKeyBox));
+		$(toDateKey).datepicker({ dateFormat: 'dd-mm-yy' });
+		$(formField).append($(toDateKeyBox));
+		$(formField).appendTo($(searchFormRow));
 
-		let guideWrapper = $('<div style="width: 98%; padding: 10px; margin-top: 10px; background: #ddd;">สามารถค้นหาเคสได้ด้วยชื่อภาษาอังกฤษ หรือ HN ของผู้ป่วย</div>');
-		$(guideWrapper).appendTo($(formWrapper));
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		let patientNameENKey = $('<input type="text" id="PatientNameENKey" size="15"/>');
+		$(patientNameENKey).val(key.patientNameENKeyValue);
+		$(formField).append($(patientNameENKey));
+		$(formField).appendTo($(searchFormRow));
 
-		let form = $('<div style="display: table; width: 100%; padding: 10px; margin-top: -5px;"></div>');
-		$(form).appendTo($(formWrapper));
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		$(formField).append('<span></span>');
+		$(formField).appendTo($(searchFormRow));
 
-		let tableRow = $('<div style="display: table-row;"></div>');
-		let tableCell = $('<div style="display: table-cell; width: 240px;">ขื่อภาษาอังกฤษผู้ป่วย</div>');
-		$(tableCell).appendTo($(tableRow));
-		tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
-		let patientNameENKeyBox = $('<input type="text" id="PatientNameENKey"/>');
-		$(tableCell).append($(patientNameENKeyBox));
-		$(tableCell).appendTo($(tableRow));
-		$(tableRow).appendTo($(form));
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		let patientHNKey = $('<input type="text" id="PatientHNKey" size="10"/>');
+		$(patientHNKey).val(key.patientHNKeyValue);
+		$(formField).append($(patientHNKey));
+		$(formField).appendTo($(searchFormRow));
 
-		tableRow = $('<div style="display: table-row;"></div>');
-		tableCell = $('<div style="display: table-cell; width: 240px;">HN ผู้ป่วย</div>');
-		$(tableCell).appendTo($(tableRow));
-		tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
-		let patientHNKeyBox = $('<input type="text" id="PatientHNKey"/>');
-		$(tableCell).append($(patientHNKeyBox));
-		$(tableCell).appendTo($(tableRow));
-		$(tableRow).appendTo($(form));
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		$(formField).append('<span></span>');
+		$(formField).appendTo($(searchFormRow));
 
-		let footerWrapper = $('<div class="header-cell"></div>');
-		let searchCmd = $('<input type="button" value=" ค้นหา "/>');
-		$(searchCmd).appendTo($(footerWrapper));
-		$(footerWrapper).append('<span>  </span>')
-		let cancelCmd = $('<input type="button" value=" ยกเลิก "/>');
-		$(cancelCmd).appendTo($(footerWrapper));
-		$(footerWrapper).appendTo($(formWrapper));
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		let bodypartKey = $('<input type="text" id="BodyPartKey" size="10"/>');
+		$(bodypartKey).val(key.bodypartKeyValue);
+		$(formField).append($(bodypartKey));
+		$(formField).appendTo($(searchFormRow));
 
-		$('.mainfull').empty().append($(formWrapper));
-		let boxWidth = $(formWrapper).width();
-		let parentWidth = $(formWrapper).parent().width();
-		let sideWidth = $('.side').width();
-		let centerPos = (parentWidth/2) - (boxWidth/2) + (sideWidth);
-		let rightPos = parentWidth + (sideWidth) + 22;
-		$(formWrapper).css('left', -boxWidth);
-		$(formWrapper).animate({	left: centerPos	}, 1000);
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		$(formField).append('<span></span>');
+		$(formField).appendTo($(searchFormRow));
 
-		$(searchCmd).click(async()=>{
-			let searchParams = undefined;
-			let patientNameENKey = $(patientNameENKeyBox).val();
-			let patientHNKey = $(patientHNKeyBox).val();
-			if ((patientHNKey === '') && (patientNameENKey === '')) {
-				$(patientNameENKeyBox).css('border', '1px solid red');
-				$(patientHNKeyBox).css('border', '1px solid red');
-				$.notify("จำเป็นต้องมีค่าในช่องใดช่องหนึ่ง", "error");
-			} else {
-				$('body').loading('start');
-				if (patientNameENKey !== '') {
-					searchParams = {key: {name_en: patientNameENKey}};
-				} else if (patientHNKey !== '') {
-					searchParams = {key: {hn: patientHNKey}};
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		$(formField).append('<span></span>');
+		$(formField).appendTo($(searchFormRow));
+
+		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		let caseStatusKey = $('<select id="CaseStatusKey"></select>');
+		$(caseStatusKey).append($('<option value="0">ทั้งหมด</option>'));
+		allCaseStatus.forEach((item, i) => {
+			$(caseStatusKey).append($('<option value="' + item.value + '">' + item.DisplayText + '</option>'));
+		});
+		$(caseStatusKey).val(key.caseStatusKeyValue);
+		$(formField).append($(caseStatusKey));
+		$(formField).appendTo($(searchFormRow));
+
+		formField = $('<div style="display: table-cell; text-align: center; border: 1px solid white; vertical-align: middle;"></div>');
+		let startSearchCmd = $('<img src="/images/search-icon-2.png" width="30px" height="auto"/>');
+		$(formField).append($(startSearchCmd));
+		$(formField).appendTo($(searchFormRow));
+
+		$(searchFormRow).find('input[type=text],select').css({'font-size': '20px'});
+
+		$(startSearchCmd).css({'cursor': 'pointer'});
+		$(startSearchCmd).on('click', async (evt) => {
+			let fromDateKeyValue = $('#FromDateKey').val();
+			let toDateKeyValue = $(toDateKey).val();
+			let patientNameENKeyValue = $(patientNameENKey).val();
+			let patientHNKeyValue = $(patientHNKey).val();
+			let bodypartKeyValue = $(bodypartKey).val();
+			let caseStatusKeyValue = $(caseStatusKey).val();
+			let searchKey = undefined;
+			if ((fromDateKeyValue) && (toDateKeyValue)) {
+				let arrTmps = fromDateKeyValue.split('-');
+				fromDateKeyValue = arrTmps[2] + '-' + arrTmps[1] + '-' + arrTmps[0];
+				let fromDateKeyTime = new Date(fromDateKeyValue);
+				arrTmps = toDateKeyValue.split('-');
+				toDateKeyValue = arrTmps[2] + '-' + arrTmps[1] + '-' + arrTmps[0];
+				let toDateKeyTime = new Date(toDateKeyValue);
+				if (toDateKeyTime >= fromDateKeyTime) {
+					let fromDateFormat = util.formatDateStr(fromDateKeyTime);
+					let toDateFormat = util.formatDateStr(toDateKeyTime);
+					searchKey = {fromDateKeyValue: fromDateFormat, toDateKeyValue: toDateFormat, patientNameENKeyValue, patientHNKeyValue, bodypartKeyValue, caseStatusKeyValue};
+				} else {
+					alert('ถึงวันที่ ต้องมากกว่า ตั้งแต่วันที่ หรือ เลือกวันที่เพียงช่องใดช่องหนึ่ง ส่วนอีกช่องให้เว้นว่างไว้\nโปรดเปลี่ยนค่าวันที่แล้วลองใหม่');
 				}
-				try {
-					let response = await common.doCallApi('/api/cases/search/close', searchParams);
-					await $(formWrapper).animate({	left: rightPos }, 1000);
-					$('body').loading('stop');
-					resultCallback(response);
-				} catch(e) {
-					$.notify("ขออภัยอย่างแรง มีความผิดพลาดเกิดขึ้น", "error");
-			    console.log('Unexpected error occurred =>', e);
-			    $('body').loading('stop');
-		    }
+			} else {
+				if (fromDateKeyValue) {
+					let arrTmps = fromDateKeyValue.split('-');
+					fromDateKeyValue = arrTmps[2] + '-' + arrTmps[1] + '-' + arrTmps[0];
+					let fromDateKeyTime = new Date(fromDateKeyValue);
+					let fromDateFormat = util.formatDateStr(fromDateKeyTime);
+					searchKey = {fromDateKeyValue: fromDateFormat, patientNameENKeyValue, patientHNKeyValue, bodypartKeyValue, caseStatusKeyValue};
+				} else if (toDateKeyValue) {
+					let arrTmps = toDateKeyValue.split('-');
+					toDateKeyValue = arrTmps[2] + '-' + arrTmps[1] + '-' + arrTmps[0];
+					let toDateKeyTime = new Date(toDateKeyValue);
+					let toDateFormat = util.formatDateStr(toDateKeyTime);
+					searchKey = {toDateKeyValue: toDateFormat, patientNameENKeyValue, patientHNKeyValue, bodypartKeyValue, caseStatusKeyValue};
+				} else {
+					searchKey = {patientNameENKeyValue, patientHNKeyValue, bodypartKeyValue, caseStatusKeyValue};
+				}
+			}
+			if (searchKey) {
+				$('body').loading('start');
+				const main = require('../main.js');
+				let userdata = JSON.parse(main.doGetUserData());
+				let hospitalId = userdata.hospitalId;
+				let userId = userdata.id;
+
+				let searchParam = {key: searchKey, hospitalId: userdata.hospitalId, userId: userdata.id};
+
+				let response = await common.doCallApi('/api/cases/search/key', searchParam);
+
+				await searchResultCallback(response);
+
+				$('body').loading('stop');
+
 			}
 		});
-		$(cancelCmd).click(async(evt)=>{
-			await $(formWrapper).animate({	left: rightPos }, 1000);
-			newcase.doLoadDicomFromOrthanc();
-		});
 
-		return $(formWrapper);
+		return $(searchFormRow);
+
 	}
+
 	/* Remove */
   const openCaseList = async function(e) {
 		$('body').loading('start');
@@ -1095,49 +1187,63 @@ module.exports = function ( jq ) {
     }
 	}
 
-	function doCreateHeaderFieldCaseList() {
+	function doCreateHeaderFieldCaseList(fromDateValue) {
 		let headerRow = $('<div style="display: table-row; width: 100%; background-color: blue;"></div>');
-		let headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
-		$(headColumn).append('<span>เวลาที่ส่งอ่าน</span>');
+		let headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		$(headColumn).append('<span>วันที่ส่งอ่าน</span>');
+		let fromDateKeyBox = $('<div style="text-align: left;"><span style="float: left;">ตั้งแต่</span></div>');
+		$(fromDateKeyBox).appendTo($(headColumn));
+		let fromDateKey = $('<input type="text" id="FromDateKey" size="6" style="float: left; margin-left: 5px;"/>');
+		$(fromDateKey).val(fromDateValue);
+		if (fromDateValue) {
+			let arrTmps = fromDateValue.split('-');
+			fromDateTextValue = arrTmps[2] + '-' + arrTmps[1] + '-' + arrTmps[0];
+			$(fromDateKey).val(fromDateTextValue);
+		}
+		$(fromDateKey).css({'font-size': '20px'});
+		$(fromDateKey).appendTo($(fromDateKeyBox));
+		$(fromDateKey).datepicker({ dateFormat: 'dd-mm-yy' });
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>ชื่อผู้ป่วย</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>เพศ/อายุ</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>HN</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>Mod.</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>Scan Part</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>ประเภทความด่วน</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		/*
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>แพทย์ผู้ส่ง</span>');
 		$(headColumn).appendTo($(headerRow));
+		*/
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>รังสีแพทย์</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>สถานะเคส</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
 		$(headColumn).append('<span>คำสั่ง</span>');
 		$(headColumn).appendTo($(headerRow));
 
@@ -1145,7 +1251,7 @@ module.exports = function ( jq ) {
 	}
 
 	function doCreateCaseItemCommand(caseItem) {
-		let cmdColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+		let cmdColumn = $('<div text-align: center;"></div>');
 		let operationCmdButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/arrow-down-icon.png" title="คลิกเพื่อเปิดรายการคำสั่งใช้งานของคุณ"/>');
 		$(operationCmdButton).click(function() {
 			$('.operation-row').each((index, child) => {
@@ -1182,53 +1288,55 @@ module.exports = function ( jq ) {
 				yourSelectScanpartContent = await common.doRenderScanpartSelectedAbs(caseScanparts);
 			}
 			let caseUG = caseItem.case.urgenttype.UGType_Name;
-			let caseREFF = caseItem.Refferal.User_NameTH + ' ' + caseItem.Refferal.User_LastNameTH;
+			//let caseREFF = caseItem.Refferal.User_NameTH + ' ' + caseItem.Refferal.User_LastNameTH;
 			let caseRADI = caseItem.Radiologist.User_NameTH + ' ' + caseItem.Radiologist.User_LastNameTH;
 			let caseSTAT = caseItem.case.casestatus.CS_Name_EN;
 			let caseCMD = doCreateCaseItemCommand(caseItem);
 
 			let itemRow = $('<div style="display: table-row; width: 100%;"></div>');
-			let itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			let itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append('<span>'+ casedate + ' : ' + casetime +'</span>');
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(patientName);
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(patientSA);
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(patientHN);
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(caseMODA);
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append($(yourSelectScanpartContent));
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(caseUG);
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			/*
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(caseREFF);
 			$(itemColumn).appendTo($(itemRow));
+			*/
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(caseRADI);
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
 			$(itemColumn).append(caseSTAT);
 			$(itemColumn).appendTo($(itemRow));
 
-			itemColumn = $('<div style="display: table-cell; text-align: ceneter;"></div>');
+			itemColumn = $('<div style="display: table-cell; text-align: center;"></div>');
 			$(itemColumn).append($(caseCMD));
 			$(itemColumn).appendTo($(itemRow));
 
@@ -1236,12 +1344,14 @@ module.exports = function ( jq ) {
 		});
 	}
 
-	const doShowCaseView = function(incidents) {
+	const doShowCaseView = function(incidents, key, callback) {
 		return new Promise(async function(resolve, reject) {
 			let rowStyleClass = {"font-family": "THSarabunNew", "font-size": "22px"};
 			let caseView = $('<div style="display: table; width: 100%;"></div>');
-			let headView = doCreateHeaderFieldCaseList();
+			let headView = doCreateHeaderFieldCaseList(key.fromDateKeyValue);
 			$(headView).appendTo($(caseView));
+			let formView = doCreateSearchCaseFormRow(key, callback);
+			$(formView).appendTo($(caseView));
 			for (let i=0; i < incidents.length; i++) {
 				let itemView = await doCreateCaseItemRow(incidents[i]);
 				$(itemView).appendTo($(caseView));
@@ -1911,7 +2021,7 @@ module.exports = function ( jq ) {
 		doLoadCases,
 		doShowCaseView,
 		doShowCaseList,
-		doCreateSearchCaseForm
+		doCreateSearchCaseFormRow
 	}
 }
 
@@ -2336,7 +2446,6 @@ module.exports = function ( jq ) {
 			let resultTitle = $('<div class="title-content"></div>');
 			let logoPage = $('<img src="/images/orthanc-icon-1.png" width="40px" height="auto" style="float: left;"/>');
 			$(logoPage).appendTo($(resultTitle));
-			//$(resultTitle).append($('<span>  </span>'));
 			let titleResult = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>รายการภาพในระบบที่ค้นพบ</h3></div>');
 			$(titleResult).appendTo($(resultTitle));
 
@@ -2743,6 +2852,7 @@ module.exports = function ( jq ) {
 			$(tableCell).appendTo($(tableRow));
 
 			let selectedResultBox = $('<div id="SelectedResultBox"></div>');
+			let saveScanpartOptionDiv = $('<div id="SaveScanpartOptionDiv" style="display: none;"><input type="checkbox" id="SaveScanpartOption" value="0"><label for="SaveScanpartOption"> บันทึกรายการ Scan Part ไว้ใช้งานในครั้งต่อไป</label></div>');
 			let scanparts = [];
 			if (defualtValue.scanpart) {
 				scanparts = defualtValue.scanpart;
@@ -2758,10 +2868,10 @@ module.exports = function ( jq ) {
 					scanparts = data.selectedData;
           $(selectedResultBox).empty().append($(data.selectedBox));
 					$('.remove-item').empty();
-					if (scanparts.length > 1) {
-						$(saveScanpartOptionDiv).show();
+					if (scanparts.length > 0) {
+						$(saveScanpartOptionDiv).css('display', 'block');
 					} else {
-						$(saveScanpartOptionDiv).hide();
+						$(saveScanpartOptionDiv).css('display', 'none');
 					}
         },
 				updateSelectedItem: async function(content){
@@ -2786,8 +2896,6 @@ module.exports = function ( jq ) {
 
 			let scanpartButtonBox = $('<div id="ScanpartButtonBox" style="margin-top: 8px;"></div>');
 		  let scanpart = $(scanpartButtonBox).scanpart(scanpartSettings);
-
-			let saveScanpartOptionDiv = $('<div style="display: none;"><input type="checkbox" id="SaveScanpartOption" value="0"><label for="SaveScanpartOption"> บันทึกรายการ Scan Part ไว้ใช้งานในครั้งต่อไป</label></div>');
 
 			tableCell = $('<div style="display: table-cell; padding: 5px;"></div>');
 			$(tableCell).appendTo($(tableRow));
@@ -4362,6 +4470,7 @@ module.exports = function ( jq ) {
 	}
 
 	return {
+		formatDateStr,
 		getTodayDevFormat,
 		getToday,
 		getYesterday,

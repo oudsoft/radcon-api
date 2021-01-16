@@ -298,13 +298,16 @@
         let resultW = doDisplayCustomUrgentResult(ddW, hhW, mnW);
         $(urgentForm).find('#WorkingStepResultDisplay').text(resultW);
         let newTimeW = doCalNewTime(ddW, hhW, mnW);
-        let critiriaMinute = (newTimeW - newTimeA)/(60 * 1000);
-        if (critiriaMinute >= 15) {
+        let now = new Date();
+        let nowTime = now.getTime();
+        let critiriaMinuteA = (newTimeA - nowTime)/(60 * 1000);
+        let critiriaMinuteW = (newTimeW - nowTime)/(60 * 1000);
+        if ((critiriaMinuteA >= 15) && (critiriaMinuteW >= 15)) {
           eventData = {Accept: {dd: (ddA-1), hh: hhA, mn: mnA, text: resultA}, Working: {dd: (ddW-1), hh: hhW, mn: mnW, text: resultW}};
           settings.successCallback(eventData);
           $(modalWrapper).trigger('closedialog', [eventData]);
         } else {
-          alert('ระบะเวลาส่งผลอ่านต้องมากกว่าระยะเวลาตอบรับเคสอย่างน้อย 15 นาที');
+          alert('ระยะเวลาตอบรับเคสและระยะเวลาส่งผลอ่านต้องมีค่าล่วงหน้าจากตอนนี้ไปอีก 15 นาที');
         }
       });
       return $(modalWrapper);
