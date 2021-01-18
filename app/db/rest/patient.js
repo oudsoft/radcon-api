@@ -20,13 +20,30 @@ const doSearchByKey = function(key) {
   });
 }
 
-//Swarch API
+const doCreateFullNameEN = function(patientId){
+  return new Promise(async (resolve, reject) => {
+    const patient = await Patient.findAll({ attributes: ['Patient_NameEN', 'Patient_LastNameEN'], where: {id: patientId} });
+    resolve(patient);
+  });
+}
+
+//Search API
 app.post('/search', (req,res) => {
   let keyPair = req.body.key;
   doSearchByKey(keyPair).then((result) => {
     res.json({Result: "OK", Records: result});
   });
 })
+
+//fullname en api
+app.post('/fullname/en/(:patientId)', (req, res) => {
+  let patientId = req.params.patientId;
+  doCreateFullNameEN(patientId).then((patientRecords) => {
+    let patientRec = patientRecords[0];
+    let fullNameEN = patientRec.Patient_NameEN + ' ' + patientRec.Patient_LastNameEN;
+    res.json({status: {code: 200}, fullNameEN: fullNameEN});
+  })
+});
 
 //List API
 app.post('/list/hospital/(:hospitalId)', (req, res) => {

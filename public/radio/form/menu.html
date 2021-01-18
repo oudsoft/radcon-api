@@ -1,0 +1,240 @@
+<div class="menu-hide">
+  <div id="NavHeader">
+    Your Hospital Name
+  </div>
+
+  <!-- Home Menu -->
+  <div class="NavTable">
+    <div class="NavRow" id="HomeMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/home-icon.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        หน้าแรก
+      </div>
+    </div>
+
+    <!-- NewCase Menu -->
+    <div class="NavRow" id="NewCaseCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/new-case-icon.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        แจ้งงานใหม่
+      </div>
+    </div>
+    <!--
+    <div class="NavSubHide">
+      <div class="NavSub" id="SearchCaseSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/search-case-icon-2.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          ค้นหาเคส
+        </div>
+      </div>
+    </div>
+    -->
+
+    <!-- AcceptedCase Menu -->
+    <div class="NavRow" id="AcceptedCaseCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/case-accepted-icon-1.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        เคสใหม่
+      </div>
+    </div>
+
+    <!-- AcceptedCase Menu -->
+    <div class="NavRow" id="SearchCaseCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/search-case-icon-2.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        เคสทั้งหมด
+      </div>
+    </div>
+
+    <!-- Message Menu -->
+    <div class="NavRow" id="MessageMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/message-icon.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        ข้อความ
+      </div>
+    </div>
+    <div class="NavSubHide">
+      <div class="NavSub" id="MessageReceivedSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/message-box-icon.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          รับ
+        </div>
+      </div>
+      <div class="NavSub" id="MessageSendSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/message-send-icon.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          ส่ง
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools Menu -->
+    <div class="NavRow" id="ToolsMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/tools-icon.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell">
+        เครื่องมือ
+      </div>
+    </div>
+    <div class="NavSubHide">
+      <div class="NavSub" id="TemplateSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/format-design-icon.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          Template
+        </div>
+      </div>
+      <!--
+      <div class="NavSub" id="MessageConfigSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/notify-icon.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          ตั้งค่าการแจ้งเตือน
+        </div>
+      </div>
+      -->
+    </div>
+
+    <!-- User Info Menu -->
+    <div class="NavRow" id="UserInfoMainCmd">
+      <div class="NavRowIconCell">
+        <img src="/images/user-account-01.png" width="30px" height="auto"/>
+      </div>
+      <div class="NavRowTextCell" id="UserInfoMenu">
+        UserInfoMenu
+      </div>
+    </div>
+    <div class="NavSubHide">
+      <div class="NavSub" id="UserInfoSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/user-info-icon.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          ข้อมูลของฉัน
+        </div>
+      </div>
+      <div class="NavSub" id="UserLogoutSubCmd">
+        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/user-logout-icon-2.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          ออกจากระบบ
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="NavFooter">
+
+  </div>
+</div>
+
+<script>
+  let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
+  //console.log(yourUserdata);
+  let yourToken = localStorage.getItem('token');
+  //console.log(yourToken);
+  $('.NavRow').click(function (e){
+    if($(this).next('.NavSubHide').css('display') != 'block'){
+      $(this).addClass('NavActive');
+      $(this).next('.NavSubHide').slideDown('slow').removeClass('NavActive');
+    } else {
+      $(this).removeClass('NavActive');
+      $(this).next('.NavSubHide').slideUp('fast').removeClass('NavActive');
+    }
+    $('#NavFooter').css({'bottom': '0px'});
+  });
+
+  /*
+  $('.MenuCmd').click((evt)=>{
+    let cmdId = $(evt.currentTarget).prop('id');
+    let dd = $(evt.currentTarget).data('dd');
+    let dm = $(evt.currentTarget).data('dm');
+    let eventData = {userId: yourUserdata.id, cmdId: cmdId, dd: dd, dm: dm};
+    $(evt.currentTarget).trigger('openhome', [eventData]);
+  });
+  */
+
+  $('#HomeMainCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#HomeMainCmd').trigger('openhome', [eventData]);
+  });
+
+  $('#NewCaseCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#NewCaseCmd').trigger('opennewstatuscase', [eventData]);
+  });
+
+  $('#AcceptedCaseCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#AcceptedCaseCmd').trigger('openacceptedstatuscase', [eventData]);
+  });
+
+  $('#SearchCaseCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#SearchCaseCmd').trigger('opensearchcase', [eventData]);
+  });
+
+  /*
+  MessageMainCmd
+  MessageReceivedSubCmd
+  MessageSendSubCmd
+
+  ToolsMainCmd
+  UserInfoMainCmd
+  */
+
+  $('#TemplateSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id, hospitalId: yourUserdata.hospitalId};
+    $('#TemplateSubCmd').trigger('opentemplatedesign', [eventData]);
+  });
+
+  let systemNameBox = $('<div style="padding: 3px; height: 44px; line-height:0.2; color: white;"></div>');
+  $(systemNameBox).append('<h4 style="text-align: center;">Rad Connext System</h4>')
+  $('#NavHeader').empty().append($(systemNameBox));
+  /*
+  let hospitalNameBox = $('<div style="padding: 3px; height: 44px; line-height:0.2; color: white;"></div>');
+  $(hospitalNameBox).append('<h4 style="text-align: center;">โรงพยาบาล' + yourUserdata.hospital.Hos_Name + '</h4>')
+  $('#NavHeader').append($(hospitalNameBox));
+  */
+  let userFullName = yourUserdata.userinfo.User_NameEN + ' ' + yourUserdata.userinfo.User_LastNameEN + ' (' + yourUserdata.userinfo.User_NameTH + ' ' + yourUserdata.userinfo.User_LastNameTH + ')';
+
+  $('#UserInfoMenu').empty().append($('<span>' + userFullName + '</span>'));
+  $('#UserInfoMenu').css({'color': 'white'});
+  $('#UserInfoMenu').hover(()=>{$('#UserInfoMenu').css({'color': 'black'})}, ()=>{$('#UserInfoMenu').css({'color': 'white'})});
+
+  $('#UserInfoSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#UserInfoSubCmd').trigger('openedituserinfo', [eventData]);
+  });
+  $('#UserLogoutSubCmd').click((evt)=>{
+    let eventData = {userId: yourUserdata.id};
+    $('#UserLogoutSubCmd').trigger('userlogout', [eventData]);
+  });
+
+</script>
