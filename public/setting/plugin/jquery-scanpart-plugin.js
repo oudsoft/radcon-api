@@ -381,8 +381,30 @@
         eventData = {searchKey: key};
         $(searchInputBox).trigger('startsearch', [eventData]);
       });
-      let guideToggle = $('<span>  แสดงรายการเลือกทั้งหมด</span>');
+      let guideToggle = $('<span style="padding-left: 8px;">แสดงรายการเลือกทั้งหมด</span>');
       $(searchForm).append($(guideToggle));
+
+      let modalControlBox = $('<div style="display: table-cell;vertical-align: middle; padding-left: 8px;"></div>');
+      //$(modalControlBox).css(modalFooterClass);
+      $(searchForm).append($(modalControlBox));
+
+      let okCmd = $('<input type="button" value=" OK "/>');
+      $(okCmd).appendTo($(modalControlBox));
+      $(modalControlBox).append('<span>  </span>');
+      let cancelCmd = $('<input type="button" value=" Cancel "/>');
+      $(cancelCmd).appendTo($(modalControlBox));
+
+      $(cancelCmd).on('click', (evt)=>{
+        eventData = {};
+        $(searchForm).trigger('closedialog', [eventData]);
+      });
+
+      $(okCmd).on('click', async (evt)=>{
+        let selectedListBox = await doCreateSelectedListBox('');
+        eventData = {selectedData: $this.selectedMainJson, selectedBox: selectedListBox};
+        settings.successCallback(eventData);
+        $(searchForm).trigger('closedialog', [eventData]);
+      });
 
       return $(searchForm);
     }
@@ -416,7 +438,7 @@
         $(modalContent).append($(seachResultBox));
         $(modalContent).css(modalContentClass);
         $(modalWrapper).append($(modalContent));
-
+        /*
         let modalFooter = $('<div></div>');
         $(modalFooter).css(modalFooterClass);
         $(modalWrapper).append($(modalFooter));
@@ -438,6 +460,8 @@
           settings.successCallback(eventData);
           $(modalWrapper).trigger('closedialog', [eventData]);
         });
+        */
+
         resolve($(modalWrapper));
       });
     }

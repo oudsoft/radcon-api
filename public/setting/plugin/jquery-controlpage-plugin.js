@@ -201,6 +201,7 @@
         itemperPageChange(newItemperPage);
         doResetButtonCmd(navigBar);
       });
+      $(itemperPageOption).css({'margin-left': '6px'});
       $(itemperPageOption).appendTo($(navigBar));
 
       let nextCmd = doCreateNextCmd((currentPage)=>{
@@ -223,7 +224,6 @@
         goToPage(settings.currentPage);
         let eventData = {key: 'itemperpage', value: newValue};
         $($this).trigger('defualsettingschange', [eventData]);
-        console.log('==== ok =========');
       }
       const goToPage = function(page) {
         let itemPerPage = Number(settings.itemperPage);
@@ -239,7 +239,7 @@
 
       let navigBar = doCreateNavigBar(goToPage, itemperPageChange);
 
-      goToPage(settings.currentPage);
+      //goToPage(settings.currentPage);
 
       return $(navigBar);
     }

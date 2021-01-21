@@ -15,6 +15,9 @@ let sessionHandleStorages = [];
   Object in sessionHandleStorages
   {userId, content: {mode, }}
 */
+/*
+  x401 + x402 ต้องมี Action ไปที่ Case ด้วย เพื่อ trigger webapp ทาง web socket
+*/
 
 var db, Task, log, auth, lineApi, uti;
 

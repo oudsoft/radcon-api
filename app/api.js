@@ -71,7 +71,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	const casestatus = require('./db/rest/casestatus.js')(db, log);
 	const cases = require('./db/rest/cases.js')(db, taskCase, log, webSocketServer);
 	const hospitalreport = require('./db/rest/hospitalreport.js')(db, log);
-	const radiologist = require('./db/rest/radiologist.js')(db, log);
+	const radiologist = require('./db/rest/radiologist.js')(db, taskCase, log, webSocketServer);
 	const workinghour = require('./db/rest/workinghour.js')(db, log);
 	const workingschedule = require('./db/rest/workingschedule.js')(db, log);
 	const template = require('./db/rest/template.js')(db, log);

@@ -355,6 +355,7 @@ const RadCaseResponseDef = {
 
 //Case_ID
 //User_ID <-- ผู้ออกรายงาน
+//Response_ID <-- ใช้ผลอ่านไหน
 const RadCaseReportDef = {
 			Remark : {
 				type: Sequelize.TEXT
@@ -415,6 +416,24 @@ const RadScanPartAuxDef = {
 			}
 		};
 
+const RadKeepLogDef = {
+			caseId : {
+				type: Sequelize.INTEGER
+			},
+			userId : {
+				type: Sequelize.INTEGER
+			},
+			from : {
+				type: Sequelize.INTEGER
+			},
+			to : {
+				type: Sequelize.INTEGER
+			},
+			remark : {
+				type: Sequelize.TEXT
+			}
+		};
+
 module.exports = {
 	RadUserTypeDef,
 	RadUserStatusDef,
@@ -438,5 +457,6 @@ module.exports = {
 	RadLineUserDef,
 	RadRisInterfaceDef,
 	RadScanPartRefDef,
-	RadScanPartAuxDef
+	RadScanPartAuxDef,
+	RadKeepLogDef
 }

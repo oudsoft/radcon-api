@@ -16,7 +16,6 @@ app.get('/', (req, res) => {
 });
 
 app.post('/', (req, res) => {
-  log.info('req.body => ' + JSON.stringify(req.body));
   const username = req.body.username;
   const password = req.body.password;
   auth.doVerifyUser(username, password).then((result) => {

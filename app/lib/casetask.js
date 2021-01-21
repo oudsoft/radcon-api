@@ -15,7 +15,7 @@ function RadconCaseTask (socket, db, log) {
     tasks Model {caseId, statusId, triggerAt: datetime, task<cron.schedule>}
   */
 
-  this.doCreateNewTask = function (caseId, username, triggerParam, radioUsername, hospitalName, cb) {
+  this.doCreateNewTask = function (caseId, username, triggerParam, radioUsername, hospitalName, baseCaseStatusId, cb) {
     return new Promise(async function(resolve, reject) {
       const startDate = new Date();
       const day = Number(triggerParam.dd) * 24 * 60 * 60 * 1000;
@@ -34,16 +34,16 @@ function RadconCaseTask (socket, db, log) {
       let newTask = {caseId: caseId, username: username, radioUsername: radioUsername, triggerAt: endDate/*, task: task*/};
       $this.caseTasks.push(newTask);
       let msg = 'You have a new Case on ' + hospitalName + '. This your case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
-      let notify = {type: 'notify', message: msg, caseId: caseId};
+      let notify = {type: 'notify', message: msg, caseId: caseId, casestatusId: baseCaseStatusId};
       let canSend = await socket.sendMessage(notify, radioUsername);
       if (canSend) {
         msg = 'The Radiologist of your new case can recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
       } else {
         msg = 'The Radiologist of your new case can not recieve message of this your case, And this case will be expire at ' + endDate.getFullYear() + '-' + endMM + '-' + endDD + ' : ' + endHH + '.' + endMN;
       }
-      notify = {type: 'notify', message: msg, caseId: caseId};
+      notify = {type: 'notify', message: msg, caseId: caseId, casestatusId: baseCaseStatusId};
       await socket.sendMessage(notify, username);
-      resolve(endDate.getTime());
+      resolve(task);
     });
   }
 

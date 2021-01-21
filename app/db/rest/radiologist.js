@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-var db, log, auth, common;
+var db, tasks, socket, log, auth, common;
 
 const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 
@@ -225,10 +225,61 @@ app.post('/caseaccept/reset/(:radioId)/(:hospitalId)', (req, res) => {
   }
 });
 
-module.exports = ( dbconn, monitor ) => {
+//load full radio config API
+app.post('/load/config/(:radioId)', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          let radioId = req.params.radioId;
+          const userInclude = [{model: db.userinfoes, attributes: ['User_Hospitals']}];
+          const radusers = await db.users.findAll({ attributes: excludeColumn, include: userInclude, where: {id: radioId}});
+          const radioConfigs = JSON.parse(radusers[0].userinfo.User_Hospitals);
+          const promiseList = new Promise(async function(resolve, reject) {
+            let anotherConfigs = [];
+            await radioConfigs.forEach(async (item, i) => {
+              let hoss = await db.hospitals.findAll({ attributes: ['id', 'Hos_Name'], where: {id: item.id}});
+              let config = {id: hoss[0].id, Hos_Name: hoss[0].Hos_Name};
+              if (item.acctype) {
+                config.acctype = item.acctype;
+              } else {
+                config.acctype = 'n';
+              }
+              anotherConfigs.push(config);
+            });
+            setTimeout(()=> {
+              resolve(anotherConfigs);
+            },400);
+          });
+          Promise.all([promiseList]).then(async (ob)=> {
+            log.info('FullConfigs=>' + JSON.stringify(ob[0]));
+            res.json({status: {code: 200}, configs: ob[0]});
+          }).catch((err)=>{
+            log.error(error);
+            res.json({status: {code: 500}, error: error});
+          });
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
+
+module.exports = ( dbconn, caseTask, monitor, websocket  ) => {
   db = dbconn;
   log = monitor;
   auth = require('./auth.js')(db, log);
-  common = require('./commonlib.js')(db, log);
+  tasks = caseTask;
+  socket = websocket;
+  common = require('./commonlib.js')(db, log, tasks);
   return app;
 }

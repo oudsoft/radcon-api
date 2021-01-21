@@ -111,6 +111,7 @@ caseresponses.belongsTo(users);
 const casereports = sequelize.define('casereports', Def.RadCaseReportDef);
 casereports.belongsTo(users);
 casereports.belongsTo(cases);
+casereports.belongsTo(caseresponses);
 
 const lineusers = sequelize.define('lineusers', Def.RadLineUserDef);
 lineusers.belongsTo(users);
@@ -121,6 +122,9 @@ const scanpartrefs = sequelize.define('scanpartrefs', Def. RadScanPartRefDef);
 
 const scanpartauxs = sequelize.define('scanpartauxs', Def. RadScanPartAuxDef);
 scanpartauxs.belongsTo(users);
+
+const radkeeplogs = sequelize.define('radkeeplogs', Def.RadKeepLogDef);
+radkeeplogs.belongsTo(cases);
 
 module.exports =  {
   sequelize,
@@ -148,5 +152,6 @@ module.exports =  {
   lineusers,
   risinterfaces,
   scanpartrefs,
-  scanpartauxs
+  scanpartauxs,
+  radkeeplogs
 }

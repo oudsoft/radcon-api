@@ -10,7 +10,11 @@ const doExistUser = function(username){
     const userInclude = [{ model: Hospital, attributes: excludeColumn}, {model: Usertype, attributes: excludeColumn}, {model: Userstatus, attributes: excludeColumn}, {model: Userinfo, attributes: excludeColumn}];
     try {
       const users = await User.findAll({ include: userInclude, attributes: excludeColumn, where: {	username: username}});
-      resolve(users);
+      if (users.length > 0) {
+        resolve(users);
+      } else {
+        resolve([{id: undefined}]);
+      }
     } catch(error) {
       reject(error)
     }

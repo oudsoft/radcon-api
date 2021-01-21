@@ -4,9 +4,6 @@
 window.$ = window.jQuery = require('jquery');
 require('./mod/jquery-ex.js');
 const cases = require('./mod/case.js')($);
-//const doctor = require('./mod/doctor.js')($);
-//const hospital = require('./mod/hospital.js')($);
-//const urgent = require('./mod/urgent.js')($);
 const apiconnector = require('./mod/apiconnect.js')($);
 const util = require('./mod/utilmod.js')($);
 const dicomfilter = require('./mod/dicomfilter.js')($);
@@ -22,11 +19,9 @@ const userprofile = require('./mod/userprofilelib.js')($);
 var noti, wsm, wsl;
 
 $( document ).ready(function() {
-	console.log('page on ready ...');
   const initPage = function() {
 		var token = doGetToken();
 		if (token) {
-			console.log(token);
 			doLoadMainPage()
 		} else {
 			doLoadLogin()
@@ -44,7 +39,8 @@ function doCallLoginApi(user) {
     $.post(loginApiUri, params, function(response){
 			resolve(response);
 		}).catch((err) => {
-			console.log(JSON.stringify(err));
+			console.log(err);
+			reject(err);
 		})
 	});
 }
@@ -212,25 +208,24 @@ function doLoadMainPage(){
 				cases.doLoadCases(rqParams);
 			});
 			$(document).on('opensearchcase', async (evt, data)=>{
-				//$('body').loading('start');
+				$('body').loading('start');
 				let toDayFormat = util.getTodayDevFormat();
 
 				let defaultSearchKey = {fromDateKeyValue: toDayFormat, patientNameENKeyValue: '*', patientHNKeyValue: '*', bodypartKeyValue: '*', caseStatusKeyValue: 0};
-				let defaultSearchParam = {key: defaultSearchKey, hospitalId: userdata.hospitalId, userId: userdata.id};
+				let defaultSearchParam = {key: defaultSearchKey, hospitalId: userdata.hospitalId, userId: userdata.id, usertypeId: userdata.usertypeId};
 
 				let searchTitlePage = cases.doCreateSearchTitlePage();
 
 				$(".mainfull").empty().append($(searchTitlePage));
 				let response = await common.doCallApi('/api/cases/search/key', defaultSearchParam);
+				$('body').loading('stop');
 				if (response.status.code === 200) {
 					let searchResultViewDiv = $('<div id="SearchResultView"></div>');
 					$(".mainfull").append($(searchResultViewDiv));
-					await doShowSearchResultCallback(response);
+					await cases.doShowSearchResultCallback(response);
 				} else {
 					$(".mainfull").append('<h3>ระบบค้นหาเคสขัดข้อง โปรดแจ้งผู้ดูแลระบบ</h3>');
 				}
-				//$('body').loading('stop');
-
 			});
 
 			$(document).on('openreportdesign', (evt, data)=>{
@@ -263,64 +258,8 @@ function doLoadMainPage(){
 				console.log(err);
 				$('body').loading('stop');
 			});
-
+			$('body').loading('stop');
 		});
-	});
-}
-
-const doShowSearchResultCallback = function(response){
-	return new Promise(async function(resolve, reject) {
-		/*  Concept */
-		/*
-		1. ส่งรายการ case ตามจำนวนรายการ ในเงื่อนของ Navigator ไปสร้าง View
-		2. รับ view ที่จกข้อ 1 มา append ต่อจาก titlepage
-		3. ตรวจสอบจำนวน case ในข้อ 1 ว่ามีกี่รายการ
-			- มากกว่า 0 ให้แสดง Navigator
-			- เท่ากับ 0 ให้แสดงข้อความ ไม่พบรายการที่ค้นหา
-		*/
-		$('body').loading('start');
-
-		let userItemPerPage = doGetUserItemPerPage();
-		let showCases = [];
-
-		let allCaseRecords = response.Records;
-		if (userItemPerPage == 0) {
-			showCases = allCaseRecords;
-		} else {
-			showCases = await common.doExtractList(allCaseRecords, 1, userItemPerPage);
-		}
-		let caseView = await cases.doShowCaseView(showCases, response.key, doShowSearchResultCallback);
-		$(".mainfull").find('#SearchResultView').empty().append($(caseView));
-
-		if (allCaseRecords.length == 0) {
-			$(".mainfull").find('#SearchResultView').append($('<h4>ไม่พบรายการเคสตามเงื่อนไขที่คุณค้นหา</h4>'));
-		} else {
-			let navigBarBox = $('<div id="NavigBar"></div>');
-			$(".mainfull").append($(navigBarBox));
-			let navigBarOption = {
-				currentPage: 1,
-				itemperPage: userItemPerPage,
-				totalItem: allCaseRecords.length,
-				styleClass : {'padding': '4px', "font-family": "THSarabunNew", "font-size": "20px"},
-				changeToPageCallback: async function(page){
-					$('body').loading('start');
-					let toItemShow = 0;
-					if (page.toItem == 0) {
-						toItemShow = allCaseRecords.length;
-					} else {
-						toItemShow = page.toItem;
-					}
-					showCases = await common.doExtractList(allCaseRecords, page.fromItem, toItemShow);
-					caseView = await cases.doShowCaseView(showCases, response.key, doShowSearchResultCallback);
-					$(".mainfull").find('#SearchResultView').empty().append($(caseView));
-					$('body').loading('stop');
-				}
-			};
-			let navigatoePage = $(navigBarBox).controlpage(navigBarOption);
-			navigatoePage.toPage(1);
-		}
-		$('body').loading('stop');
-		resolve();
 	});
 }
 
@@ -844,10 +783,10 @@ module.exports = function ( jq ) {
 	}
 
 	const doCreateSearchCaseFormRow = function(key, searchResultCallback){
-		let searchFormRow = $('<div style="display: table-row; width: 100%; background-color: blue;"></div>');
-		let formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		let searchFormRow = $('<div style="display: table-row; width: 100%;"></div>');
+		let formField = $('<div style="display: table-cell; text-align: center; vertical-align: middle;" class="header-cell"></div>');
 
-		let fromDateKeyBox = $('<div style="text-align: left; float: left;"><span>ตั้งแต่</span></div>');
+		let fromDateKeyBox = $('<div style="text-align: left; display: inline-block;"></div>'); //<span>ตั้งแต่</span>
 		$(fromDateKeyBox).appendTo($(formField));
 		let fromDateKey = $('<input type="text" id="FromDateKey" size="6" style="margin-left: 5px;"/>');
 		if (key.fromDateKeyValue) {
@@ -859,7 +798,9 @@ module.exports = function ( jq ) {
 		$(fromDateKey).appendTo($(fromDateKeyBox));
 		$(fromDateKey).datepicker({ dateFormat: 'dd-mm-yy' });
 
-		let toDateKeyBox = $('<div style="text-align: left; float: left;margin-left: 10px;"><span>ถึง</span></div>');
+		$(formField).append($('<span style="margin-left: 5px; margin-right: 2px; display: inline-block;">-</span>'));
+
+		let toDateKeyBox = $('<div style="text-align: left; display: inline-block;"></div>'); //<span>ถึง</span>
 		$(toDateKeyBox).appendTo($(formField));
 		let toDateKey = $('<input type="text" id="ToDateKey" size="6" style="margin-left: 5px;"/>');
 		if (key.toDateKeyValue) {
@@ -873,41 +814,41 @@ module.exports = function ( jq ) {
 
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left; vertical-align: middle;" class="header-cell"></div>');
 		let patientNameENKey = $('<input type="text" id="PatientNameENKey" size="15"/>');
 		$(patientNameENKey).val(key.patientNameENKeyValue);
 		$(formField).append($(patientNameENKey));
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left; vertical-align: middle;" class="header-cell"></div>');
 		$(formField).append('<span></span>');
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left; vertical-align: middle;" class="header-cell"></div>');
 		let patientHNKey = $('<input type="text" id="PatientHNKey" size="10"/>');
 		$(patientHNKey).val(key.patientHNKeyValue);
 		$(formField).append($(patientHNKey));
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left;vertical-align: middle;" class="header-cell"></div>');
 		$(formField).append('<span></span>');
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left; vertical-align: middle;" class="header-cell"></div>');
 		let bodypartKey = $('<input type="text" id="BodyPartKey" size="10"/>');
 		$(bodypartKey).val(key.bodypartKeyValue);
 		$(formField).append($(bodypartKey));
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left; vertical-align: middle;" class="header-cell"></div>');
 		$(formField).append('<span></span>');
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left; vertical-align: middle;" class="header-cell"></div>');
 		$(formField).append('<span></span>');
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: left; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: left; vertical-align: middle;" class="header-cell"></div>');
 		let caseStatusKey = $('<select id="CaseStatusKey"></select>');
 		$(caseStatusKey).append($('<option value="0">ทั้งหมด</option>'));
 		common.allCaseStatus.forEach((item, i) => {
@@ -917,7 +858,7 @@ module.exports = function ( jq ) {
 		$(formField).append($(caseStatusKey));
 		$(formField).appendTo($(searchFormRow));
 
-		formField = $('<div style="display: table-cell; text-align: center; border: 1px solid white; vertical-align: middle;"></div>');
+		formField = $('<div style="display: table-cell; text-align: center; vertical-align: middle;" class="header-cell"></div>');
 		let startSearchCmd = $('<img src="/images/search-icon-2.png" width="30px" height="auto"/>');
 		$(formField).append($(startSearchCmd));
 		$(formField).appendTo($(searchFormRow));
@@ -970,10 +911,14 @@ module.exports = function ( jq ) {
 				let userdata = JSON.parse(main.doGetUserData());
 				let hospitalId = userdata.hospitalId;
 				let userId = userdata.id;
+				let usertypeId = userdata.usertypeId;
 
-				let searchParam = {key: searchKey, hospitalId: userdata.hospitalId, userId: userdata.id};
+				let searchParam = {key: searchKey, hospitalId: hospitalId, userId: userId, usertypeId: usertypeId};
 
 				let response = await common.doCallApi('/api/cases/search/key', searchParam);
+
+				$(".mainfull").find('#SearchResultView').empty();
+        $(".mainfull").find('#NavigBar').empty();
 
 				await searchResultCallback(response);
 
@@ -987,6 +932,7 @@ module.exports = function ( jq ) {
 	}
 
 	/* Remove */
+	/*
   const openCaseList = async function(e) {
 		$('body').loading('start');
 		currentTab = e.detail.eventname;
@@ -1046,8 +992,10 @@ module.exports = function ( jq ) {
     }
 		$('#CurrentPage').remove();
   }
+	*/
 
 	/* Remove */
+	/*
 	async function doCallSearchCasebyDate(startDate) {
 		$('body').loading('start');
 		const main = require('../main.js');
@@ -1084,52 +1032,53 @@ module.exports = function ( jq ) {
 	    $('body').loading('stop');
     }
 	}
+	*/
 
 	const doCreateHeaderFieldCaseList = function() {
-		let headerRow = $('<div style="display: table-row; width: 100%; background-color: blue;"></div>');
-		let headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		let headerRow = $('<div style="display: table-row; width: 100%;"></div>');
+		let headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>วันที่ส่งอ่าน</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>ชื่อผู้ป่วย</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>เพศ/อายุ</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>HN</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>Mod.</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>Scan Part</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>ประเภทความด่วน</span>');
 		$(headColumn).appendTo($(headerRow));
 
 		/*
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>แพทย์ผู้ส่ง</span>');
 		$(headColumn).appendTo($(headerRow));
 		*/
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>รังสีแพทย์</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>สถานะเคส</span>');
 		$(headColumn).appendTo($(headerRow));
 
-		headColumn = $('<div style="display: table-cell; text-align: center; border: 1px solid white;"></div>');
+		headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
 		$(headColumn).append('<span>คำสั่ง</span>');
 		$(headColumn).appendTo($(headerRow));
 
@@ -1223,7 +1172,7 @@ module.exports = function ( jq ) {
 	const doShowCaseView = function(incidents, key, callback) {
 		return new Promise(function(resolve, reject) {
 			let rowStyleClass = {"font-family": "THSarabunNew", "font-size": "22px"};
-			let caseView = $('<div style="display: table; width: 100%;"></div>');
+			let caseView = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
 
 			let headView = doCreateHeaderFieldCaseList(key.fromDateKeyValue);
 			$(headView).appendTo($(caseView));
@@ -1257,7 +1206,8 @@ module.exports = function ( jq ) {
 			for (let i=0; i < incidents.length; i++) {
 				let dataRow = $('<tr class="case-row"></tr>');
 				$(dataRow).css(rowStyleClass);
-				let casedatetime = incidents[i].case.createdAt.split('T');
+				let caseDate = util.formatDateTimeStr(incidents[i].case.createdAt);
+				let casedatetime = caseDate.split('T');
 				let casedateSegment = casedatetime[0].split('-');
 				casedateSegment = casedateSegment.join('');
 				let casedate = util.formatStudyDate(casedateSegment);
@@ -1471,6 +1421,7 @@ module.exports = function ( jq ) {
 	}
 
 	/* Remove */
+	/*
   function doOpenEditCase(defualtValue) {
 		$("#dialog").load('form/newcase-dialog.html', async function(){
 			$('#dialog-title').text('แก้ไขเคส');
@@ -1487,6 +1438,7 @@ module.exports = function ( jq ) {
 
   		//console.log(defualtValue);
 			/* patientHistoryBox Variable declair in file newcase-dialog.html */
+			/*
 		  patientHistoryBox = $("<div ></div>").appendTo($("#ManageImageCmdDiv")).imagehistory( phProp ).data("custom-imagehistory");
 			if ((defualtValue.pn_history) && (defualtValue.pn_history.length > 0)) {
 				defualtValue.pn_history.forEach((item, i) => {
@@ -1521,6 +1473,7 @@ module.exports = function ( jq ) {
 			let ziplink = 'https://radconnext.com/radconnext/inc_files/' + defualtValue.dicom_zip1;
 			$('#MainTableForm').append($('<tr><td class="input-label">Dicom Zip File</td><td colspan="3"><a href="' + ziplink + '" target="_blank"><img class="pacs-command" data-toggle="tooltip" src="images/zip-icon.png" title="Download Dicom in zip file."/></a></td></tr>'));
 			*/
+			/*
 			$("#SaveNewCase-Cmd").val("บันทึก");
 
 			$("#SaveNewCase-Cmd").click(function(){
@@ -1528,8 +1481,9 @@ module.exports = function ( jq ) {
 			});
 		});
   }
-
+	*/
 	/* Remove */
+	/*
 	function doPrepareOptionForm(defualtValue){
 		return new Promise(async function(resolve, reject) {
 			const main = require('../main.js');
@@ -1603,8 +1557,10 @@ module.exports = function ( jq ) {
     	}
 		});
 	}
+	*/
 
 	/* Remove */
+	/*
 	async function doSaveEditCase(caseId, patientId){
 		let updateCaseData = doVerifyInputForm();
 		if (updateCaseData) {
@@ -1645,7 +1601,7 @@ module.exports = function ( jq ) {
 			$('body').loading('stop');
 		}
 	}
-
+	*/
 	function doShowCaseCalendar() {
 		const spacingBox = $('<span>&nbsp;</span>');
   	const inputStyleClass = {"font-family": "THSarabunNew", "font-size": "24px"};
@@ -1911,13 +1867,71 @@ module.exports = function ( jq ) {
 		return $(searchResultTitleBox);
 	}
 
+	const doShowSearchResultCallback = function(response){
+		return new Promise(async function(resolve, reject) {
+			/*  Concept */
+			/*
+			1. ส่งรายการ case ตามจำนวนรายการ ในเงื่อนของ Navigator ไปสร้าง View
+			2. รับ view ที่จกข้อ 1 มา append ต่อจาก titlepage
+			3. ตรวจสอบจำนวน case ในข้อ 1 ว่ามีกี่รายการ
+				- มากกว่า 0 ให้แสดง Navigator
+				- เท่ากับ 0 ให้แสดงข้อความ ไม่พบรายการที่ค้นหา
+			*/
+			$('body').loading('start');
+
+			const main = require('../main.js');
+			let userItemPerPage = main.doGetUserItemPerPage();
+			let showCases = [];
+
+			let allCaseRecords = response.Records;
+			if (userItemPerPage == 0) {
+				showCases = allCaseRecords;
+			} else {
+				showCases = await common.doExtractList(allCaseRecords, 1, userItemPerPage);
+			}
+			let caseView = await doShowCaseView(showCases, response.key, doShowSearchResultCallback);
+			$(".mainfull").find('#SearchResultView').empty().append($(caseView));
+
+			if (allCaseRecords.length == 0) {
+				$(".mainfull").find('#SearchResultView').append($('<h4>ไม่พบรายการเคสตามเงื่อนไขที่คุณค้นหา</h4>'));
+			} else {
+				let navigBarBox = $('<div id="NavigBar"></div>');
+				$(".mainfull").append($(navigBarBox));
+				let navigBarOption = {
+					currentPage: 1,
+					itemperPage: userItemPerPage,
+					totalItem: allCaseRecords.length,
+					styleClass : {'padding': '4px', "font-family": "THSarabunNew", "font-size": "20px"},
+					changeToPageCallback: async function(page){
+						$('body').loading('start');
+						let toItemShow = 0;
+						if (page.toItem == 0) {
+							toItemShow = allCaseRecords.length;
+						} else {
+							toItemShow = page.toItem;
+						}
+						showCases = await common.doExtractList(allCaseRecords, page.fromItem, toItemShow);
+						caseView = await doShowCaseView(showCases, response.key, doShowSearchResultCallback);
+						$(".mainfull").find('#SearchResultView').empty().append($(caseView));
+						$('body').loading('stop');
+					}
+				};
+				let navigatoePage = $(navigBarBox).controlpage(navigBarOption);
+				navigatoePage.toPage(1);
+			}
+			$('body').loading('stop');
+			resolve();
+		});
+	}
+
 	return {
 		doLoadCases,
 		doShowCaseView,
 		doShowCaseList,
 		doCreateHeaderFieldCaseList,
 		doCreateSearchCaseFormRow,
-		doCreateSearchTitlePage
+		doCreateSearchTitlePage,
+		doShowSearchResultCallback
 	}
 }
 
@@ -1966,8 +1980,7 @@ module.exports = function ( jq ) {
 
   const doOpenStoneWebViewer = function(StudyInstanceUID) {
 		//const orthancWebviewerUrl = 'http://' + window.location.hostname + ':8042/web-viewer/app/viewer.html?series=';
-		const main = require('../main.js');
-		let userdata = JSON.parse(main.doGetUserData());
+		let userdata = JSON.parse(localStorage.getItem('userdata'));
 		const hospitalId = userdata.hospitalId;
 
 		apiconnector.doGetOrthancPort(hospitalId).then((response) => {
@@ -1980,8 +1993,7 @@ module.exports = function ( jq ) {
 
   const doDownloadDicom = function(studyID, dicomFilename){
 		$('body').loading('start');
-		const main = require('../main.js');
-		let userdata = JSON.parse(main.doGetUserData());
+		let userdata = JSON.parse(localStorage.getItem('userdata'));
 		const hospitalId = userdata.hospitalId;
   	apiconnector.doCallDownloadDicom(studyID, hospitalId).then((response) => {
   		console.log(response);
@@ -1999,8 +2011,7 @@ module.exports = function ( jq ) {
   	let userConfirm = confirm('โปรดยืนยันเพื่อลบรายการนี้ โดยคลิกปุ่ม ตกลง หรือ OK');
   	if (userConfirm == true){
   		$('body').loading('start');
-			const main = require('../main.js');
-			let userdata = JSON.parse(main.doGetUserData());
+			let userdata = JSON.parse(localStorage.getItem('userdata'));
 			const hospitalId = userdata.hospitalId;
 			apiconnector.doCallDeleteDicom(studyID, hospitalId).then((response) => {
 				console.log(response);
@@ -2068,8 +2079,7 @@ module.exports = function ( jq ) {
 
 	const doGetOrthancStudyDicom = function(studyId) {
 		return new Promise(async function(resolve, reject) {
-			const main = require('../main.js');
-			const userdata = JSON.parse(main.doGetUserData());
+			const userdata = JSON.parse(localStorage.getItem('userdata'));
 			let hospitalId = userdata.hospitalId;
 			let username = userdata.username;
 			let rqBody = '{"Level": "Study", "Expand": true, "Query": {"PatientName":"TEST"}}';
@@ -2082,8 +2092,7 @@ module.exports = function ( jq ) {
 
 	const doUpdateCaseStatus = function(id, newStatus, newDescription){
 		return new Promise(async function(resolve, reject) {
-			const main = require('../main.js');
-			let userdata = JSON.parse(main.doGetUserData());
+			let userdata = JSON.parse(localStorage.getItem('userdata'));
 			let hospitalId = userdata.hospitalId;
 			let userId = userdata.userId;
 			let rqParams = { hospitalId: hospitalId, userId: userId, caseId: id, casestatusId: newStatus, caseDescription: newDescription};
@@ -2099,8 +2108,7 @@ module.exports = function ( jq ) {
 
 	const doCreateNewCustomUrgent = function(ugData){
 		return new Promise(async function(resolve, reject) {
-			const main = require('../main.js');
-			let userdata = JSON.parse(main.doGetUserData());
+			let userdata = JSON.parse(localStorage.getItem('userdata'));
 			let hospitalId = userdata.hospitalId;
 			let acceptStep = {dd: ugData.Accept.dd, hh: ugData.Accept.hh, mn: ugData.Accept.mn};
 			let workingStep = {dd: ugData.Working.dd, hh: ugData.Working.hh, mn: ugData.Working.mn};
@@ -2146,8 +2154,7 @@ module.exports = function ( jq ) {
 
 	const doLoadScanpartAux = function(studyDesc, protocolName){
 		return new Promise(async function(resolve, reject) {
-			const main = require('../main.js');
-			let userdata = JSON.parse(main.doGetUserData());
+			let userdata = JSON.parse(localStorage.getItem('userdata'));
 			let hospitalId = userdata.hospitalId;
 			let userId = userdata.userId;
 			let rqParams = { hospitalId: hospitalId, userId: userId, studyDesc: studyDesc, protocolName: protocolName};
@@ -2331,7 +2338,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"../main.js":1,"./apiconnect.js":2,"./utilmod.js":11}],5:[function(require,module,exports){
+},{"./apiconnect.js":2,"./utilmod.js":11}],5:[function(require,module,exports){
 /* createnewcase.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -2537,8 +2544,16 @@ module.exports = function ( jq ) {
 
 						let patientProps = sa.split('/');
 						let defualtValue = {patient: {id: dj[i].PatientMainDicomTags.PatientID, name: dj[i].PatientMainDicomTags.PatientName, age: patientProps[1], sex: patientProps[0]}, bodypart: bdp, studyID: dj[i].ID, acc: dj[i].MainDicomTags.AccessionNumber, mdl: mld};
-						defualtValue.studyDesc = dj[i].MainDicomTags.StudyDescription;
-						defualtValue.protocalName = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
+						if (dj[i].MainDicomTags.StudyDescription) {
+							defualtValue.studyDesc = dj[i].MainDicomTags.StudyDescription;
+						} else {
+							defualtValue.studyDesc = '';
+						}
+						if (dj[i].SamplingSeries.MainDicomTags.ProtocolName) {
+							defualtValue.protocalName = dj[i].SamplingSeries.MainDicomTags.ProtocolName;
+						} else {
+							defualtValue.protocalName = '';
+						}
 						defualtValue.manufacturer = dj[i].SamplingSeries.MainDicomTags.Manufacturer;
 						defualtValue.stationName = dj[i].SamplingSeries.MainDicomTags.StationName;
 						defualtValue.studyInstanceUID = dj[i].MainDicomTags.StudyInstanceUID;
@@ -3515,8 +3530,7 @@ module.exports = function ( jq ) {
 			});
 		}
 
-		const main = require('../main.js');
-		const userdata = JSON.parse(main.doGetUserData());
+		const userdata = JSON.parse(localStorage.getItem('userdata'));
 		const hospitalId = userdata.hospitalId;
 		const userId = userdata.id
 
@@ -3602,7 +3616,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"../main.js":1,"./apiconnect.js":2,"./commonlib.js":4,"./utilmod.js":11}],7:[function(require,module,exports){
+},{"./apiconnect.js":2,"./commonlib.js":4,"./utilmod.js":11}],7:[function(require,module,exports){
 /* dicomfilter.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -4283,6 +4297,7 @@ module.exports = function ( jq ) {
 
 	const formatDateTimeStr = function(dt){
 	  d = new Date(dt);
+		d.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' });
 		var yy, mm, dd, hh, mn, ss;
 	  yy = d.getFullYear();
 	  if (d.getMonth() + 1 < 10) {
@@ -4452,14 +4467,17 @@ module.exports = function ( jq ) {
 	  };
 		*/
 
+
+		console.log(usertype);
+
 		if (usertype == 2) {
-			let wsmMessage = require('./websocketmessage.js')($, wsl);
-			wsm.onmessage = wsmMessage.onMessageHospital;
+			const wsmMessageHospital = require('./websocketmessage.js')($, wsl);
+			wsm.onmessage = wsmMessageHospital.onMessageHospital;
 		} else if (usertype == 4) {
-			let wsmMessage = require('../../radio/mod/websocketmessage.js')($);
-			wsm.onmessage = wsmMessage.onMessageRadio;
+			const wsmMessageRedio = require('../../radio/mod/websocketmessage.js')($);
+			wsm.onmessage = wsmMessageRedio.onMessageRadio;
 		}
-		
+
 	  wsm.onclose = function(event) {
 			//console.log("Master WebSocket is closed now. with  event:=> ", event);
 		};
@@ -4592,8 +4610,10 @@ module.exports = function ( jq, wsLocal ) {
         wsl.send(JSON.stringify(message));
         $.notify('The system will be start store dicom to your local.', "success");
       }
+		} else if (data.type == 'refresh') {
+			console.log('refresh', data);
     } else if (data.type == 'notify') {
-      $.notify(data.message, "warnning");
+      $.notify(data.message, "info");
     } else if (data.type == 'exec') {
       if (wsl) {
         wsl.send(JSON.stringify(data));
@@ -15534,8 +15554,11 @@ module.exports = function ( jq ) {
     }
     if (data.type == 'test') {
       $.notify(data.message, "success");
+		} else if (data.type == 'refresh') {
+			console.log('resfresh', data);
     } else if (data.type == 'notify') {
-      $.notify(data.message, "warnning");
+			console.log('notify', data);
+      $.notify(data.message, "info");
     } else if (data.type == 'callzoom') {
       let eventName = 'callzoominterrupt';
       let callData = {openurl: data.openurl, password: data.password, topic: data.topic, sender: data.sender};
