@@ -390,18 +390,23 @@ module.exports = function ( jq ) {
   const apiconnector = require('./apiconnect.js')($);
 
 	const caseReadWaitStatus = [1];
-	const caseResultWaitStatus = [2];
+	const caseResultWaitStatus = [2, 8, 9];
 	const caseNegativeStatus = [3,4,7];
 	const caseReadSuccessStatus = [5];
 	const caseAllStatus = [1,2,3,4,5,6,7];
 	const allCaseStatus = [
-		{value: 1, DisplayText: 'เคสใหม่ (รอหมอตอบรับ)'},
-		{value: 2, DisplayText: 'หมอตอบรับแล้ว่ (รอผลอ่าน)'},
+		{value: 1, DisplayText: 'เคสใหม่'},
+		{value: 2, DisplayText: 'หมอตอบรับแล้ว่ '},
 		{value: 3, DisplayText: 'หมอไม่ตอบรับ'},
-		{value: 4, DisplayText: 'หมดอายุตามความเร่งด่วน'},
+		{value: 4, DisplayText: 'หมดอายุ'},
 		{value: 5, DisplayText: 'ได้ผลอ่านแล้ว'},
 		{value: 6, DisplayText: 'ปิดเคสไปแล้ว'},
 		{value: 7, DisplayText: 'เคสถูกยกเลิก'},
+		{value: 8, DisplayText: 'หมอเปิดอ่านแล้ว'},
+		{value: 9, DisplayText: 'หมอเริ่มพิมพ์ผล'},
+		{value: 10, DisplayText: 'เจ้าของเคสดูผลแล้ว'},
+		{value: 11, DisplayText: 'เจ้าของเคสพิมพ์ผลแล้ว'},
+		{value: 12, DisplayText: 'มีการแก้ไขผลอ่าน'}
 	];
 
   const doCallApi = function(url, rqParams) {
@@ -778,6 +783,7 @@ module.exports = function ( jq ) {
 		doDisplayCustomUrgentResult,
 		doFormatDateTimeCaseCreated,
 		formatNumberWithCommas,
+		getPatientFullNameEN,
 		doRenderScanpartSelectedBox,
 		doRenderScanpartSelectedAbs,
 		doExtractList
@@ -1408,7 +1414,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"../../radio/mod/websocketmessage.js":12,"./websocketmessage.js":6}],6:[function(require,module,exports){
+},{"../../radio/mod/websocketmessage.js":13,"./websocketmessage.js":6}],6:[function(require,module,exports){
 /* websocketmessage.js */
 module.exports = function ( jq, wsLocal ) {
 	const $ = jq;
@@ -1514,6 +1520,7 @@ const welcome = require('./mod/welcomelib.js')($);
 const newcase = require('./mod/newcaselib.js')($);
 const acccase = require('./mod/acccaselib.js')($);
 const searchcase = require('./mod/searchcaselib.js')($);
+const opencase = require('./mod/opencase.js')($);
 
 var noti, wsm;
 
@@ -1583,7 +1590,6 @@ function doLogin(){
         localStorage.setItem('userdata', JSON.stringify(response.data));
 				localStorage.setItem('defualsettings', JSON.stringify(defualtSettings));
         let radioConfigs = await doLoadRadioConfigApi(response.data.id);
-        console.log(radioConfigs);
         localStorage.setItem('userconfigs', JSON.stringify(radioConfigs));
 				doLoadMainPage();
 			}
@@ -1643,17 +1649,20 @@ function doLoadMainPage(){
   $('body').loading({overlay: $("#overlay"), stoppable: true});
 
 	$('body').on('loading.start', function(event, loadingObj) {
-	  console.log('=== loading show ===');
+	  //console.log('=== loading show ===');
 	});
 
 	$('body').on('loading.stop', function(event, loadingObj) {
-	  console.log('=== loading hide ===');
+	  //console.log('=== loading hide ===');
 	});
 
   document.addEventListener("triggercounter", welcome.onCaseChangeStatusTrigger);
+  document.addEventListener("callzoominterrupt", welcome.doInterruptZoomCallEvt);
 
   let userdata = JSON.parse(doGetUserData());
   console.log(userdata);
+  let radioConfigs = JSON.parse(doGetUserConfigs());
+  console.log(radioConfigs);
 
 	$('#app').load('form/main.html', function(){
 		$('#Menu').load('form/menu.html', function(){
@@ -1701,7 +1710,11 @@ function doLoadMainPage(){
         }
       });
       $(document).on('opencase', async (evt, data)=>{
-        console.log(data);
+        let opencaseTitlePage = acccase.doCreateAccCaseTitlePage();
+        $(".mainfull").empty().append($(opencaseTitlePage));
+        let opencasePage = await opencase.doCreateOpenCasePage(data.caseId);
+        $(".mainfull").append($(opencasePage));
+
       });
 
       $(document).on('defualsettingschange', (evt, data)=>{
@@ -1745,6 +1758,10 @@ function doGetUserData(){
   return localStorage.getItem('userdata');
 }
 
+function doGetUserConfigs(){
+  return localStorage.getItem('userconfigs');
+}
+
 function doGetUserItemPerPage(){
 	let userDefualtSetting = JSON.parse(localStorage.getItem('defualsettings'));
   return userDefualtSetting.itemperpage;
@@ -1757,11 +1774,12 @@ function doGetWsm(){
 module.exports = {
   doGetToken,
   doGetUserData,
+  doGetUserConfigs,
 	doGetUserItemPerPage,
 	doGetWsm
 }
 
-},{"../case/mod/apiconnect.js":1,"../case/mod/commonlib.js":2,"../case/mod/userinfolib.js":3,"../case/mod/userprofilelib.js":4,"../case/mod/utilmod.js":5,"./mod/acccaselib.js":8,"./mod/newcaselib.js":9,"./mod/searchcaselib.js":11,"./mod/welcomelib.js":13,"jquery":14}],8:[function(require,module,exports){
+},{"../case/mod/apiconnect.js":1,"../case/mod/commonlib.js":2,"../case/mod/userinfolib.js":3,"../case/mod/userprofilelib.js":4,"../case/mod/utilmod.js":5,"./mod/acccaselib.js":8,"./mod/newcaselib.js":9,"./mod/opencase.js":11,"./mod/searchcaselib.js":12,"./mod/welcomelib.js":14,"jquery":15}],8:[function(require,module,exports){
 /* acccaselib.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -1830,14 +1848,24 @@ module.exports = function ( jq ) {
     let userdata = JSON.parse(main.doGetUserData());
     let caseCmdBox = $('<div style="text-align: center; padding: 4px;"></div>');
     let openCmd = $('<div>อ่านผล</div>');
-    $(openCmd).css({'display': 'inline-block', 'margin': '3px', 'padding': '5px 12px', 'border-radius': '12px', 'cursor': 'pointer', 'background-color' : 'green', 'color': 'white'});
+    $(openCmd).css({'display': 'inline-block', 'margin': '3px', 'padding': '5px 12px', 'border-radius': '12px', 'cursor': 'pointer', 'color': 'white'});
+		if (caseItem.casestatusId == 2) {
+			$(openCmd).css({'background-color' : 'orange'});
+		} else {
+			$(openCmd).css({'background-color' : 'green'});
+		}
     $(openCmd).on('click', async (evt)=>{
-      let response = await common.doUpdateCaseStatus(caseItem.case.id, 2, 'Radiologist Open accepted case by Web App')
-			if (response.status.code == 200) {
-	      let eventData = {caseId: caseItem.case.id};
-	      $(openCmd).trigger('opencase', [eventData]);
+			if (caseItem.casestatusId == 2) {
+	      let response = await common.doUpdateCaseStatus(caseItem.id, 8, 'Radiologist Open accepted case by Web App');
+				if (response.status.code == 200) {
+		      let eventData = {caseId: caseItem.id};
+		      $(openCmd).trigger('opencase', [eventData]);
+				} else {
+					alert('เกิดข้อผิดพลาด ไม่สามารถอัพเดทสถานะเคสได้ในขณะนี้');
+				}
 			} else {
-				alert('เกิดข้อผิดพลาด ไม่สามารถอัพเดทสถานะเคสได้ในขณะนี้');
+				let eventData = {caseId: caseItem.id};
+	      $(openCmd).trigger('opencase', [eventData]);
 			}
     });
     $(caseCmdBox).append($(openCmd));
@@ -1847,24 +1875,24 @@ module.exports = function ( jq ) {
 
   const doCreateCaseItemRow = function(caseItem) {
     return new Promise(async function(resolve, reject) {
-      let caseTask = await common.doCallApi('/api/tasks/select/'+ caseItem.case.id, {});
-			let caseDate = util.formatDateTimeStr(caseItem.case.createdAt);
+      let caseTask = await common.doCallApi('/api/tasks/select/'+ caseItem.id, {});
+			let caseDate = util.formatDateTimeStr(caseItem.createdAt);
 			let casedatetime = caseDate.split('T');
 			let casedateSegment = casedatetime[0].split('-');
 			casedateSegment = casedateSegment.join('');
 			let casedate = util.formatStudyDate(casedateSegment);
 			let casetime = util.formatStudyTime(casedatetime[1].split(':').join(''));
-			let patientName = caseItem.case.patient.Patient_NameEN/* + caseItem.case.patient.Patient_NameTH*/;
-			let patientSA = caseItem.case.patient.Patient_Sex + '/' + caseItem.case.patient.Patient_Age;
-			let patientHN = caseItem.case.patient.Patient_HN;
-			let caseScanparts = caseItem.case.Case_ScanPart;
+			let patientName = caseItem.patient.Patient_NameEN/* + caseItem.patient.Patient_NameTH*/;
+			let patientSA = caseItem.patient.Patient_Sex + '/' + caseItem.patient.Patient_Age;
+			let patientHN = caseItem.patient.Patient_HN;
+			let caseScanparts = caseItem.Case_ScanPart;
 			let yourSelectScanpartContent = $('<div></div>');
 			if ((caseScanparts) && (caseScanparts.length > 0)) {
 				yourSelectScanpartContent = await common.doRenderScanpartSelectedAbs(caseScanparts);
 			}
-			let caseUG = caseItem.case.urgenttype.UGType_Name;
-      let caseHosName = caseItem.case.hospital.Hos_Name;
-      let caseSTA = caseItem.case.casestatus.CS_Name_EN;
+			let caseUG = caseItem.urgenttype.UGType_Name;
+      let caseHosName = caseItem.hospital.Hos_Name;
+      let caseSTA = caseItem.casestatus.CS_Name_EN;
 
 			let caseCMD = doCreateCaseItemCommand(caseItem);
 
@@ -1944,7 +1972,6 @@ module.exports = function ( jq ) {
     return new Promise(async function(resolve, reject) {
       $('body').loading('start');
       let myAccCase = await doCallMyAccCase();
-      console.log(myAccCase);
       let myAccCaseView = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
       let caseHearder = doCreateHeaderRow();
       $(myAccCaseView).append($(caseHearder));
@@ -2040,7 +2067,7 @@ module.exports = function ( jq ) {
     let acceptCmd = $('<div>Accept</div>');
     $(acceptCmd).css({'display': 'inline-block', 'margin': '3px', 'padding': '1px 5px', 'border-radius': '12px', 'cursor': 'pointer', 'background-color' : 'green', 'color': 'white'});
     $(acceptCmd).on('click', async (evt)=>{
-      let response = await common.doUpdateCaseStatus(caseItem.case.id, 2, 'Radiologist Accept case by Web App')
+      let response = await common.doUpdateCaseStatus(caseItem.id, 2, 'Radiologist Accept case by Web App')
 			if (response.status.code == 200) {
 				$('#NewCaseCmd').click();
 			} else {
@@ -2052,7 +2079,7 @@ module.exports = function ( jq ) {
     let notAacceptCmd = $('<div>Reject</div>');
     $(notAacceptCmd).css({'display': 'inline-block', 'margin': '3px', 'padding': '1px 5px', 'border-radius': '12px', 'cursor': 'pointer', 'background-color' : 'red', 'color': 'white'});
     $(notAacceptCmd).on('click', async (evt)=>{
-      let response = await common.doUpdateCaseStatus(caseItem.case.id, 3, 'Radiologist Reject case by Web App')
+      let response = await common.doUpdateCaseStatus(caseItem.id, 3, 'Radiologist Reject case by Web App')
 			if (response.status.code == 200) {
 				$('#NewCaseCmd').click();
 			} else {
@@ -2066,24 +2093,24 @@ module.exports = function ( jq ) {
 
   const doCreateCaseItemRow = function(caseItem) {
     return new Promise(async function(resolve, reject) {
-      let caseTask = await common.doCallApi('/api/tasks/select/'+ caseItem.case.id, {});
-			let caseDate = util.formatDateTimeStr(caseItem.case.createdAt);
+      let caseTask = await common.doCallApi('/api/tasks/select/'+ caseItem.id, {});
+			let caseDate = util.formatDateTimeStr(caseItem.createdAt);
 			let casedatetime = caseDate.split('T');
 			let casedateSegment = casedatetime[0].split('-');
 			casedateSegment = casedateSegment.join('');
 			let casedate = util.formatStudyDate(casedateSegment);
 			let casetime = util.formatStudyTime(casedatetime[1].split(':').join(''));
 
-			let patientName = caseItem.case.patient.Patient_NameEN/* + caseItem.case.patient.Patient_NameTH*/;
-			let patientSA = caseItem.case.patient.Patient_Sex + '/' + caseItem.case.patient.Patient_Age;
-			let patientHN = caseItem.case.patient.Patient_HN;
-			let caseScanparts = caseItem.case.Case_ScanPart;
+			let patientName = caseItem.patient.Patient_NameEN/* + caseItem.patient.Patient_NameTH*/;
+			let patientSA = caseItem.patient.Patient_Sex + '/' + caseItem.patient.Patient_Age;
+			let patientHN = caseItem.patient.Patient_HN;
+			let caseScanparts = caseItem.Case_ScanPart;
 			let yourSelectScanpartContent = $('<div></div>');
 			if ((caseScanparts) && (caseScanparts.length > 0)) {
 				yourSelectScanpartContent = await common.doRenderScanpartSelectedAbs(caseScanparts);
 			}
-			let caseUG = caseItem.case.urgenttype.UGType_Name;
-      let caseHosName = caseItem.case.hospital.Hos_Name;
+			let caseUG = caseItem.urgenttype.UGType_Name;
+      let caseHosName = caseItem.hospital.Hos_Name;
 
 			let caseCMD = doCreateCaseItemCommand(caseItem);
 
@@ -2256,6 +2283,243 @@ module.exports = function ( jq, newstatusCases, accstatusCases ) {
 }
 
 },{}],11:[function(require,module,exports){
+/* opencase.js */
+module.exports = function ( jq ) {
+	const $ = jq;
+
+	const apiconnector = require('../../case/mod/apiconnect.js')($);
+  const util = require('../../case/mod/utilmod.js')($);
+  const common = require('../../case/mod/commonlib.js')($);
+
+  const onDownloadCmdClick = function(evt) {
+    $('body').loading('start');
+		const main = require('../main.js');
+		const userdata = JSON.parse(main.doGetUserData());
+    const downloadCmd = $(evt.currentTarget);
+    const downloadData = $(downloadCmd).data('downloadData');
+  	apiconnector.doCallDownloadDicom(downloadData.studyID, userdata.username).then(async (response) => {
+      var patientFullNameEN = await getPatientFullNameEN(downloadData.patientId);
+      patientFullNameEN.split(' ').join('_');
+      let caseDate = util.formatDateTimeStr(downloadData.caseDate);
+			let casedatetime = caseDate.split('T');
+			let casedateSegment = casedatetime[0].split('-');
+			casedateSegment = casedateSegment.join('');
+      var dicomFilename = patientNameEN + '-' + casedateSegment + '.zip';
+			var pom = document.createElement('a');
+			pom.setAttribute('href', response.archive.link);
+			pom.setAttribute('download', dicomFilename);
+			pom.click();
+			$('body').loading('stop');
+  	})
+  }
+
+  const onOpenStoneWebViewerCmdClick = function(evt) {
+    const openCmd = $(evt.currentTarget);
+    const openData = $(openCmd).data('openData');
+    common.doOpenStoneWebViewer(openData.studyInstanceUID);
+  }
+
+  const onOpenThirdPartyCmdClick = function(evt) {
+    console.log(evt);
+  }
+
+  const onOpenLastResultCmdClick = function(evt) {
+    console.log(evt);
+  }
+
+  const onTemplateSelectorChange = function(evt) {
+    return new Promise(async function(resolve, reject) {
+      let templateId = $('#TemplateSelector').val();
+      let result = await doLoadTemplate(templateId);
+      if ((result.Record) && (result.Record.length > 0)) {
+        $('#SimpleEditor').jqteVal(result.Record[0].Content);
+        resolve(result.Record[0].Content);
+      } else {
+        resolve('');
+      }
+    });
+  }
+
+  const doOpenHR = function(link){
+    window.open(link, '_blank');
+  }
+
+  const doRenderPatientHR = function(hrlinks) {
+    return new Promise(async function(resolve, reject) {
+      let hrBox = $('<div></div>');
+      await hrlinks.forEach((item, i) => {
+        let hsImage = new Image();
+        hsImage.src = item.link;
+        $(hsImage).css({"width": "40px", "height": "auto", "border": "1px solid white", "cursor": "pointer"});
+        $(hsImage).on("click", function(evt){
+          doOpenHR(item.link);
+    		});
+        $(hsImage).appendTo($(hrBox));
+      });
+      resolve($(hrBox));
+    });
+  }
+
+  const doCreateSummaryDetailCase = function(caseOpen){
+    return new Promise(async function(resolve, reject) {
+      let jqtePluginStyleUrl = '../../lib/jqte/jquery-te-1.4.0.css';
+			$('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
+			let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
+			$('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
+
+      const main = require('../main.js');
+      const userdata = JSON.parse(main.doGetUserData());
+      const pageLineStyle = {'border': '2px solid blue', /*'border-radius': '10px',*/ 'background-color': 'grey', 'margin-top': '4px', 'padding': '2px'};
+      const yourTemplates = await doLoadTemplateList(userdata.id);
+      let summary = $('<div></div>');
+      let summaryFirstLine = $('<div></div>');
+      $(summaryFirstLine).append($('<span><b>HN:</b> </span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.patient.Patient_HN + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>Name:</b> </span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.patient.Patient_NameEN + ' ' + caseOpen.case.patient.Patient_LastNameEN + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>Age/sex:</b> </span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.patient.Patient_Age + '/' + caseOpen.case.patient.Patient_Sex + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>Body Part:</b> </span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.Case_BodyPart + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>โรงพยาบาล:</b> </span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.hospital.Hos_Name + '</span>'));
+      $(summaryFirstLine).css(pageLineStyle);
+      $(summaryFirstLine).appendTo($(summary));
+
+      let summarySecondLine = $('<div></div>');
+      let downloadCmd = $('<input type="button" value=" Download "/>');
+      let downloadData = {patientId: caseOpen.case.patient.id, studyID: caseOpen.case.Case_OrthancStudyID, caseDate: caseOpen.case.createdAt};
+      $(downloadCmd).data('downloadData', downloadData);
+      $(downloadCmd).on('click', onDownloadCmdClick);
+      $(downloadCmd).appendTo($(summarySecondLine))
+      $(summarySecondLine).append($('<span>  </span>'));
+
+      let openStoneWebViewerCmd = $('<input type="button" value=" Open "/>');
+      let openData = {studyInstanceUID: caseOpen.case.Case_StudyInstanceUID};
+      $(openStoneWebViewerCmd).data('openData', openData);
+      $(openStoneWebViewerCmd).on('click', onOpenStoneWebViewerCmdClick);
+      $(openStoneWebViewerCmd).appendTo($(summarySecondLine));
+      $(summarySecondLine).append($('<span>  </span>'));
+
+      let openThirdPartyCmd = $('<input type="button" value=" Open (3rd Party)"/>');
+      $(openThirdPartyCmd).on('click', onOpenThirdPartyCmdClick);
+      $(openThirdPartyCmd).appendTo($(summarySecondLine));
+      $(summarySecondLine).append($('<span>  </span>'));
+
+      let openLastResultCmd = $('<input type="button" value=" ผลอ่านครั้งก่อน "/>');
+      $(openLastResultCmd).on('click', onOpenLastResultCmdClick);
+      $(openLastResultCmd).appendTo($(summarySecondLine))
+
+      if ((caseOpen.case.Case_PatientHRLink) && (caseOpen.case.Case_PatientHRLink.length > 0)) {
+        $(summarySecondLine).append($('<span>  </span>'));
+        let patientHRBox = await doRenderPatientHR(caseOpen.case.Case_PatientHRLink);
+        $(summarySecondLine).append($(patientHRBox));
+      }
+
+      $(summarySecondLine).css(pageLineStyle);
+      $(summarySecondLine).appendTo($(summary));
+
+      let summaryThirdLine = $('<div></div>');
+      $(summaryThirdLine).append($('<span><b>Templat:</b> </span>'));
+      let templateSelector = $('<select id="TemplateSelector"></select>');
+      if (yourTemplates.Options.length > 0) {
+        yourTemplates.Options.forEach((item, i) => {
+          $(templateSelector).append('<option value="' + item.Value + '">' + item.DisplayText + '</option>');
+        });
+      }
+      $(templateSelector).on('change', onTemplateSelectorChange);
+      $(templateSelector).appendTo($(summaryThirdLine));
+      $(summaryThirdLine).css(pageLineStyle);
+      $(summaryThirdLine).appendTo($(summary));
+
+      let simpleEditorBox = $('<div></div>');
+      let simpleEditor = $('<input type="text" id="SimpleEditor"/>');
+      $(simpleEditor).css({ 'min-height': '350px' });
+      $(simpleEditor).appendTo($(simpleEditorBox));
+      $(simpleEditor).jqte();
+      $(simpleEditorBox).appendTo($(summary));
+      resolve($(summary));
+    });
+  }
+
+  const doCallMyOpenCase = function(caseId){
+    return new Promise(async function(resolve, reject) {
+      const main = require('../main.js');
+			let userdata = JSON.parse(main.doGetUserData());
+			let userId = userdata.id;
+			let rqParams = {userId: userId};
+			let apiUrl = '/api/cases/select/' + caseId;
+			try {
+				let response = await common.doCallApi(apiUrl, rqParams);
+        resolve(response);
+			} catch(e) {
+	      reject(e);
+    	}
+    });
+  }
+
+  const doLoadTemplateList = function(radioId) {
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/template/options/' + radioId;
+			var params = {};
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+				reject(err);
+			})
+		});
+	}
+
+  const doLoadTemplate = function(templateId) {
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/template/select/' + templateId;
+			var params = {};
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+				reject(err);
+			})
+		});
+	}
+
+  const doCreateOpenCasePage = function(caseId) {
+    return new Promise(async function(resolve, reject) {
+      $('body').loading('start');
+      let myOpenCase = await doCallMyOpenCase(caseId);
+      let myOpenCaseView = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+      if (myOpenCase.Records.length > 0) {
+        let caseOpen = myOpenCase.Records[0];
+        let caseSummaryDetail = await doCreateSummaryDetailCase(caseOpen);
+        $(myOpenCaseView).append($(caseSummaryDetail));
+        $(caseSummaryDetail).find('#TemplateSelector').change();
+      } else {
+        let notFoundMessage = $('<h3>เกิดข้อผิดพลาด ไม่พบรายการเคสที่คุณเลือกในขณะนี้</h3>')
+        $(myOpenCaseView).append($(notFoundMessage));
+      }
+      resolve($(myOpenCaseView));
+      $('body').loading('stop');
+    });
+  }
+
+  return {
+    onDownloadCmdClick,
+    onOpenStoneWebViewerCmdClick,
+    onOpenThirdPartyCmdClick,
+    onOpenLastResultCmdClick,
+    onTemplateSelectorChange,
+    doOpenHR,
+    doRenderPatientHR,
+    doCreateSummaryDetailCase,
+    doCallMyOpenCase,
+    doLoadTemplateList,
+    doLoadTemplate,
+    doCreateOpenCasePage
+	}
+}
+
+},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../../case/mod/utilmod.js":5,"../main.js":7}],12:[function(require,module,exports){
 /* searchcaselib.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -2651,7 +2915,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../../case/mod/utilmod.js":5,"../main.js":7}],12:[function(require,module,exports){
+},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../../case/mod/utilmod.js":5,"../main.js":7}],13:[function(require,module,exports){
 /* websocketmessage.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -2698,7 +2962,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 /* welcomelib.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -2783,9 +3047,9 @@ module.exports = function ( jq ) {
 		return new Promise(async function(resolve, reject) {
 			let loadUrl = '/api/cases/load/list/by/status/radio';
 			let rqParams = {userId: userId};
-			rqParams.casestatusId = 1;
+			rqParams.casestatusIds = [1];
 			let newList = await common.doCallApi(loadUrl, rqParams);
-			rqParams.casestatusId = 2;
+			rqParams.casestatusIds = [2, 8, 9];
 			let accList = await common.doCallApi(loadUrl, rqParams);
 			resolve({newList, accList});
 		});
@@ -2809,8 +3073,30 @@ module.exports = function ( jq ) {
 			$('body').loading('stop');
 		});
 	}
-
 	/** Case Vent Counter **/
+
+	/** Zoom Calle Event **/
+	const doInterruptZoomCallEvt = function(evt) {
+		$('body').loading('start');
+		const main = require('../main.js');
+		let userConfirm = confirm('คุณมีสายเรียกเข้าเพื่อ Conference ทาง Zoom\nคลิก ตกลง หรือ OK เพื่อรับสายและเปิด Zoom Conference หรือ คลิก ยกเลิก หรือ Cancel เพื่อปฏิเสธการรับสาย');
+		let myWsm = main.doGetWsm();
+		if (userConfirm) {
+			let callData = evt.detail.data;
+			alert('Password ในการเข้าร่วม Conference ของคุณคิอ ' + callData.password + '\n');
+			window.open(callData.openurl, '_blank');
+			//Say yes back to caller
+			let callZoomMsg = {type: 'callzoomback', sendTo: callData.sender, result: 1};
+			myWsm.send(JSON.stringify(callZoomMsg));
+			$('body').loading('stop');
+		} else {
+			//Say no back to caller
+			let callZoomMsg = {type: 'callzoomback', sendTo: callData.sender, result: 0};
+			myWsm.send(JSON.stringify(callZoomMsg));
+			$('body').loading('stop');
+		}
+	}
+
   return {
 		newstatusCases,
 	  accstatusCases,
@@ -2821,7 +3107,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../main.js":7,"./onrefreshtrigger.js":10}],14:[function(require,module,exports){
+},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../main.js":7,"./onrefreshtrigger.js":10}],15:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.5.1
  * https://jquery.com/

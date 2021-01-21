@@ -139,11 +139,11 @@ function doLoadMainPage(){
   $('body').loading({overlay: $("#overlay"), stoppable: true});
 
 	$('body').on('loading.start', function(event, loadingObj) {
-	  console.log('=== loading show ===');
+	  //console.log('=== loading show ===');
 	});
 
 	$('body').on('loading.stop', function(event, loadingObj) {
-	  console.log('=== loading hide ===');
+	  //console.log('=== loading hide ===');
 	});
   $('#HistoryDialogBox').dialog({
     modal: true, autoOpen: false, width: 350, resizable: false, title: 'ประวัติผู้ป่วย'
@@ -151,9 +151,25 @@ function doLoadMainPage(){
 
   let userdata = JSON.parse(doGetUserData());
 	//console.log(userdata);
-	$('#app').load('form/main-fix.html', function(){
 
-		$('#Menu').load('form/menu-fix.html', function(){
+  let isMobile = false;
+
+  if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|ipad|iris|kindle|Android|Silk|lge |maemo|midp|mmp|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino/i.test(navigator.userAgent)
+      || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(navigator.userAgent.substr(0,4))) {
+      isMobile = true;
+  }
+  let mainFile, menufile;
+  if (isMobile) {
+    mainFile= 'form/main.html';
+    menuFile = 'form/menu.html';
+  } else {
+    mainFile= 'form/main-fix.html';
+    menuFile = 'form/menu-fix.html';
+  }
+
+	$('#app').load(mainFile, function(){
+		$('#Menu').load(menuFile, function(){
+
 			$(document).on('openedituserinfo', (evt, data)=>{
 				userinfo.doShowUserProfile();
 			});
@@ -1282,7 +1298,7 @@ module.exports = function ( jq ) {
 				$(downlodDicomButton).click(function() {
 					let patientNameEN = incidents[i].case.patient.Patient_NameEN;
 					let savefile = patientNameEN + '-' + casedateSegment + '.zip';
-					doDownloadDicom(incidents[i].case.Case_OrthancStudyID, savefile);
+					common.doDownloadDicom(incidents[i].case.Case_OrthancStudyID, savefile);
 				});
 				$(downlodDicomButton).appendTo($(operationCmdBox));
 
@@ -1944,18 +1960,23 @@ module.exports = function ( jq ) {
   const apiconnector = require('./apiconnect.js')($);
 
 	const caseReadWaitStatus = [1];
-	const caseResultWaitStatus = [2];
+	const caseResultWaitStatus = [2, 8, 9];
 	const caseNegativeStatus = [3,4,7];
 	const caseReadSuccessStatus = [5];
 	const caseAllStatus = [1,2,3,4,5,6,7];
 	const allCaseStatus = [
-		{value: 1, DisplayText: 'เคสใหม่ (รอหมอตอบรับ)'},
-		{value: 2, DisplayText: 'หมอตอบรับแล้ว่ (รอผลอ่าน)'},
+		{value: 1, DisplayText: 'เคสใหม่'},
+		{value: 2, DisplayText: 'หมอตอบรับแล้ว่ '},
 		{value: 3, DisplayText: 'หมอไม่ตอบรับ'},
-		{value: 4, DisplayText: 'หมดอายุตามความเร่งด่วน'},
+		{value: 4, DisplayText: 'หมดอายุ'},
 		{value: 5, DisplayText: 'ได้ผลอ่านแล้ว'},
 		{value: 6, DisplayText: 'ปิดเคสไปแล้ว'},
 		{value: 7, DisplayText: 'เคสถูกยกเลิก'},
+		{value: 8, DisplayText: 'หมอเปิดอ่านแล้ว'},
+		{value: 9, DisplayText: 'หมอเริ่มพิมพ์ผล'},
+		{value: 10, DisplayText: 'เจ้าของเคสดูผลแล้ว'},
+		{value: 11, DisplayText: 'เจ้าของเคสพิมพ์ผลแล้ว'},
+		{value: 12, DisplayText: 'มีการแก้ไขผลอ่าน'}
 	];
 
   const doCallApi = function(url, rqParams) {
@@ -2332,6 +2353,7 @@ module.exports = function ( jq ) {
 		doDisplayCustomUrgentResult,
 		doFormatDateTimeCaseCreated,
 		formatNumberWithCommas,
+		getPatientFullNameEN,
 		doRenderScanpartSelectedBox,
 		doRenderScanpartSelectedAbs,
 		doExtractList
@@ -4400,73 +4422,6 @@ module.exports = function ( jq ) {
 		wsm.onopen = function () {
 			//console.log('Master Websocket is connected to the signaling server')
 		};
-
-		/*
-		wsm.onmessage = function (msgEvt) {
-	    let data = JSON.parse(msgEvt.data);
-	    console.log(data);
-			if (data.type !== 'test') {
-				let masterNotify = localStorage.getItem('masternotify');
-		    let MasterNotify = JSON.parse(masterNotify);
-				if (MasterNotify) {
-		      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
-		    } else {
-		      MasterNotify = [];
-		      MasterNotify.push({notify: data, datetime: new Date(), status: 'new'});
-		    }
-		    localStorage.setItem('masternotify', JSON.stringify(MasterNotify));
-			}
-	    if (data.type == 'test') {
-	      $.notify(data.message, "success");
-	    } else if (data.type == 'trigger') {
-				if (wsl) {
-		      let message = {type: 'trigger', dcmname: data.dcmname, StudyInstanceUID: data.studyInstanceUID, owner: data.ownere, hostname: data.hostname};
-		      wsl.send(JSON.stringify(message));
-		      $.notify('The system will be start store dicom to your local.', "success");
-				}
-	    } else if (data.type == 'notify') {
-	      $.notify(data.message, "warnning");
-			} else if (data.type == 'exec') {
-				if (wsl) {
-					wsl.send(JSON.stringify(data));
-				}
-			} else if (data.type == 'cfindresult') {
-				let evtData = { result: data.result, owner: data.owner, hospitalId: data.hospitalId, queryPath: data.queryPath};
-				$("#RemoteDicom").trigger('cfindresult', [evtData]);
-			} else if (data.type == 'move') {
-				if (wsl) {
-					wsl.send(JSON.stringify(data));
-				}
-			} else if (data.type == 'cmoveresult') {
-				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId, patientID: data.patientID};
-				setTimeout(()=>{
-					$("#RemoteDicom").trigger('cmoveresult', [evtData]);
-				}, 5000);
-			} else if (data.type == 'run') {
-				if (wsl) {
-					wsl.send(JSON.stringify(data));
-				}
-			} else if (data.type == 'runresult') {
-				//$('#RemoteDicom').dispatchEvent(new CustomEvent("runresult", {detail: { data: data.result, owner: data.owner, hospitalId: data.hospitalId }}));
-				let evtData = { data: data.result, owner: data.owner, hospitalId: data.hospitalId };
-				$("#RemoteDicom").trigger('runresult', [evtData]);
-			} else if (data.type == 'refresh') {
-				let event = new CustomEvent(data.section, {"detail": {eventname: data.section, stausId: data.statusId, caseId: data.caseId}});
-				document.dispatchEvent(event);
-			} else if (data.type == 'callzoom') {
-				let eventName = 'callzoominterrupt';
-				let callData = {openurl: data.openurl, password: data.password, topic: data.topic, sender: data.sender};
-				let event = new CustomEvent(eventName, {"detail": {eventname: eventName, data: callData}});
-				document.dispatchEvent(event);
-			} else if (data.type == 'callzoomback') {
-				let eventName = 'stopzoominterrupt';
-				let evtData = {result: data.result};
-				let event = new CustomEvent(eventName, {"detail": {eventname: eventName, data: evtData}});
-				document.dispatchEvent(event);
-			}
-	  };
-		*/
-
 
 		console.log(usertype);
 
@@ -15555,10 +15510,13 @@ module.exports = function ( jq ) {
     if (data.type == 'test') {
       $.notify(data.message, "success");
 		} else if (data.type == 'refresh') {
-			console.log('resfresh', data);
+			let eventName = 'triggercounter'
+			let triggerData = {caseId : data.caseId, statusId: data.statusId};
+			let event = new CustomEvent(eventName, {"detail": {eventname: eventName, data: triggerData}});
+			document.dispatchEvent(event);
+
     } else if (data.type == 'notify') {
-			console.log('notify', data);
-      $.notify(data.message, "info");
+			$.notify(data.message, "info");
     } else if (data.type == 'callzoom') {
       let eventName = 'callzoominterrupt';
       let callData = {openurl: data.openurl, password: data.password, topic: data.topic, sender: data.sender};

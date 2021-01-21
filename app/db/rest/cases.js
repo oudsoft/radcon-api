@@ -111,7 +111,6 @@ app.post('/filter/hospital', (req, res) => {
   }
 });
 
-
 //Filter By radio API
 app.post('/filter/radio', (req, res) => {
   let token = req.headers.authorization;
@@ -120,61 +119,68 @@ app.post('/filter/radio', (req, res) => {
       if (ur.length > 0){
         try {
           const statusId = req.body.statusId;
-          const filterDate = req.body.filterDate;
-          const raduserId = req.body.userId;
-          const userInclude = [{model: db.userinfoes, attributes: ['id', 'User_NameEN', 'User_LastNameEN', 'User_NameTH', 'User_LastNameTH', 'User_Hospitals']}];
-          const radusers = await db.users.findAll({include: userInclude, attributes: ['id', 'username'], where: {	id: raduserId}});
-          if (radusers[0].userinfo.User_Hospitals) {
-            const hospitals = JSON.parse(radusers[0].userinfo.User_Hospitals);
-            const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
-            const casesFormat = [];
-            const promiseList = new Promise(function(resolve, reject) {
-              hospitals.forEach(async (item, i) => {
-                let whereClous;
-                if (filterDate) {
-                  let startDate = new Date(filterDate.from);
-                  whereClous = {hospitalId: item.id, userId: raduserId, casestatusId: { [db.Op.in]: statusId }, createdAt: { [db.Op.gte]: startDate}};
-                } else {
-                  whereClous = {hospitalId: item.id, Case_RadiologistId: raduserId, casestatusId: { [db.Op.in]: statusId }}
-                }
-                const orderby = [['id', 'DESC']];
-                const cases = await Case.findAll({include: caseInclude, where: whereClous, order: orderby});
-                cases.forEach((cas, i) => {
-                  casesFormat.push(cas)
-                });
+          const radioId = req.body.userId;
+          const caseInclude = [{model: db.hospitals, attributes: ['id', 'Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}, {model: db.cliamerights, attributes: ['id', 'CR_Name']}];
+          const whereClous = {Case_RadiologistId: radioId, casestatusId: { [db.Op.in]: statusId } };
+          const orderby = [['id', 'DESC']];
+          const radioCases = await Case.findAll({include: caseInclude, where: whereClous, order: orderby});
+          /*
+          const promiseListRef = new Promise(async function(resolveRef, rejectRef) {
+            const finalCases = [];
+            await radioCases.forEach(async (item, i) => {
+              const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
+              const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
+              const ownerUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.userId}});
+              const owners = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: ownerUser[0].userinfoId}});
+              finalCases.push({case: item, reff: refes[0], owner: owners[0]});
+            });
+            setTimeout(()=> {
+              resolveRef(finalCases);
+            },1500);
+          });
+          Promise.all([promiseListRef]).then((ob)=> {
+            res.json({status: {code: 200}, Records: ob[0]});
+          });
+          */
+          res.json({status: {code: 200}, Records: radioCases});
+        } catch(error) {
+          log.error(error);
+          res.json({status: {code: 500}, error: error});
+        }
+      } else {
+        log.info('Can not found user from token.');
+        res.json({status: {code: 203}, error: 'Your token lost.'});
+      }
+    });
+  } else {
+    log.info('Authorization Wrong.');
+    res.json({status: {code: 400}, error: 'Your authorization wrong'});
+  }
+});
 
-              });
-              setTimeout(()=> {
-                resolve(casesFormat);
-              },1500);
-            });
-            Promise.all([promiseList]).then((ob)=> {
-              const finalCases = [];
-              const allCases = ob[0];
-              const promiseListRef = new Promise(function(resolve, reject) {
-                allCases.forEach(async (item, i) => {
-                  const refUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.Case_RefferalId}});
-                  const refes = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: refUser[0].userinfoId}});
-                  const ownerUser = await db.users.findAll({ attributes: ['userinfoId'], where: {id: item.userId}});
-                  const owners = await db.userinfoes.findAll({ attributes: ['id', 'User_NameTH', 'User_LastNameTH'], where: {id: ownerUser[0].userinfoId}});
-                  finalCases.push({case: item, reff: refes[0], owner: owners[0]});
-                });
-                setTimeout(()=> {
-                  resolve(finalCases);
-                },500);
-              });
-              Promise.all([promiseListRef]).then((obb)=> {
-                log.info('obb[0]=>' + JSON.stringify(obb[0]));
-                res.json({status: {code: 200}, Records: obb[0]});
-              }).catch((err)=>{
-                log.error('Error=>' + JSON.stringify(err));
-                res.json({status: {code: 500}, error: error});
-              });
-            }).catch((err)=>{
-              log.error('Error=>' + JSON.stringify(err));
-              res.json({status: {code: 500}, error: err});
-            });
+//Filter By patient API
+app.post('/filter/patient', (req, res) => {
+  let token = req.headers.authorization;
+  if (token) {
+    auth.doDecodeToken(token).then(async (ur) => {
+      if (ur.length > 0){
+        try {
+          const statusId = req.body.statusId;
+          const patientId = req.body.patientId;
+          const hospitalId = req.body.hospitalId;
+          const limit = req.body.limit;
+
+          const caseInclude = [{model: db.caseresponses, attributes: ['Response_Text']}];
+          const whereClous = {patientId: patientId, hospitalId: hospitalId, casestatusId: { [db.Op.in]: statusId } };
+          const orderby = [['id', 'DESC']];
+          let query = undefined;
+          if ((limit) && (limit > 0)) {
+            query = {limit: limit, attributes: ['id', 'createdAt', 'Case_BodyPart', 'Case_OrthancStudyID', 'Case_StudyInstanceUID', 'Case_PatientHRLink'], include: caseInclude, where: whereClous, order: orderby};
+          } else {
+            query = {attributes: ['id', 'createdAt', 'Case_BodyPart', 'Case_OrthancStudyID', 'Case_StudyInstanceUID'], include: caseInclude, where: whereClous, order: orderby};
           }
+          const patientCases = await Case.findAll(query);
+          res.json({status: {code: 200}, Records: patientCases});
         } catch(error) {
           log.error(error);
           res.json({status: {code: 500}, error: error});
@@ -198,7 +204,7 @@ app.post('/select/(:caseId)', (req, res) => {
       if (ur.length > 0){
         try {
           const caseId = req.params.caseId;
-          const caseInclude = [{model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}];
+          const caseInclude = [{model: db.hospitals, attributes: ['Hos_Name']}, {model: db.patients, attributes: excludeColumn}, {model: db.casestatuses, attributes: ['id', 'CS_Name_EN']}, {model: db.urgenttypes, attributes: ['id', 'UGType', 'UGType_Name']}];
           const cases = await Case.findAll({include: caseInclude, where: {id: caseId}});
           const casesFormat = [];
           const promiseList = new Promise(async function(resolve, reject) {
@@ -578,9 +584,9 @@ app.post('/load/list/by/status/radio', async (req, res) => {
   if (token) {
     auth.doDecodeToken(token).then(async (ur) => {
       if (ur.length > 0){
-        const casestatusId = req.body.casestatusId;
+        const casestatusIds = req.body.casestatusIds;
         const radioId = req.body.userId;
-        const youCcases = await Case.findAll({attributes: ['id'], where: {Case_RadiologistId: radioId, casestatusId: casestatusId}});
+        const youCcases = await Case.findAll({attributes: ['id'], where: {Case_RadiologistId: radioId, casestatusId: { [db.Op.in]: casestatusIds }}});
         res.json({status: {code: 200}, Records: youCcases});
       } else {
         log.info('Can not found user from token.');

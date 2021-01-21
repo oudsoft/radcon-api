@@ -18,16 +18,6 @@
         ภาพในระบบ
       </div>
     </div>
-    <!--
-    <div class="NavSubHide">
-      <div class="NavSub" id="FilterSettingSubCmd">
-        <div class="NavSubIconCell"></div>
-        <div class="NavSubTextCell">
-          Filter Setting
-        </div>
-      </div>
-    </div>
-    -->
     <div class="NavSubHide">
       <div class="NavSub NavRow">
         <div class="NavSubIconCell">
@@ -308,31 +298,41 @@
     </div>
     <div class="NavSubHide">
       <div class="NavSub" id="NewStatusSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/new-case-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           เคสใหม่
         </div>
       </div>
       <div class="NavSub" id="AcceptedStatusSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/case-accepted-icon-1.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           หมอตอบรับแล้ว(รอผลอ่าน)
         </div>
       </div>
       <div class="NavSub" id="SuccessStatusSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/case-accepted-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           ได้ผลอ่านแล้ว
         </div>
       </div>
       <div class="NavSub" id="NegativeStatusSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/fail-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           เคสไม่สมบูรณ์/รอคำสั่ง
         </div>
       </div>
       <div class="NavSub" id="SearchCaseSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/search-case-icon-2.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           ค้นหาเคส
         </div>
@@ -350,13 +350,17 @@
     </div>
     <div class="NavSubHide">
       <div class="NavSub" id="MessageReceivedSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/message-box-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           รับ
         </div>
       </div>
       <div class="NavSub" id="MessageSendSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/message-send-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           ส่ง
         </div>
@@ -373,19 +377,34 @@
     </div>
     <div class="NavSubHide">
       <div class="NavSub" id="ReportPetternSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/format-design-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           ตั้งค่ารูปแบบรายงานผลอ่าน
         </div>
       </div>
       <div class="NavSub" id="UrgentTypeSubCmd">
-        <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/clock-alarm-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           ตั้งค่า Urgent Type
         </div>
       </div>
-      <div class="NavSub" id="MessageConfigSubCmd">
+      <div class="NavSub" id="ScanpartAuxConfigSubCmd">
         <div class="NavSubIconCell"></div>
+        <div class="NavSubIconCell">
+          <img src="/images/item-list-icon.png" width="30px" height="auto"/>
+        </div>
+        <div class="NavSubTextCell">
+          ตั้งค่าจดจำ Scan Part
+        </div>
+      </div>    
+      <div class="NavSub" id="MessageConfigSubCmd">
+        <div class="NavSubIconCell">
+          <img src="/images/notify-icon.png" width="30px" height="auto"/>
+        </div>
         <div class="NavSubTextCell">
           ตั้งค่าการแจ้งเตือน
         </div>
@@ -399,6 +418,12 @@
 </div>
 
 <script>
+  $('.menu-tab').click((evt)=>{
+    console.log(evt);
+    $('.menu-tab').toggleClass('active');
+    $('.menu-hide').toggleClass('show');
+  });
+
   let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
   //console.log(yourUserdata);
   let yourToken = localStorage.getItem('token');
@@ -468,7 +493,11 @@
     $('.menu-tab').removeClass('active');
   });
 
-  $('#NavHeader').empty().append('<h4 style="text-align: center;">โรงพยาบาล' + yourUserdata.hospital.Hos_Name + '</h4>');
+  let systemNameBox = $('<div style="padding: 3px; height: 44px; line-height:0.2; color: white;"></div>');
+  $(systemNameBox).append('<h4 style="text-align: center;">Rad Connext System</h4>')
+  $('#NavHeader').empty().append($(systemNameBox));
+
+  $('#NavHeader').append('<h4 style="text-align: center;">โรงพยาบาล' + yourUserdata.hospital.Hos_Name + '</h4>');
 
   let userFullName = yourUserdata.userinfo.User_NameEN + ' ' + yourUserdata.userinfo.User_LastNameEN + ' (' + yourUserdata.userinfo.User_NameTH + ' ' + yourUserdata.userinfo.User_LastNameTH + ')';
   let userInfoBox = $('<div style="margin-top: 5px;"></div>');
