@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-var db, tasks, Case, log, auth, socket, lineApi, uti, common;
+var db, tasks, Case, log, auth, socket, lineApi, uti, common, statusControl;
 
 const excludeColumn = { exclude: ['updatedAt', 'createdAt'] };
 
@@ -170,14 +170,14 @@ app.post('/filter/patient', (req, res) => {
           const hospitalId = req.body.hospitalId;
           const limit = req.body.limit;
 
-          const caseInclude = [{model: db.caseresponses, attributes: ['Response_Text']}];
+          const caseInclude = [{model: db.caseresponses, attributes: ['id', 'Response_Text']}];
           const whereClous = {patientId: patientId, hospitalId: hospitalId, casestatusId: { [db.Op.in]: statusId } };
           const orderby = [['id', 'DESC']];
           let query = undefined;
           if ((limit) && (limit > 0)) {
             query = {limit: limit, attributes: ['id', 'createdAt', 'Case_BodyPart', 'Case_OrthancStudyID', 'Case_StudyInstanceUID', 'Case_PatientHRLink'], include: caseInclude, where: whereClous, order: orderby};
           } else {
-            query = {attributes: ['id', 'createdAt', 'Case_BodyPart', 'Case_OrthancStudyID', 'Case_StudyInstanceUID'], include: caseInclude, where: whereClous, order: orderby};
+            query = {attributes: ['id', 'createdAt', 'Case_BodyPart', 'Case_OrthancStudyID', 'Case_StudyInstanceUID', 'Case_PatientHRLink'], include: caseInclude, where: whereClous, order: orderby};
           }
           const patientCases = await Case.findAll(query);
           res.json({status: {code: 200}, Records: patientCases});

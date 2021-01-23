@@ -264,7 +264,7 @@ const onSuccessCaseEvent = function(caseId){
     await socket.sendMessage(refreshSucCase, radioProfile.username);
     await socket.sendMessage(radioNotify, radioProfile.username);
 
-    let lineCaseDetaileMsg = uti.parseStr(common.msgRejCaseHospitalDetailPattern, patientNameEN, targetCase.Case_StudyDescription, targetCase.Case_ProtocolName, targetCase.Case_BodyPart, targetCase.Case_Modality);
+    let lineCaseDetaileMsg = uti.parseStr(common.msgSucCaseHospitalDetailPattern, patientNameEN, targetCase.Case_StudyDescription, targetCase.Case_ProtocolName, targetCase.Case_BodyPart, targetCase.Case_Modality);
 
     let hospitalNotify = {type: 'notify', message: lineCaseDetaileMsg};
     await socket.sendMessage(refreshSucCase , userProfile.username);

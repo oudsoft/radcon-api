@@ -3,16 +3,32 @@
   <div class="modal-content">
 	  <div class="modal-header">
 	    <span class="close">&times;</span>
-	    <h2>ข้อมูลของคุณ</h2>
+	    <h3>ข้อมูลของคุณ</h3>
 	  </div>
     <div id="UserProfileBox">
     	<table width="100%" border="0" cellpadding="2" cellspacing="10">
     		<tr>
     			<td align="left" width="30%">
-    				<b>โรงพยาบาลที่สังกัด</b>
+    				<b>Staus</b>
     			</td>
     			<td align="left" width="*">
-    				<span id="UserHospital"></span>
+    				<span id="UserStaus"></span>
+    			</td>
+    		</tr>
+    		<tr>
+    			<td align="left">
+    				<b>สังกัด</b>
+    			</td>
+    			<td align="left">
+    				<span id="OrgName"></span>
+    			</td>
+    		</tr>
+    		<tr>
+    			<td align="left">
+    				<b>ตำแหน่ง</b>
+    			</td>
+    			<td align="left">
+    				<input type="text" id="PositionName" size="60"/>
     			</td>
     		</tr>
     		<tr>
@@ -25,37 +41,20 @@
     		</tr>
     		<tr>
     			<td align="left">
-    				<b>ชื่อ (ภาษาอังกฤษ)</b>
+    				<b>Password</b>
     			</td>
     			<td align="left">
-    				<input type="text" id="NameEN" size="60"/>
+    				<input type="Password" id="Password" size="60"/>
     			</td>
     		</tr>
-        <tr>
+    		<tr>
     			<td align="left">
-    				<b>นามสกุล (ภาษาอังกฤษ)</b>
+    				<b>ชื่อ</b>
     			</td>
     			<td align="left">
-    				<input type="text" id="LastNameEN" size="60"/>
-    			</td>
-    		</tr>
-        <tr>
-    			<td align="left">
-    				<b>ชื่อ (ภาษาไทย)</b>
-    			</td>
-    			<td align="left">
-    				<input type="text" id="NameTH" size="60"/>
+    				<input type="text" id="Name" size="60"/>
     			</td>
     		</tr>
-        <tr>
-    			<td align="left">
-    				<b>นามสกุล (ภาษาไทย)</b>
-    			</td>
-    			<td align="left">
-    				<input type="text" id="LastNameTH" size="60"/>
-    			</td>
-    		</tr>
-
     		<tr>
     			<td align="left">
     				<b>เบอร์โทร</b>
@@ -80,11 +79,20 @@
     				<input type="text" id="LineId" size="60"/>
     			</td>
     		</tr>
+    		<tr>
+    			<td align="left">
+    				<b>อื่นๆ</b>
+    			</td>
+    			<td align="left">
+    				<input type="text" id="Comment" size="60"/>
+    			</td>
+    		</tr>
+
     	</table>
     </div>
 	  <div class="modal-footer">
 	  	<input type="Button" value=" บันทึก " id="SaveUserProfile-Cmd"/>
-	  	<input type="Button" value=" ปิด " onclick="doCloseUserProfileBox()"/>
+	  	<input type="Button" value=" ปิด " id="CloseUserProfile-Cmd" onclick="doCloseUserProfileBox()"/>
 	  </div>
   </div>
 </div>
@@ -136,7 +144,7 @@
 	  margin: 1% auto; /* 15% from the top and centered */
 	  padding: 20px;
 	  border: 1px solid #888;
-	  width: 80%; /* Could be more or less, depending on screen size */
+	  width: 480px; /* Could be more or less, depending on screen size */
     font-family: THSarabunNew;
     font-size: 24px;
     font-weight: normal;
@@ -161,6 +169,7 @@
 	  padding: 2px 2px;
 	  background-color: #5cb85c;
 	  color: white;
+    text-align: center;
 	}
 
 	.modal-footer {

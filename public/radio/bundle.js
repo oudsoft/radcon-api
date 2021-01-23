@@ -842,7 +842,7 @@ module.exports = function ( jq ) {
   }
 
   const doShowUserProfile = function() {
-  	$("#dialog").load('form/dialog.html', function() {
+  	$("#dialog").load('../form/dialog.html', function() {
   		const createFormFragment = function(fragId, fragLabel, fragValue) {
   			let fragRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
   			let labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"></div>');
@@ -1714,7 +1714,6 @@ function doLoadMainPage(){
         $(".mainfull").empty().append($(opencaseTitlePage));
         let opencasePage = await opencase.doCreateOpenCasePage(data.caseId);
         $(".mainfull").append($(opencasePage));
-
       });
 
       $(document).on('defualsettingschange', (evt, data)=>{
@@ -2291,25 +2290,44 @@ module.exports = function ( jq ) {
   const util = require('../../case/mod/utilmod.js')($);
   const common = require('../../case/mod/commonlib.js')($);
 
+	const commandButtonStyle = {'padding': '3px', 'cursor': 'pointer', 'border': '1px solid white', 'color': 'white', 'background-color': 'blue'};
+	const quickReplyDialogStyle = { 'position': 'fixed', 'z-index': '13', 'left': '0', 'top': '0', 'width': '100%', 'height': '100%', 'overflow': 'auto', 'background-color': 'rgb(0,0,0)', 'background-color': 'rgba(0,0,0,0.4)'};
+	const quickReplyContentStyle = { 'background-color': '#fefefe', 'margin': '15% auto', 'padding': '20px', 'border': '1px solid #888', 'width': '450px', 'height': '200px', 'font-family': 'THSarabunNew', 'font-size': '24px' };
+
+	const backwardCaseStatus = [5, 6, 10, 11, 12];
+	let caseHospitalId = undefined;
+	let casePatientId = undefined;
+	let caseId = undefined;
+	let caseResponseId = undefined;
+	let keytypecounter = undefined;
+
+	const doDownloadDicom = function(studyID, username, casedate) {
+		return new Promise(async function(resolve, reject) {
+			apiconnector.doCallDownloadDicom(studyID, username).then(async (response) => {
+				console.log(response);
+	      var fullNameENRes = await common.getPatientFullNameEN(casePatientId);
+				var patientFullNameEN = fullNameENRes.fullNameEN;
+	      patientFullNameEN.split(' ').join('_');
+	      var dicomFilename = patientFullNameEN + '-' + casedate + '.zip';
+				var pom = document.createElement('a');
+				pom.setAttribute('href', response.link);
+				pom.setAttribute('download', dicomFilename);
+				pom.click();
+				resolve(response);
+	  	});
+		});
+	}
+
   const onDownloadCmdClick = function(evt) {
-    $('body').loading('start');
-		const main = require('../main.js');
-		const userdata = JSON.parse(main.doGetUserData());
-    const downloadCmd = $(evt.currentTarget);
-    const downloadData = $(downloadCmd).data('downloadData');
-  	apiconnector.doCallDownloadDicom(downloadData.studyID, userdata.username).then(async (response) => {
-      var patientFullNameEN = await getPatientFullNameEN(downloadData.patientId);
-      patientFullNameEN.split(' ').join('_');
-      let caseDate = util.formatDateTimeStr(downloadData.caseDate);
-			let casedatetime = caseDate.split('T');
-			let casedateSegment = casedatetime[0].split('-');
-			casedateSegment = casedateSegment.join('');
-      var dicomFilename = patientNameEN + '-' + casedateSegment + '.zip';
-			var pom = document.createElement('a');
-			pom.setAttribute('href', response.archive.link);
-			pom.setAttribute('download', dicomFilename);
-			pom.click();
+		return new Promise(async function(resolve, reject) {
+	    $('body').loading('start');
+			const main = require('../main.js');
+			const userdata = JSON.parse(main.doGetUserData());
+	    const downloadCmd = $(evt.currentTarget);
+	    const downloadData = $(downloadCmd).data('downloadData');
+			let downloadRes = await doDownloadDicom(downloadData.studyID, userdata.username, downloadData.casedate);
 			$('body').loading('stop');
+			resolve(downloadRes);
   	})
   }
 
@@ -2323,72 +2341,463 @@ module.exports = function ( jq ) {
     console.log(evt);
   }
 
-  const onOpenLastResultCmdClick = function(evt) {
-    console.log(evt);
+  const onTemplateSelectorChange = async function(evt) {
+		$('body').loading('start');
+		let yourResponse = $('#SimpleEditor').val();
+		let templateId = $('#TemplateSelector').val();
+		if ((templateId) && (templateId > 0)){
+			let result = await doLoadTemplate(templateId);
+			if ((result.Record) && (result.Record.length > 0)) {
+				let yourNewResponse = yourResponse + '<br/>' + result.Record[0].Content;
+				$('#SimpleEditor').jqteVal(yourNewResponse);
+				doBackupDraft(yourNewResponse);
+				keytypecounter = 0;
+			}
+		}
+		$('body').loading('stop');
   }
 
-  const onTemplateSelectorChange = function(evt) {
+	const onCreateNewResponseCmdClick = async function(evt) {
+		$('body').loading('start');
+		const createNewResponseCmd = $(evt.currentTarget);
+		const main = require('../main.js');
+    const userdata = JSON.parse(main.doGetUserData());
+		const saveNewResponseData = $(createNewResponseCmd).data('createNewResponseData');
+
+		let type = 'draft';
+		let caseId = saveNewResponseData.caseId
+		let userId = userdata.id;
+		let responseHTML = $('#SimpleEditor').val();
+		doBackupDraft(responseHTML);
+		let saveData = {Response_Text: responseHTML, Response_Type: type};
+		let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId};
+		let saveResponseRes = await doCallSaveResponse(params);
+		if (saveResponseRes.status.code == 200){
+			caseResponseId = saveResponseRes.result.responseId;
+			if (!caseResponseId) {
+				$.notify("เกิดความผิดพลาด Case Response API", "error");
+			}
+			let casedate = saveNewResponseData.casedate;
+			let patentFullName = saveNewResponseData.patentFullName;
+	    let reportCreateCallerEndPoint = "/api/casereport/create";
+			let fileExt = 'pdf';
+			let fileName = (patentFullName.split(' ').join('_')) + '-' + casedate + '.' + fileExt;
+	    params = {caseId: saveNewResponseData.caseId, hospitalId: caseHospitalId, userId: userdata.id, pdfFileName: fileName};
+			let reportPdf = await $.post(reportCreateCallerEndPoint, params);
+			let embetObject = $('<object data="' + reportPdf.reportLink + '" type="application/pdf" width="650" height="820"></object>');
+			$("#dialog").load('form/response-dialog.html', function() {
+				$('#ResponsePreview').append($(embetObject));
+				$('#ResponsePreview').css({'text-align': 'center'});
+				$('#SaveResponeCmd').data('saveResponseData', saveNewResponseData);
+				$('#SaveResponeCmd').on('click', onSaveResponseCmdClick);
+				$('body').loading('stop');
+			});
+		} else {
+			$.notify("เกิดความผิดพลาดไม่สามารถบันทึกผลอ่านได้ในขณะนี้", "error");
+			$('body').loading('stop');
+		}
+	}
+
+	const onSaveResponseCmdClick = function(evt){
+		const saveResponseCmd = $(evt.currentTarget);
+		const saveResponseData = $(saveResponseCmd).data('saveResponseData');
+
+		let saveTypeOptionBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+		let selectSaveTypeOptionGuide = $('<div style="display: table-row; width: 100%;"></div>');
+		$(selectSaveTypeOptionGuide).appendTo($(saveTypeOptionBox));
+		let guideCell = $('<div style="display: table-cell; padding: 4px; background-color: #02069B; color: white;"></div>');
+		$(guideCell).append($('<span>โปรดเลือกว่า ต้องการส่งผลอ่านแบบไหนจากรายการเลือก</span>'));
+		$(guideCell).appendTo($(selectSaveTypeOptionGuide));
+		let normalSaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
+		$(normalSaveTypeOption).appendTo($(saveTypeOptionBox));
+		let labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Normal</div>');
+		$(labelOption).appendTo($(normalSaveTypeOption));
+		let attentionSaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
+		$(attentionSaveTypeOption).appendTo($(saveTypeOptionBox));
+		labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Need Attention</div>');
+		$(labelOption).appendTo($(attentionSaveTypeOption));
+		let criticalSaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
+		$(criticalSaveTypeOption).appendTo($(saveTypeOptionBox));
+		labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Critical</div>');
+		$(labelOption).appendTo($(criticalSaveTypeOption));
+		let prelimibarySaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
+		$(prelimibarySaveTypeOption).appendTo($(saveTypeOptionBox));
+		labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Pre-Limitary</div>');
+		$(labelOption).appendTo($(prelimibarySaveTypeOption));
+
+		$('#quickreply').css(quickReplyDialogStyle);
+		$(saveTypeOptionBox).css(quickReplyContentStyle);
+		$('#quickreply').append($(saveTypeOptionBox));
+
+		$(normalSaveTypeOption).data('saveResponseData', saveResponseData);
+		$(normalSaveTypeOption).on('click', onNormalSaveOptionCmdClick);
+		$(attentionSaveTypeOption).data('saveResponseData', saveResponseData);
+		$(attentionSaveTypeOption).on('click', onAttentionSaveOptionCmdClick);
+		$(criticalSaveTypeOption).data('saveResponseData', saveResponseData);
+		$(criticalSaveTypeOption).on('click', onCriticalSaveOptionCmdClick);
+		$(prelimibarySaveTypeOption).data('saveResponseData', saveResponseData);
+		$(prelimibarySaveTypeOption).on('click', onPrelimibarySaveOptionCmdClick);
+	}
+
+	const onNormalSaveOptionCmdClick = async function(evt) {
+		const responseType = 'normal';
+		const reportType = 'normal';
+		const normalSaveResponseCmd = $(evt.currentTarget);
+		const saveResponseData = $(normalSaveResponseCmd).data('saveResponseData');
+		await doSaveResponse(responseType, reportType, saveResponseData)
+	}
+
+	const onAttentionSaveOptionCmdClick = async function(evt) {
+		const responseType = 'normal';
+		const reportType = 'attention';
+		const normalSaveResponseCmd = $(evt.currentTarget);
+		const saveResponseData = $(normalSaveResponseCmd).data('saveResponseData');
+		await doSaveResponse(responseType, reportType, saveResponseData)
+	}
+
+	const onCriticalSaveOptionCmdClick = async function(evt) {
+		const responseType = 'normal';
+		const reportType = 'cristical';
+		const normalSaveResponseCmd = $(evt.currentTarget);
+		const saveResponseData = $(normalSaveResponseCmd).data('saveResponseData');
+		await doSaveResponse(responseType, reportType, saveResponseData)
+	}
+
+	const onPrelimibarySaveOptionCmdClick = async function(evt) {
+		const responseType = 'normal';
+		const reportType = 'preliminary';
+		const normalSaveResponseCmd = $(evt.currentTarget);
+		const saveResponseData = $(normalSaveResponseCmd).data('saveResponseData');
+		await doSaveResponse(responseType, reportType, saveResponseData)
+	}
+
+	function doSaveResponse(responseType, reportType, saveResponseData){
+		return new Promise(async function(resolve, reject) {
+			$('body').loading('start');
+			const main = require('../main.js');
+	    const userdata = JSON.parse(main.doGetUserData());
+			let caseId = saveResponseData.caseId
+			let userId = userdata.id;
+			let responseHTML = $('#SimpleEditor').val();
+			doBackupDraft(responseHTML);
+			let saveData = {Response_Text: responseHTML, Response_Type: responseType};
+			let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId, reporttype: reportType};
+
+			let saveResponseRes = await doCallSaveResponse(params);
+			if (saveResponseRes.status.code == 200){
+				$('#quickreply').empty();
+				$('#quickreply').removeAttr('style');
+				$("#dialog").empty();
+				doCloseDialog();
+				$.notify("ส่งผลอ่านได้สำเร็จ", "success");
+				$('body').loading('stop');
+				resolve(saveResponseRes);
+				$('#AcceptedCaseCmd').click();
+			} else {
+				$.notify("เกิดความผิดพลาดไม่สามารถบันทึกผลอ่านได้ในขณะนี้", "error");
+				$('body').loading('stop');
+				reject({errer: 'Save Case Response Error'});
+			}
+		});
+	}
+
+	const onSaveDraftResponseCmdClick = function(evt) {
+		return new Promise(async function(resolve, reject) {
+			$('body').loading('start');
+			const saveDraftResponseCmd = $(evt.currentTarget);
+			const main = require('../main.js');
+	    const saveDraftResponseData = $(saveDraftResponseCmd).data('saveDraftResponseData');
+			let type = saveDraftResponseData.type;
+			let caseId = saveDraftResponseData.caseId
+			let userdata = JSON.parse(main.doGetUserData());
+			let userId = userdata.id;
+			let responseHTML = $('#SimpleEditor').val();
+			let saveData = {Response_Text: responseHTML, Response_Type: type};
+			let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId};
+			let saveResponseRes = await doCallSaveResponse(params);
+			if (saveResponseRes.status.code == 200){
+				caseResponseId = draftResponseRes.Record[0].id;
+				if (!caseResponseId) {
+					$.notify("เกิดความผิดพลาด Case Response API", "error");
+				}
+				$.notify("บันทึกผลอ่านเป็น Draft สำเร็จ", "success");
+				$('body').loading('stop');
+			} else {
+				$.notify("บันทึกผลอ่านเป็น Draft ไม่สำเร็จ", "error");
+				$('body').loading('stop');
+			}
+			resolve(saveResponseRes);
+		});
+	}
+
+	const onBackToOpenCaseCmdClick = function(evt) {
+		$('#AcceptedCaseCmd').click();
+	}
+
+  const doOpenHR = function(link, patentFullName, casedate){
+		$('body').loading('start');
+    //window.open(link, '_blank');
+		let filePaths = link.split('/');
+		let fileNames = filePaths[filePaths.length-1];
+		let fileName = fileNames.split('.');
+		let fileExt = fileName[1];
+		fileName = (patentFullName.split(' ').join('_')) + '-' + casedate + '.' + fileExt;
+		var pom = document.createElement('a');
+		pom.setAttribute('href', link);
+		pom.setAttribute('download', fileName);
+		pom.click();
+		$('body').loading('stop');
+  }
+
+  const doRenderPatientHR = function(hrlinks, patentFullName, casedate) {
     return new Promise(async function(resolve, reject) {
-      let templateId = $('#TemplateSelector').val();
-      let result = await doLoadTemplate(templateId);
-      if ((result.Record) && (result.Record.length > 0)) {
-        $('#SimpleEditor').jqteVal(result.Record[0].Content);
-        resolve(result.Record[0].Content);
-      } else {
-        resolve('');
-      }
-    });
-  }
-
-  const doOpenHR = function(link){
-    window.open(link, '_blank');
-  }
-
-  const doRenderPatientHR = function(hrlinks) {
-    return new Promise(async function(resolve, reject) {
-      let hrBox = $('<div></div>');
-      await hrlinks.forEach((item, i) => {
-        let hsImage = new Image();
-        hsImage.src = item.link;
-        $(hsImage).css({"width": "40px", "height": "auto", "border": "1px solid white", "cursor": "pointer"});
-        $(hsImage).on("click", function(evt){
-          doOpenHR(item.link);
-    		});
-        $(hsImage).appendTo($(hrBox));
-      });
+      let hrBox = $('<div style="100%"></div>');
+			$(hrBox).css({'display': 'inline-block', 'float': 'right'});
+			if ((hrlinks) && (hrlinks.length > 0)){
+	      await hrlinks.forEach((item, i) => {
+					let patientHRLink = $('<span style="padding: 5px; text-decoration: underline; cursor: pointer; color: white;"></span>');
+					let filePaths = item.link.split('/');
+					let fileNames = filePaths[filePaths.length-1];
+					let fileName = fileNames.split('.');
+					let fileExt = fileName[1];
+					let patientName = patentFullName.split(' ').join('_');
+					let linkText = patientName + '(' + (i+1) + ')' + '.' + fileExt;
+					$(patientHRLink).text(linkText);
+					$(patientHRLink).on("click", function(evt){
+	          doOpenHR(item.link, patentFullName, casedate);
+	    		});
+					let clipIcon = new Image();
+					clipIcon.src = '/images/clip-icon.png';
+					$(clipIcon).css({"width": "25px", "height": "auto", "margin-top": "10px"});
+					$(patientHRLink).prepend($(clipIcon));
+					$(patientHRLink).appendTo($(hrBox));
+	      });
+			}
       resolve($(hrBox));
     });
   }
+
+	const doCreateDicomCmdBox = function(orthancStudyID, studyInstanceUID, casedate){
+		let dicomCmdBox = $('<div></div>');
+		let downloadCmd = $('<span>Download</span>');
+		$(downloadCmd).css(commandButtonStyle);
+		$(downloadCmd).appendTo($(dicomCmdBox));
+		$(downloadCmd).on('click', async (evt)=>{
+			$('body').loading('start');
+			const main = require('../main.js');
+			const userdata = JSON.parse(main.doGetUserData());
+			let downloadRes = await doDownloadDicom(orthancStudyID, userdata.username, casedate);
+			$('body').loading('stop');
+		});
+		let openViewerCmd = $('<span>Open</span>');
+		$(openViewerCmd).appendTo($(dicomCmdBox));
+		$(openViewerCmd).css(commandButtonStyle);
+		$(openViewerCmd).on('click', async (evt)=>{
+			common.doOpenStoneWebViewer(studyInstanceUID);
+		});
+		return $(dicomCmdBox);
+	}
+
+	const doCreateHRBackwardBox = function(patentFullName, patientHRLinks){
+		return new Promise(async function(resolve, reject) {
+			let hrbackwardBox = $('<div style="width: 100%;"></div>');
+			if ((patientHRLinks) && (patientHRLinks.length > 0)){
+				await patientHRLinks.forEach((item, i) => {
+					let filePaths = item.link.split('/');
+					let fileNames = filePaths[filePaths.length-1];
+					let fileName = fileNames.split('.');
+					let fileCode = fileName[0];
+					let codeLink = $('<div style="width: 100%;">' + fileCode + '</div>');
+					$(hrbackwardBox).append($(codeLink));
+					$(codeLink).css(commandButtonStyle);
+					$(codeLink).on('click',(evt)=>{
+						doOpenHR(item.link, patentFullName);
+					});
+				});
+			}
+			resolve($(hrbackwardBox));
+		});
+	}
+
+	const doCreateResponseBackwardBox = function(backwardCaseId, responseText, patentFullName, casedate){
+		let responseBackwarBox = $('<div></div>');
+		let downloadCmd = $('<span>Download</span>');
+		$(downloadCmd).css(commandButtonStyle);
+		$(downloadCmd).appendTo($(responseBackwarBox));
+		$(downloadCmd).on('click', async (evt)=>{
+			$('body').loading('start');
+			const main = require('../main.js');
+      const userdata = JSON.parse(main.doGetUserData());
+      let reportCreateCallerEndPoint = "/api/casereport/create";
+			let fileExt = 'pdf';
+			let fileName = (patentFullName.split(' ').join('_')) + '-' + casedate + '.' + fileExt;
+      let params = {caseId: backwardCaseId, hospitalId: caseHospitalId, userId: userdata.id, pdfFileName: fileName};
+			let reportPdf = await $.post(reportCreateCallerEndPoint, params);
+			var pom = document.createElement('a');
+			pom.setAttribute('href', reportPdf.reportLink);
+			pom.setAttribute('download', fileName);
+			pom.click();
+			$('body').loading('stop');
+		});
+		let pasteCmd = $('<span>Paste</span>');
+		$(pasteCmd).css(commandButtonStyle);
+		$(pasteCmd).appendTo($(responseBackwarBox));
+		$(pasteCmd).on('click', async (evt)=>{
+			$('#SimpleEditor').jqteVal(responseText);
+		});
+		return $(responseBackwarBox);
+	}
+
+	const doCreateToggleSwitch = function(patentFullName, backwardView) {
+		let switchBox = $('<div></div>')
+		let toggleSwitch = $('<label class="switch"></label>');
+		let input = $('<input type="checkbox">');
+		let slider = $('<span class="slider"></span>');
+		$(toggleSwitch).append($(input));
+		$(toggleSwitch).append($(slider));
+		$(input).on('click', async (evt)=>{
+			$(backwardView).loading('start');
+			let patientBackwards = undefined;
+			let isOn = $(input).prop('checked');
+			if (isOn) {
+				patientBackwards = await doLoadPatientBackward(caseHospitalId, casePatientId, backwardCaseStatus);
+			} else {
+				let limit = 2;
+				patientBackwards = await doLoadPatientBackward(caseHospitalId, casePatientId, backwardCaseStatus, limit);
+			}
+			let backwardContent = await doCreateBackwardItem(patentFullName, patientBackwards.Records, backwardView);
+			$(backwardView).loading('stop');
+		});
+		$(switchBox).append($(toggleSwitch));
+		return $(switchBox);
+	}
+
+	const doCreateBackwardItem = function(patentFullName, backwards, backwardView) {
+		return new Promise(function(resolve, reject) {
+			$(backwardView).empty();
+			let backwardHeader = $('<div style="display: table-row; width: 100%;"></div>');
+			$(backwardHeader).appendTo($(backwardView));
+			$(backwardHeader).append($('<span style="display: table-cell; text-align: center;" class="header-cell">#</span>'));
+			$(backwardHeader).append($('<span style="display: table-cell; text-align: center;" class="header-cell">วันที่</span>'));
+			$(backwardHeader).append($('<span style="display: table-cell; text-align: center;" class="header-cell">รายการ</span>'));
+			$(backwardHeader).append($('<span style="display: table-cell; text-align: center;" class="header-cell">ภาพ</span>'));
+			$(backwardHeader).append($('<span style="display: table-cell; text-align: center;" class="header-cell">ไฟล์ประวัติ</span>'));
+			$(backwardHeader).append($('<span style="display: table-cell; text-align: center;" class="header-cell">ผลอ่าน</span>'));
+			$(backwardHeader).append($('<span style="display: table-cell; text-align: center;" class="header-cell">หมายเหตุ/อื่นๆ</span>'));
+			const promiseList = new Promise(async function(resolve2, reject2){
+				for (let i=0; i < backwards.length; i++) {
+					let backwardRow = $('<div style="display: table-row; width: 100%;"></div>');
+					let backward = backwards[i];
+					let caseCreateAt = util.formatDateTimeStr(backward.createdAt);
+					let casedatetime = caseCreateAt.split('T');
+					let casedateSegment = casedatetime[0].split('-');
+					casedateSegment = casedateSegment.join('');
+					let casedate = casedateSegment;
+					let dicomCmdBox = doCreateDicomCmdBox(backward.Case_OrthancStudyID, backward.Case_StudyInstanceUID, casedate);
+					let patientHRBackwardBox = await doCreateHRBackwardBox(patentFullName, backward.Case_PatientHRLink, casedate);
+					let responseBackwardBox = undefined;
+					if ((backward.caseresponses) && (backward.caseresponses.length > 0)) {
+						responseBackwardBox = doCreateResponseBackwardBox(backward.id, backward.caseresponses[0].Response_Text, patentFullName, casedate);
+					} else {
+						responseBackwardBox = $('<span>-</span>');
+					}
+
+					$(backwardRow).append($('<span style="display: table-cell; text-align: center; padding: 4px; vertical-align: middle;">' + (i+1) + '</span>'));
+					$(backwardRow).append($('<span style="display: table-cell; text-align: left; padding: 4px; vertical-align: middle;">' + casedate + '</span>'));
+					$(backwardRow).append($('<span style="display: table-cell; text-align: left; vertical-align: middle;">' + backward.Case_BodyPart + '</span>'));
+					let dicomCmdCell = $('<span style="display: table-cell; text-align: center; padding: 4px; vertical-align: middle;"></span>');
+					$(dicomCmdCell).append($(dicomCmdBox));
+					$(backwardRow).append($(dicomCmdCell));
+					let hrBackwardCell = $('<span style="display: table-cell; text-align: center; padding: 4px; vertical-align: middle;"></span>');
+					$(hrBackwardCell).append($(patientHRBackwardBox));
+					$(backwardRow).append($(hrBackwardCell));
+					let responseBackwardCell = $('<span style="display: table-cell; text-align: center; padding: 4px; vertical-align: middle;"></span>');
+					$(responseBackwardCell).append($(responseBackwardBox));
+					$(backwardRow).append($(responseBackwardCell));
+					$(backwardRow).append($('<span style="display: table-cell; text-align: center; padding: 4px; vertical-align: middle;">-</span>'));
+					$(backwardRow).appendTo($(backwardView));
+				}
+				setTimeout(()=> {
+					resolve2($(backwardView));
+				}, 500);
+			});
+			Promise.all([promiseList]).then((ob)=>{
+				resolve(ob[0]);
+			});
+		});
+	}
+
+	const doCreatePatientBackward = function(backwards, patentFullName) {
+		return new Promise(async function(resolve, reject) {
+			let backwardBox = $('<div style="100%"></div>');
+			let titleBox = $('<div style="100%"></div>');
+			$(titleBox).appendTo($(backwardBox));
+			let titleText = $('<span><b>ประวัติการตรวจ</b></span>');
+			$(titleText).appendTo($(titleBox));
+
+			let backwardView = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+			$(backwardView).appendTo($(backwardBox));
+
+			let limitToggle = doCreateToggleSwitch(patentFullName, backwardView);
+			$(limitToggle).appendTo($(titleBox));
+			$(limitToggle).css({'display': 'inline-block', 'float': 'right'});
+
+			let backwardContentView = await doCreateBackwardItem(patentFullName, backwards, backwardView);
+			$(backwardBox).append($(backwardContentView));
+			resolve($(backwardBox));
+		});
+	}
 
   const doCreateSummaryDetailCase = function(caseOpen){
     return new Promise(async function(resolve, reject) {
       let jqtePluginStyleUrl = '../../lib/jqte/jquery-te-1.4.0.css';
 			$('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
+			$('head').append('<link rel="stylesheet" href="../case/css/scanpart.css" type="text/css" />');
 			let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
 			$('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
 
       const main = require('../main.js');
       const userdata = JSON.parse(main.doGetUserData());
       const pageLineStyle = {'border': '2px solid blue', /*'border-radius': '10px',*/ 'background-color': 'grey', 'margin-top': '4px', 'padding': '2px'};
+			const patentFullName = caseOpen.case.patient.Patient_NameEN + ' ' + caseOpen.case.patient.Patient_LastNameEN;
+			caseHospitalId = caseOpen.case.hospitalId;
+			casePatientId = caseOpen.case.patientId;
+			caseId = caseOpen.case.id;
+			let limit = 2;
+			let patientBackward = await doLoadPatientBackward(caseHospitalId, casePatientId, backwardCaseStatus, limit);
+
+			let patientBackwardView = undefined;
+			if (patientBackward.Records.length > 0) {
+				patientBackwardView = await doCreatePatientBackward(patientBackward.Records, patentFullName);
+			} else {
+				patientBackwardView = $('<div style="100%"><span><b>ไม่พบประวัติการตรวจ</b></span></div>');
+			}
       const yourTemplates = await doLoadTemplateList(userdata.id);
       let summary = $('<div></div>');
       let summaryFirstLine = $('<div></div>');
       $(summaryFirstLine).append($('<span><b>HN:</b> </span>'));
-      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.patient.Patient_HN + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px; color: white;">' + caseOpen.case.patient.Patient_HN + '</span>'));
       $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>Name:</b> </span>'));
-      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.patient.Patient_NameEN + ' ' + caseOpen.case.patient.Patient_LastNameEN + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px; color: white;">' + patentFullName + '</span>'));
       $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>Age/sex:</b> </span>'));
-      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.patient.Patient_Age + '/' + caseOpen.case.patient.Patient_Sex + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px; color: white;">' + caseOpen.case.patient.Patient_Age + '/' + caseOpen.case.patient.Patient_Sex + '</span>'));
       $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>Body Part:</b> </span>'));
-      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.Case_BodyPart + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px; color: white;">' + caseOpen.case.Case_BodyPart + '</span>'));
       $(summaryFirstLine).append($('<span style="margin-left: 4px;"><b>โรงพยาบาล:</b> </span>'));
-      $(summaryFirstLine).append($('<span style="margin-left: 4px;">' + caseOpen.case.hospital.Hos_Name + '</span>'));
+      $(summaryFirstLine).append($('<span style="margin-left: 4px; color: white;">' + caseOpen.case.hospital.Hos_Name + '</span>'));
       $(summaryFirstLine).css(pageLineStyle);
       $(summaryFirstLine).appendTo($(summary));
 
       let summarySecondLine = $('<div></div>');
       let downloadCmd = $('<input type="button" value=" Download "/>');
-      let downloadData = {patientId: caseOpen.case.patient.id, studyID: caseOpen.case.Case_OrthancStudyID, caseDate: caseOpen.case.createdAt};
+
+			let caseCreateAt = util.formatDateTimeStr(caseOpen.case.createdAt);
+			let casedatetime = caseCreateAt.split('T');
+			let casedateSegment = casedatetime[0].split('-');
+			casedateSegment = casedateSegment.join('');
+			let casedate = casedateSegment;
+
+      let downloadData = {patientId: caseOpen.case.patient.id, studyID: caseOpen.case.Case_OrthancStudyID, casedate: casedate};
       $(downloadCmd).data('downloadData', downloadData);
       $(downloadCmd).on('click', onDownloadCmdClick);
       $(downloadCmd).appendTo($(summarySecondLine))
@@ -2406,38 +2815,92 @@ module.exports = function ( jq ) {
       $(openThirdPartyCmd).appendTo($(summarySecondLine));
       $(summarySecondLine).append($('<span>  </span>'));
 
-      let openLastResultCmd = $('<input type="button" value=" ผลอ่านครั้งก่อน "/>');
-      $(openLastResultCmd).on('click', onOpenLastResultCmdClick);
-      $(openLastResultCmd).appendTo($(summarySecondLine))
-
       if ((caseOpen.case.Case_PatientHRLink) && (caseOpen.case.Case_PatientHRLink.length > 0)) {
         $(summarySecondLine).append($('<span>  </span>'));
-        let patientHRBox = await doRenderPatientHR(caseOpen.case.Case_PatientHRLink);
+        let patientHRBox = await doRenderPatientHR(caseOpen.case.Case_PatientHRLink, patentFullName, casedate);
         $(summarySecondLine).append($(patientHRBox));
       }
 
       $(summarySecondLine).css(pageLineStyle);
       $(summarySecondLine).appendTo($(summary));
 
-      let summaryThirdLine = $('<div></div>');
-      $(summaryThirdLine).append($('<span><b>Templat:</b> </span>'));
+			let summaryThirdLine = $('<div></div>');
+			$(summaryThirdLine).append($(patientBackwardView));
+			$(summaryThirdLine).css(pageLineStyle);
+			$(summaryThirdLine).appendTo($(summary));
+
+      let summaryFourthLine = $('<div></div>');
+      $(summaryFourthLine).append($('<span><b>Templat:</b> </span>'));
       let templateSelector = $('<select id="TemplateSelector"></select>');
+			$(templateSelector).append('<option value="0">เลือก Template ของฉัน</option>');
       if (yourTemplates.Options.length > 0) {
         yourTemplates.Options.forEach((item, i) => {
           $(templateSelector).append('<option value="' + item.Value + '">' + item.DisplayText + '</option>');
         });
       }
       $(templateSelector).on('change', onTemplateSelectorChange);
-      $(templateSelector).appendTo($(summaryThirdLine));
-      $(summaryThirdLine).css(pageLineStyle);
-      $(summaryThirdLine).appendTo($(summary));
+      $(templateSelector).appendTo($(summaryFourthLine));
+      $(summaryFourthLine).css(pageLineStyle);
+      $(summaryFourthLine).appendTo($(summary));
 
       let simpleEditorBox = $('<div></div>');
       let simpleEditor = $('<input type="text" id="SimpleEditor"/>');
       $(simpleEditor).css({ 'min-height': '350px' });
       $(simpleEditor).appendTo($(simpleEditorBox));
-      $(simpleEditor).jqte();
+			keytypecounter = 0
+      $(simpleEditor).jqte({change: (evt)=>{
+				//auto backup on local storage
+				if (keytypecounter == 100) {
+					let currentContent = $(summary).find('#SimpleEditor').val();
+					doBackupDraft(currentContent);
+					keytypecounter = 0;
+					let draftRestore = doRestoreDraft();
+					doViewBackupDraft(draftRestore.content);
+				} else {
+					keytypecounter += 1;
+				}
+			}});
       $(simpleEditorBox).appendTo($(summary));
+
+			let createNewResponseCmd = $('<input type="button" value=" ส่งผลอ่าน "/>');
+			let createNewResponseData = {caseId: caseOpen.case.id, hospitalId: caseHospitalId, patentFullName: patentFullName, casedate: casedate};
+			$(createNewResponseCmd).data('createNewResponseData', createNewResponseData);
+			$(createNewResponseCmd).on('click', onCreateNewResponseCmdClick);
+
+			let saveDraftResponseCmd = $('<input type="button" value=" Draft "/>');
+			let saveDraftResponseData = {caseId: caseOpen.case.id, patentFullName: patentFullName, casedate: casedate, type: 'draft'};
+			$(saveDraftResponseCmd).data('saveDraftResponseData', saveDraftResponseData);
+			$(saveDraftResponseCmd).on('click', onSaveDraftResponseCmdClick);
+
+			let backToOpenCaseCmd = $('<input type="button" value=" กลับ "/>');
+			let backToOpenCaseData = {};
+			$(backToOpenCaseCmd).data('backToOpenCaseData', backToOpenCaseData);
+			$(backToOpenCaseCmd).on('click', onBackToOpenCaseCmdClick);
+
+			let summaryFifthLine = $('<div></div>');
+			$(summaryFifthLine).css(pageLineStyle);
+			$(summaryFifthLine).css({'text-align': 'center'});
+			$(summaryFifthLine).append($(createNewResponseCmd));
+			$(summaryFifthLine).append($('<span>  </span>'));
+			$(summaryFifthLine).append($(saveDraftResponseCmd));
+			$(summaryFifthLine).append($('<span>  </span>'));
+			$(summaryFifthLine).append($(backToOpenCaseCmd));
+			$(summaryFifthLine).appendTo($(summary));
+
+			if (caseOpen.case.casestatusId == 9) {
+				let draftResponseRes = await doCallDraftRespons(caseId);
+				caseResponseId = draftResponseRes.Record[0].id;
+				$(summary).find('#SimpleEditor').jqteVal(draftResponseRes.Record[0].Response_Text);
+			} else {
+				/*
+				let defualTemplateId = yourTemplates.Options[0].Value;
+				let templateSelectResult = await doLoadTemplate(defualTemplateId);
+				$(summary).find('#SimpleEditor').jqteVal(templateSelectResult.Record[0].Content);
+				*/
+			}
+
+			$(summary).find('.jqte_editor').css({ height: '350px' });
+
       resolve($(summary));
     });
   }
@@ -2484,6 +2947,47 @@ module.exports = function ( jq ) {
 		});
 	}
 
+	const doLoadPatientBackward = function(hospitalId, patientId, statusIds, limit) {
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/cases/filter/patient';
+			var params = {statusId: statusIds, patientId: patientId, hospitalId: hospitalId};
+			if ((limit) && (limit > 0)) {
+				params.limit = limit;
+			}
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+				reject(err);
+			})
+		});
+	}
+
+	const doCallSaveResponse = function(params){
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/caseresponse/add';
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+				reject(err);
+			})
+		});
+	}
+
+	const doCallDraftRespons = function(caseId){
+		return new Promise(function(resolve, reject) {
+			var apiUri = '/api/caseresponse/select/' + caseId;
+			var params = {caseId: caseId};
+			$.post(apiUri, params, function(response){
+				resolve(response);
+			}).catch((err) => {
+				console.log(JSON.stringify(err));
+				reject(err);
+			})
+		});
+	}
+
   const doCreateOpenCasePage = function(caseId) {
     return new Promise(async function(resolve, reject) {
       $('body').loading('start');
@@ -2493,7 +2997,6 @@ module.exports = function ( jq ) {
         let caseOpen = myOpenCase.Records[0];
         let caseSummaryDetail = await doCreateSummaryDetailCase(caseOpen);
         $(myOpenCaseView).append($(caseSummaryDetail));
-        $(caseSummaryDetail).find('#TemplateSelector').change();
       } else {
         let notFoundMessage = $('<h3>เกิดข้อผิดพลาด ไม่พบรายการเคสที่คุณเลือกในขณะนี้</h3>')
         $(myOpenCaseView).append($(notFoundMessage));
@@ -2503,18 +3006,45 @@ module.exports = function ( jq ) {
     });
   }
 
+	const doBackupDraft = function(content){
+		let draftbackup = {content: content, backupAt: new Date()};
+		localStorage.setItem('draftbackup', JSON.stringify(draftbackup));
+	}
+
+	const doRestoreDraft = function(){
+		let draftbackup = JSON.parse(localStorage.getItem('draftbackup'));
+		return draftbackup;
+	}
+
+	const doViewBackupDraft = function(draftHTML){
+		let backupDrafBox = $('<div></div>');
+		$('#quickreply').css(quickReplyDialogStyle);
+		$(backupDrafBox).css(quickReplyContentStyle);
+		$('#quickreply').append($(backupDrafBox));
+		let htmlView = $('<div></div>');
+		$(htmlView).html(draftHTML);
+		$(htmlView).appendTo($(backupDrafBox));
+		let closeCmd = $('<input type="button" value=" Close"/>');
+		$(closeCmd).appendTo($(backupDrafBox));
+		$(closeCmd).on('click', (evt)=>{
+			$('#quickreply').empty();
+			$('#quickreply').removeAttr('style');
+		});
+	}
+
   return {
     onDownloadCmdClick,
     onOpenStoneWebViewerCmdClick,
     onOpenThirdPartyCmdClick,
-    onOpenLastResultCmdClick,
     onTemplateSelectorChange,
     doOpenHR,
     doRenderPatientHR,
+		doCreatePatientBackward,
     doCreateSummaryDetailCase,
     doCallMyOpenCase,
     doLoadTemplateList,
     doLoadTemplate,
+		doLoadPatientBackward,
     doCreateOpenCasePage
 	}
 }

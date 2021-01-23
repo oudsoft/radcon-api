@@ -75,7 +75,7 @@ module.exports = ( webSocketServer, monitor ) => {
 	const workinghour = require('./db/rest/workinghour.js')(db, log);
 	const workingschedule = require('./db/rest/workingschedule.js')(db, log);
 	const template = require('./db/rest/template.js')(db, log);
-	const caseresponse = require('./db/rest/caseresponse.js')(db, log);
+	const caseresponse = require('./db/rest/caseresponse.js')(db, taskCase, log, webSocketServer);
 	const casereport = require('./db/rest/casereport.js')(webSocketServer, db, log);
 	const risinterface = require('./db/rest/risinterface.js')(db, log);
 	const scanpartref = require('./db/rest/scanpartref.js')(db, log);

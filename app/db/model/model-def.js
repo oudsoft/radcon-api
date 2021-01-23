@@ -350,7 +350,11 @@ const RadCaseDef = {
 const RadCaseResponseDef = {
 			Response_Text : {
 				type: Sequelize.TEXT
+			},
+			Response_Type : {
+				type: Sequelize.STRING(10)
 			}
+			/* Response_Type => 'normal/draft' */
 		};
 
 //Case_ID
@@ -359,6 +363,10 @@ const RadCaseResponseDef = {
 const RadCaseReportDef = {
 			Remark : {
 				type: Sequelize.TEXT
+			},
+			Report_Type : {
+				type: Sequelize.STRING(20)
+				/* Type => normal/attention/cristical/preliminary */
 			}
 		};
 

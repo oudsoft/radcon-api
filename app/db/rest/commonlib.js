@@ -15,14 +15,14 @@ const casestatusFlowTable = [
     {now: 2, next: [8], actions: ['open', 'upd']},
     {now: 3, next: [7], actions: ['cancel', 'renew', 'upd']},
     {now: 4, next: [7], actions: ['cancel', 'renew', 'upd']},
-    {now: 5, next: [10, 11], actions: ['view', 'print', 'convert']},
+    {now: 5, next: [10, 11], actions: ['view', 'print', 'convert', 'callzoom']},
     {now: 6, next: [12], actions: ['edit']},
     {now: 7, next: [1], actions: ['renew', 'delete', 'upd']},
     {now: 8, next: [9, 5], actions: ['draft', 'reply']},
     {now: 9, next: [5], actions: ['reply']},
-    {now: 10, next: [11], actions: ['view', 'print', 'convert']},
-    {now: 11, next: [6, 12], actions: ['view', 'print', 'convert', 'close', 'edit']},
-    {now: 12, next: [], actions: ['edit']},
+    {now: 10, next: [11], actions: ['view', 'print', 'convert', 'callzoom']},
+    {now: 11, next: [6, 12], actions: ['view', 'print', 'convert', 'close', 'edit', 'callzoom']},
+    {now: 12, next: [], actions: ['edit', 'callzoom']},
 ];
 
 const msgNewCaseRadioDetailFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\n';
@@ -31,6 +31,7 @@ const msgAccCaseHospitalDetailPattern = 'รังสีแพทย์ตอบ
 const msgRejCaseHospitalDetailPattern = 'รังสีแพทย์ปฏิเสธเคสใหม่ของผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nเสียใจด้วยตรับ แต่คุณยังสามารถส่งเคสนี้ไปหาหมอคนอื่นได้อีกนะครับ';
 const msgExpCaseRadioDetailPattern = 'เคสจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาแล้วครับ';
 const msgExpCaseHospitalDetailPattern = 'เคสใหม่ของผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nหมดเวลาแล้วตรับ แต่คุณยังสามารถส่งเคสนี้ไปหาหมอคนอื่นได้อีกครับ';
+const msgSucCaseHospitalDetailPattern = 'รังสีแพทยส่งผลอ่านเคส่ของผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\nแล้ว ยินดีด้วยตรับ';
 
 const doCanNextStatus = function (from) {
   return new Promise(async function(resolve, reject) {
@@ -284,6 +285,7 @@ module.exports = (dbconn, monitor, casetask) => {
     msgAccCaseRadioDetailPattern,
     msgAccCaseHospitalDetailPattern,
     msgRejCaseHospitalDetailPattern,
+    msgSucCaseHospitalDetailPattern,
 
     doCanNextStatus,
     doSearchRadioForHospital,

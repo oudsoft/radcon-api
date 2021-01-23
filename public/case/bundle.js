@@ -3965,7 +3965,7 @@ module.exports = function ( jq ) {
   }
 
   const doShowUserProfile = function() {
-  	$("#dialog").load('form/dialog.html', function() {
+  	$("#dialog").load('../form/dialog.html', function() {
   		const createFormFragment = function(fragId, fragLabel, fragValue) {
   			let fragRow = $('<div style="display: table-row; padding: 2px; background-color: gray;"></div>');
   			let labelCell = $('<div style="display: table-cell; width: 200px; padding: 2px;"></div>');

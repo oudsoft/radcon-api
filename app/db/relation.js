@@ -104,14 +104,16 @@ cases.belongsTo(cliamerights);
 cases.belongsTo(casestatuses);
 cases.belongsTo(users);
 
+
 const caseresponses = sequelize.define('caseresponses', Def.RadCaseResponseDef);
-caseresponses.belongsTo(cases);
+cases.hasMany(caseresponses);
+//caseresponses.belongsTo(cases);
 caseresponses.belongsTo(users);
 
 const casereports = sequelize.define('casereports', Def.RadCaseReportDef);
-casereports.belongsTo(users);
 casereports.belongsTo(cases);
 casereports.belongsTo(caseresponses);
+casereports.belongsTo(users);
 
 const lineusers = sequelize.define('lineusers', Def.RadLineUserDef);
 lineusers.belongsTo(users);
