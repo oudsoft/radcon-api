@@ -2301,10 +2301,11 @@ module.exports = function ( jq ) {
 	let caseResponseId = undefined;
 	let keytypecounter = undefined;
 	let backupDraftCounter = undefined;
+	let downloadDicomList = [];
 
-	const doDownloadDicom = function(studyID, username, casedate) {
+	const doDownloadDicom = function(studyID, hospitalId, casedate) {
 		return new Promise(async function(resolve, reject) {
-			apiconnector.doCallDownloadDicom(studyID, username).then(async (response) => {
+			apiconnector.doCallDownloadDicom(studyID, hospitalId).then(async (response) => {
 				console.log(response);
 	      var fullNameENRes = await common.getPatientFullNameEN(casePatientId);
 				var patientFullNameEN = fullNameENRes.fullNameEN;
@@ -2314,6 +2315,7 @@ module.exports = function ( jq ) {
 				pom.setAttribute('href', response.link);
 				pom.setAttribute('download', dicomFilename);
 				pom.click();
+				downloadDicomList.push(dicomFilename);
 				resolve(response);
 	  	});
 		});
@@ -2326,7 +2328,7 @@ module.exports = function ( jq ) {
 			const userdata = JSON.parse(main.doGetUserData());
 	    const downloadCmd = $(evt.currentTarget);
 	    const downloadData = $(downloadCmd).data('downloadData');
-			let downloadRes = await doDownloadDicom(downloadData.studyID, userdata.username, downloadData.casedate);
+			let downloadRes = await doDownloadDicom(downloadData.studyID, downloadData.hospitalId, downloadData.casedate);
 			$('body').loading('stop');
 			resolve(downloadRes);
   	})
@@ -2339,7 +2341,31 @@ module.exports = function ( jq ) {
   }
 
   const onOpenThirdPartyCmdClick = function(evt) {
-    console.log(evt);
+		const main = require('../main.js');
+		const userdata = JSON.parse(main.doGetUserData());
+		const defaultDownloadPath = userdata.userinfo.User_PathRadiant;
+		let thirdPartyLink = 'radiant://?n=ZIPARCHIVE.zip&v=%22';
+		if (downloadDicomList.length > 0) {
+			if (downloadDicomList.length <= 3) {
+				downloadDicomList.forEach((item, i) => {
+					if (i < (downloadDicomList.length-1)) {
+						thirdPartyLink += defaultDownloadPath + '/' + item + '%22&v=%22';
+					} else {
+						thirdPartyLink += defaultDownloadPath + '/' + item + '%22';
+					}
+				});
+				console.log(thirdPartyLink);
+				var pom = document.createElement('a');
+				pom.setAttribute('href', thirdPartyLink);
+				//pom.setAttribute('download', dicomFilename);
+				pom.click();
+				downloadDicomList = [];
+			} else {
+				$.notify("sorry, not support exceed three file download", "warn");
+			}
+		} else {
+			$.notify("ขออภัย ยังไม่พบรายการดาวน์โหลดไฟล์", "warn");
+		}
   }
 
   const onTemplateSelectorChange = async function(evt) {
@@ -2359,44 +2385,49 @@ module.exports = function ( jq ) {
   }
 
 	const onCreateNewResponseCmdClick = async function(evt) {
-		$('body').loading('start');
-		const createNewResponseCmd = $(evt.currentTarget);
-		const main = require('../main.js');
-    const userdata = JSON.parse(main.doGetUserData());
-		const saveNewResponseData = $(createNewResponseCmd).data('createNewResponseData');
-
-		let type = 'draft';
-		let caseId = saveNewResponseData.caseId
-		let userId = userdata.id;
 		let responseHTML = $('#SimpleEditor').val();
-		doBackupDraft(responseHTML);
-		let saveData = {Response_Text: responseHTML, Response_Type: type};
-		let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId};
-		let saveResponseRes = await doCallSaveResponse(params);
-		if (saveResponseRes.status.code == 200){
-			caseResponseId = saveResponseRes.result.responseId;
-			if (!caseResponseId) {
-				$.notify("เกิดความผิดพลาด Case Response API", "error");
-			}
-			let casedate = saveNewResponseData.casedate;
-			let patentFullName = saveNewResponseData.patentFullName;
-	    let reportCreateCallerEndPoint = "/api/casereport/create";
-			let fileExt = 'pdf';
-			let fileName = (patentFullName.split(' ').join('_')) + '-' + casedate + '.' + fileExt;
-	    params = {caseId: saveNewResponseData.caseId, hospitalId: caseHospitalId, userId: userdata.id, pdfFileName: fileName};
-			let reportPdf = await $.post(reportCreateCallerEndPoint, params);
-			let embetObject = $('<object data="' + reportPdf.reportLink + '" type="application/pdf" width="650" height="820"></object>');
-			$("#dialog").load('form/response-dialog.html', function() {
-				saveNewResponseData.reportLink = reportPdf.reportLink;
-				$('#ResponsePreview').append($(embetObject));
-				$('#ResponsePreview').css({'text-align': 'center'});
-				$('#SaveResponeCmd').data('saveResponseData', saveNewResponseData);
-				$('#SaveResponeCmd').on('click', onSaveResponseCmdClick);
+		if (responseHTML !== '') {
+			$('body').loading('start');
+			const createNewResponseCmd = $(evt.currentTarget);
+			const main = require('../main.js');
+	    const userdata = JSON.parse(main.doGetUserData());
+			const saveNewResponseData = $(createNewResponseCmd).data('createNewResponseData');
+
+			let type = 'draft';
+			let caseId = saveNewResponseData.caseId
+			let userId = userdata.id;
+			let responseHTML = $('#SimpleEditor').val();
+			doBackupDraft(responseHTML);
+			let saveData = {Response_Text: responseHTML, Response_Type: type};
+			let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId};
+			let saveResponseRes = await doCallSaveResponse(params);
+			if (saveResponseRes.status.code == 200){
+				caseResponseId = saveResponseRes.result.responseId;
+				if (!caseResponseId) {
+					$.notify("เกิดความผิดพลาด Case Response API", "error");
+				}
+				let casedate = saveNewResponseData.casedate;
+				let patentFullName = saveNewResponseData.patentFullName;
+		    let reportCreateCallerEndPoint = "/api/casereport/create";
+				let fileExt = 'pdf';
+				let fileName = (patentFullName.split(' ').join('_')) + '-' + casedate + '.' + fileExt;
+		    params = {caseId: saveNewResponseData.caseId, hospitalId: caseHospitalId, userId: userdata.id, pdfFileName: fileName};
+				let reportPdf = await $.post(reportCreateCallerEndPoint, params);
+				let embetObject = $('<object data="' + reportPdf.reportLink + '" type="application/pdf" width="100%" height="480"></object>');
+				$("#dialog").load('form/response-dialog.html', function() {
+					saveNewResponseData.reportLink = reportPdf.reportLink;
+					$('#ResponsePreview').append($(embetObject));
+					$('#ResponsePreview').css({'text-align': 'center', 'width': '830px', 'min-height': '500px', 'overflow': 'scroll'});
+					$('#SaveResponeCmd').data('saveResponseData', saveNewResponseData);
+					$('#SaveResponeCmd').on('click', onSaveResponseCmdClick);
+					$('body').loading('stop');
+				});
+			} else {
+				$.notify("เกิดความผิดพลาดไม่สามารถบันทึกผลอ่านได้ในขณะนี้", "error");
 				$('body').loading('stop');
-			});
+			}
 		} else {
-			$.notify("เกิดความผิดพลาดไม่สามารถบันทึกผลอ่านได้ในขณะนี้", "error");
-			$('body').loading('stop');
+			$.notify("โปรดพิมพ์ผลอ่านก่อนครับ", "warn");
 		}
 	}
 
@@ -2515,7 +2546,7 @@ module.exports = function ( jq ) {
 			let saveData = {Response_Text: responseHTML, Response_Type: responseType};
 			let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId, reporttype: reportType, PDF_Filename: saveResponseData.reportLink};
 			let saveResponseRes = await doCallSaveResponse(params);
-			if (saveResponseRes.status.code == 200){
+			if ((saveResponseRes.status.code == 200) || (saveResponseRes.status.code == 203)){
 				$('#quickreply').empty();
 				$('#quickreply').removeAttr('style');
 				$("#dialog").empty();
@@ -2549,23 +2580,45 @@ module.exports = function ( jq ) {
 
 	const onSaveDraftResponseCmdClick = function(evt) {
 		return new Promise(async function(resolve, reject) {
-			$('body').loading('start');
-			const saveDraftResponseCmd = $(evt.currentTarget);
-	    const saveDraftResponseData = $(saveDraftResponseCmd).data('saveDraftResponseData');
-			let saveResponseRes = await doSaveDraft(saveDraftResponseData);
-			if (saveResponseRes.status.code == 200){
-				caseResponseId = draftResponseRes.Record[0].id;
-				if (!caseResponseId) {
-					$.notify("เกิดความผิดพลาด Case Response API", "error");
+			let responseHTML = $('#SimpleEditor').val();
+			if (responseHTML !== '') {
+				$('body').loading('start');
+				const saveDraftResponseCmd = $(evt.currentTarget);
+		    const saveDraftResponseData = $(saveDraftResponseCmd).data('saveDraftResponseData');
+				let draftResponseRes = await doSaveDraft(saveDraftResponseData);
+				console.log(draftResponseRes);
+				if (draftResponseRes.status.code == 200){
+					caseResponseId = draftResponseRes.result.responseId;
+					if (!caseResponseId) {
+						$.notify("เกิดความผิดพลาด Case Response API", "error");
+					}
+					$.notify("บันทึกผลอ่านเป็น Draft สำเร็จ", "success");
+					$('body').loading('stop');
+				} else {
+					$.notify("บันทึกผลอ่านเป็น Draft ไม่สำเร็จ", "error");
+					$('body').loading('stop');
 				}
-				$.notify("บันทึกผลอ่านเป็น Draft สำเร็จ", "success");
-				$('body').loading('stop');
+				resolve(draftResponseRes);
 			} else {
-				$.notify("บันทึกผลอ่านเป็น Draft ไม่สำเร็จ", "error");
-				$('body').loading('stop');
+				$.notify("โปรดพิมพ์ผลอ่านก่อนครับ", "warn");
+				resolve({});
 			}
-			resolve(saveResponseRes);
 		});
+	}
+
+	const onAddNewTemplateCmdClick = function(evt) {
+		let saveTypeOptionBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+
+		let selectSaveTypeOptionGuide = $('<div style="display: table-row; width: 100%;"></div>');
+		$(selectSaveTypeOptionGuide).appendTo($(saveTypeOptionBox));
+		$(selectSaveTypeOptionGuide).append($('<div style="display: table-cell; padding: 4px; background-color: #02069B; color: white;"><img src="/images/figger-right-icon.png" width="25px" height="auto"/></div>'));
+		let guideCell = $('<div style="display: table-cell; padding: 4px; background-color: #02069B; vertical-align: middle; text-align: center;"></div>');
+		$(guideCell).append($('<span>โปรดตั้งชื่อ Template ก่อนเพิ่มเป็นรายการใหม่</span>'));
+		$(guideCell).appendTo($(selectSaveTypeOptionGuide));
+
+		$('#quickreply').css(quickReplyDialogStyle);
+		$(saveTypeOptionBox).css(quickReplyContentStyle);
+		$('#quickreply').append($(saveTypeOptionBox));
 	}
 
 	const onBackToOpenCaseCmdClick = function(evt) {
@@ -2615,16 +2668,14 @@ module.exports = function ( jq ) {
     });
   }
 
-	const doCreateDicomCmdBox = function(orthancStudyID, studyInstanceUID, casedate){
+	const doCreateDicomCmdBox = function(orthancStudyID, studyInstanceUID, casedate, hospitalId){
 		let dicomCmdBox = $('<div></div>');
 		let downloadCmd = $('<span>Download</span>');
 		$(downloadCmd).css(commandButtonStyle);
 		$(downloadCmd).appendTo($(dicomCmdBox));
 		$(downloadCmd).on('click', async (evt)=>{
 			$('body').loading('start');
-			const main = require('../main.js');
-			const userdata = JSON.parse(main.doGetUserData());
-			let downloadRes = await doDownloadDicom(orthancStudyID, userdata.username, casedate);
+			let downloadRes = await doDownloadDicom(orthancStudyID, hospitalId, casedate);
 			$('body').loading('stop');
 		});
 		let openViewerCmd = $('<span>Open</span>');
@@ -2735,7 +2786,7 @@ module.exports = function ( jq ) {
 					let casedateSegment = casedatetime[0].split('-');
 					casedateSegment = casedateSegment.join('');
 					let casedate = casedateSegment;
-					let dicomCmdBox = doCreateDicomCmdBox(backward.Case_OrthancStudyID, backward.Case_StudyInstanceUID, casedate);
+					let dicomCmdBox = doCreateDicomCmdBox(backward.Case_OrthancStudyID, backward.Case_StudyInstanceUID, casedate, backward.hospitalId);
 					let patientHRBackwardBox = await doCreateHRBackwardBox(patentFullName, backward.Case_PatientHRLink, casedate);
 					let responseBackwardBox = undefined;
 					if ((backward.caseresponses) && (backward.caseresponses.length > 0)) {
@@ -2839,7 +2890,7 @@ module.exports = function ( jq ) {
 			casedateSegment = casedateSegment.join('');
 			let casedate = casedateSegment;
 
-      let downloadData = {patientId: caseOpen.case.patient.id, studyID: caseOpen.case.Case_OrthancStudyID, casedate: casedate};
+      let downloadData = {patientId: caseOpen.case.patient.id, studyID: caseOpen.case.Case_OrthancStudyID, casedate: casedate, hospitalId: caseOpen.case.hospitalId};
       $(downloadCmd).data('downloadData', downloadData);
       $(downloadCmd).on('click', onDownloadCmdClick);
       $(downloadCmd).appendTo($(summarySecondLine))
@@ -2882,6 +2933,11 @@ module.exports = function ( jq ) {
       }
       $(templateSelector).on('change', onTemplateSelectorChange);
       $(templateSelector).appendTo($(summaryFourthLine));
+			$(summaryFourthLine).append($('<span>  </span>'));
+			let addNewTemplateCmd = $('<input type="button" id="AddNewTemplateCmd" value=" Save New Template"/>');
+			$(addNewTemplateCmd).hide();
+			$(addNewTemplateCmd).appendTo($(summaryFourthLine));
+			$(addNewTemplateCmd).on('click', onAddNewTemplateCmdClick)
       $(summaryFourthLine).css(pageLineStyle);
       $(summaryFourthLine).appendTo($(summary));
 
@@ -2893,7 +2949,7 @@ module.exports = function ( jq ) {
 			backupDraftCounter = 0;
       $(simpleEditor).jqte({change: (evt)=>{
 				//auto backup on local storage
-				if (keytypecounter == 100) {
+				if (keytypecounter == 10) {
 					let currentContent = $(summary).find('#SimpleEditor').val();
 					doBackupDraft(currentContent);
 					keytypecounter = 0;
@@ -2932,8 +2988,25 @@ module.exports = function ( jq ) {
 
 			if (caseOpen.case.casestatusId == 9) {
 				let draftResponseRes = await doCallDraftRespons(caseId);
-				caseResponseId = draftResponseRes.Record[0].id;
-				$(summary).find('#SimpleEditor').jqteVal(draftResponseRes.Record[0].Response_Text);
+				if (draftResponseRes.Record.length > 0) {
+					caseResponseId = draftResponseRes.Record[0].id;
+					let resType = draftResponseRes.Record[0].Response_Type;
+					if (resType === 'draft') {
+						let cloudUpdatedAt = new Date(draftResponseRes.Record[0].updatedAt);
+						let draftBackup = doRestoreDraft();
+						let localUpdateAt = new Date(draftBackup.backupAt);
+						if (localUpdateAt.getTime() > cloudUpdatedAt.getTime()) {
+							let yourAnwser = confirm('พบว่ามีข้อมูลผลอ่านแบ็คอัพที่ Local ปรับปรุงล่าสุดกว่าที่ Server\nต้องการให้กู้ข้อมูลผลอ่านจาก Lacal มาแทนที่หรือไม่');
+							if (yourAnwser) {
+								$(summary).find('#SimpleEditor').jqteVal(draftBackup.content);
+							} else {
+								$(summary).find('#SimpleEditor').jqteVal(draftResponseRes.Record[0].Response_Text);
+							}
+						} else {
+							$(summary).find('#SimpleEditor').jqteVal(draftResponseRes.Record[0].Response_Text);
+						}
+					}
+				}
 			} else {
 				/*
 				let defualTemplateId = yourTemplates.Options[0].Value;
@@ -3051,14 +3124,18 @@ module.exports = function ( jq ) {
 
 	const doBackupDraft = function(content){
 		return new Promise(async function(resolve, reject) {
-			let draftbackup = {content: content, backupAt: new Date()};
+			let draftbackup = {caseId: caseId, content: content, backupAt: new Date()};
 			localStorage.setItem('draftbackup', JSON.stringify(draftbackup));
-			if (backupDraftCounter == 5) {
+			if (backupDraftCounter == 30) {
 				let saveDraftResponseData = {type: 'draft', caseId: caseId};
 				await doSaveDraft(saveDraftResponseData);
 				backupDraftCounter = 0;
 			} else {
 				backupDraftCounter =+ 1;
+			}
+			let isShowNewTemplateCmd = $('#AddNewTemplateCmd').css('display');
+			if (isShowNewTemplateCmd === 'none') {
+				$('#AddNewTemplateCmd').show();
 			}
 			resolve(draftbackup);
 		});

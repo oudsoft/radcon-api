@@ -18,11 +18,12 @@ const casestatusFlowTable = [
     {now: 5, next: [10, 11], actions: ['view', 'print', 'convert', 'callzoom']},
     {now: 6, next: [12], actions: ['edit']},
     {now: 7, next: [1], actions: ['renew', 'delete', 'upd']},
-    {now: 8, next: [9, 5], actions: ['draft', 'reply']},
-    {now: 9, next: [5], actions: ['reply']},
+    {now: 8, next: [9, 5, 13], actions: ['draft', 'reply']},
+    {now: 9, next: [5, 13], actions: ['reply']},
     {now: 10, next: [11], actions: ['view', 'print', 'convert', 'callzoom']},
     {now: 11, next: [6, 12], actions: ['view', 'print', 'convert', 'close', 'edit', 'callzoom']},
     {now: 12, next: [], actions: ['edit', 'callzoom']},
+    {now: 13, next: [5], actions: ['edit', 'callzoom']}
 ];
 
 const msgNewCaseRadioDetailFormat = 'เคสใหม่\nจากโรงพยาบาล %s\nผู้ป่วยชื่อ %s\nStudyDescription %s\nProtocolName %s\nBodyPart %s\nModality %s\n';

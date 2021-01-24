@@ -28,15 +28,19 @@ const doFilerStatusChange = function(from){
 
 const doCanChange = function(from, next){
   return new Promise(async function(resolve, reject) {
-    let cando = await doFilerStatusChange(from);
-    if (cando.length > 0) {
-      if (cando.indexOf(Number(next)) > -1) {
-        resolve(true);
+    if (from == next) {
+      resolve(false);
+    } else {
+      let cando = await doFilerStatusChange(from);
+      if (cando.length > 0) {
+        if (cando.indexOf(Number(next)) > -1) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
       } else {
         resolve(false);
       }
-    } else {
-      resolve(false);
     }
   });
 }

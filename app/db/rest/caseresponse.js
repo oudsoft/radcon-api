@@ -46,7 +46,7 @@ app.post('/select/(:caseId)', (req, res) => {
       if (ur.length > 0){
         try {
           const caseId = req.params.caseId;
-          const caseres = await Response.findAll({attributes: excludeColumn, where: {caseId: caseId}});
+          const caseres = await Response.findAll({ where: {caseId: caseId}});
           res.json({ status: {code: 200}, Record: caseres});
         } catch(error) {
           log.error(error);
@@ -78,7 +78,12 @@ app.post('/add', (req, res) => {
         let nextStatus = undefined;
         let remark = 'Radilo Save normal Response success.';
         if (responseType === 'normal'){
-          nextStatus = 5;
+          const reportType = req.body.reporttype;
+          if (reportType === 'preliminary') {
+            nextStatus = 13;
+          } else {
+            nextStatus = 5;
+          }
         } else if (responseType === 'draft'){
           nextStatus = 9;
         }
@@ -86,31 +91,26 @@ app.post('/add', (req, res) => {
           let newResponse = req.body.data;
           let adResponse = await Response.create(newResponse);
           await Response.update({caseId: caseId, userId: userId}, { where: { id: adResponse.id } });
-          await db.cases.update({casestatusId: nextStatus}, { where: { id: caseId } });
-          /*
-          if (responseType === 'normal'){
-            let changeResult = await statusControl.doChangeCaseStatus(nowStatusId, nextStatus, caseId, userId, remark);
-            let newCaseReport = {Remark: remark, Report_Type: req.body.reporttype};
-            let adReport = await db.casereports.create(newCaseReport);
-            await db.casereports.update({caseId: caseId, userId: userId, caseresponseId: responseId}, { where: { id: adReport.id } });
-          } else if (responseType === 'draft'){
-
+          let changeResult = await statusControl.doChangeCaseStatus(nowStatusId, nextStatus, caseId, userId, remark);
+          if (changeResult.change.status) {
+            res.json({ status: {code: 200}, result: {responseId: adResponse.id}});
+          } else {
+            res.json({ status: {code: 203}, result: {responseId: adResponse.id}});
           }
-          */
-          await statusControl.onDraftCaseEvent(caseId);
-
-          res.json({ status: {code: 200}, result: {responseId: adResponse.id}});
         } else if (nowStatusId == 9 ) {
           let responseId = req.body.responseId;
           let updateResponse = req.body.data;
           let upResponse = await Response.update(updateResponse, { where: { id: responseId } });
           if (responseType === 'normal'){
-            let changeResult = await statusControl.doChangeCaseStatus(cases[0].casestatusId, nextStatus, caseId, userId, remark);
-            let newCaseReport = {Remark: remark, Report_Type: req.body.reporttype, PDF_Filename: req.body.PDF_Filename};
-            let adReport = await db.casereports.create(newCaseReport);
-            await db.casereports.update({caseId: caseId, userId: userId, caseresponseId: responseId}, { where: { id: adReport.id } });
-            await statusControl.onSuccessCaseEvent(caseId);
-            res.json({ status: {code: 200}, result: changeResult});
+            let changeResult = await statusControl.doChangeCaseStatus(nowStatusId, nextStatus, caseId, userId, remark);
+            if (changeResult.change.status) {
+              let newCaseReport = {Remark: remark, Report_Type: req.body.reporttype, PDF_Filename: req.body.PDF_Filename};
+              let adReport = await db.casereports.create(newCaseReport);
+              await db.casereports.update({caseId: caseId, userId: userId, caseresponseId: responseId}, { where: { id: adReport.id } });
+              res.json({ status: {code: 200}, result: changeResult});
+            } else {
+              res.json({ status: {code: 203}, result: changeResult});
+            }
           } else if (responseType === 'draft'){
             res.json({ status: {code: 200}, result: {responseId: responseId}});
           }
