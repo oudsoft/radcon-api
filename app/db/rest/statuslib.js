@@ -162,6 +162,8 @@ const onAcceptCaseEvent = function(caseId) {
     const radioId = targetCase.Case_RadiologistId;
     const patientNameEN = targetCase.patient.Patient_NameEN + ' ' + targetCase.patient.Patient_LastNameEN;
 
+    tasks.removeTaskByCaseId(targetCase.id);
+
     //Load Radio radioProfile
     let radioProfile = await common.doLoadRadioProfile(radioId, hospitalId);
     //radioProfile = {userId: radioId, username: radioUsers[0].username, radioUsers[0].User_NameEN, radioUsers[0].User_LastNameEN, lineUserId: radioUserLines[0].UserId, config: configs[0]};
@@ -199,6 +201,8 @@ const onRejectCaseEvent = function(caseId) {
     const radioId = targetCase.Case_RadiologistId;
     const patientNameEN = targetCase.patient.Patient_NameEN + ' ' + targetCase.patient.Patient_LastNameEN;
 
+    tasks.removeTaskByCaseId(targetCase.id);
+
     //Load Radio radioProfile
     let radioProfile = await common.doLoadRadioProfile(radioId, hospitalId);
     //radioProfile = {userId: radioId, username: radioUsers[0].username, radioUsers[0].User_NameEN, radioUsers[0].User_LastNameEN, lineUserId: radioUserLines[0].UserId, config: configs[0]};
@@ -230,6 +234,8 @@ const onExpiredCaseEvent = function(caseId) {
     const radioId = targetCase.Case_RadiologistId;
     const patientNameEN = targetCase.patient.Patient_NameEN + ' ' + targetCase.patient.Patient_LastNameEN;
 
+    tasks.removeTaskByCaseId(targetCase.id);
+
     //Load Radio radioProfile
     let radioProfile = await common.doLoadRadioProfile(radioId, hospitalId);
     //radioProfile = {userId: radioId, username: radioUsers[0].username, radioUsers[0].User_NameEN, radioUsers[0].User_LastNameEN, lineUserId: radioUserLines[0].UserId, config: configs[0]};
@@ -254,6 +260,7 @@ const onSuccessCaseEvent = function(caseId){
     const radioId = targetCase.Case_RadiologistId;
     const patientNameEN = targetCase.patient.Patient_NameEN + ' ' + targetCase.patient.Patient_LastNameEN;
 
+    tasks.removeTaskByCaseId(targetCase.id);
     //Load Radio radioProfile
     let radioProfile = await common.doLoadRadioProfile(radioId, hospitalId);
     //radioProfile = {userId: radioId, username: radioUsers[0].username, radioUsers[0].User_NameEN, radioUsers[0].User_LastNameEN, lineUserId: radioUserLines[0].UserId, config: configs[0]};
@@ -399,7 +406,7 @@ const onDraftCaseEvent = function(caseId){
     let refreshDraftCase = {type: 'refresh', statusId: targetCase.casestatusId, caseId: targetCase.id};
 
     let radioNotify = {type: 'notify', message: 'You can Save Draft Result of Case success.'};
-    await socket.sendMessage(refreshOpenCase, radioProfile.username);
+    await socket.sendMessage(refreshDraftCase, radioProfile.username);
     await socket.sendMessage(radioNotify, radioProfile.username);
 
     /*
@@ -407,7 +414,7 @@ const onDraftCaseEvent = function(caseId){
     */
 
     let hospitalNotify = {type: 'notify', message: 'Your case had start draft result by radiologist.'};
-    await socket.sendMessage(refreshOpenCase , userProfile.username);
+    await socket.sendMessage(refreshDraftCase , userProfile.username);
     await socket.sendMessage(hospitalNotify, userProfile.username);
 
     let actions = await doGetControlStatusAt(targetCase.casestatusId);

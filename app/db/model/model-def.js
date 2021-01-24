@@ -367,6 +367,9 @@ const RadCaseReportDef = {
 			Report_Type : {
 				type: Sequelize.STRING(20)
 				/* Type => normal/attention/cristical/preliminary */
+			},
+			PDF_Filename : {
+				type: Sequelize.STRING(90)
 			}
 		};
 

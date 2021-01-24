@@ -2292,7 +2292,7 @@ module.exports = function ( jq ) {
 
 	const commandButtonStyle = {'padding': '3px', 'cursor': 'pointer', 'border': '1px solid white', 'color': 'white', 'background-color': 'blue'};
 	const quickReplyDialogStyle = { 'position': 'fixed', 'z-index': '13', 'left': '0', 'top': '0', 'width': '100%', 'height': '100%', 'overflow': 'auto', 'background-color': 'rgb(0,0,0)', 'background-color': 'rgba(0,0,0,0.4)'};
-	const quickReplyContentStyle = { 'background-color': '#fefefe', 'margin': '15% auto', 'padding': '20px', 'border': '1px solid #888', 'width': '450px', 'height': '200px', 'font-family': 'THSarabunNew', 'font-size': '24px' };
+	const quickReplyContentStyle = { 'background-color': '#fefefe', 'margin': '15% auto', 'padding': '20px', 'border': '1px solid #888', 'width': '520px', 'height': '200px', 'font-family': 'THSarabunNew', 'font-size': '24px' };
 
 	const backwardCaseStatus = [5, 6, 10, 11, 12];
 	let caseHospitalId = undefined;
@@ -2300,6 +2300,7 @@ module.exports = function ( jq ) {
 	let caseId = undefined;
 	let caseResponseId = undefined;
 	let keytypecounter = undefined;
+	let backupDraftCounter = undefined;
 
 	const doDownloadDicom = function(studyID, username, casedate) {
 		return new Promise(async function(resolve, reject) {
@@ -2386,6 +2387,7 @@ module.exports = function ( jq ) {
 			let reportPdf = await $.post(reportCreateCallerEndPoint, params);
 			let embetObject = $('<object data="' + reportPdf.reportLink + '" type="application/pdf" width="650" height="820"></object>');
 			$("#dialog").load('form/response-dialog.html', function() {
+				saveNewResponseData.reportLink = reportPdf.reportLink;
 				$('#ResponsePreview').append($(embetObject));
 				$('#ResponsePreview').css({'text-align': 'center'});
 				$('#SaveResponeCmd').data('saveResponseData', saveNewResponseData);
@@ -2403,27 +2405,57 @@ module.exports = function ( jq ) {
 		const saveResponseData = $(saveResponseCmd).data('saveResponseData');
 
 		let saveTypeOptionBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+
 		let selectSaveTypeOptionGuide = $('<div style="display: table-row; width: 100%;"></div>');
 		$(selectSaveTypeOptionGuide).appendTo($(saveTypeOptionBox));
-		let guideCell = $('<div style="display: table-cell; padding: 4px; background-color: #02069B; color: white;"></div>');
+		$(selectSaveTypeOptionGuide).append($('<div style="display: table-cell; padding: 4px; background-color: #02069B; color: white;"><img src="/images/figger-right-icon.png" width="25px" height="auto"/></div>'));
+		let guideCell = $('<div style="display: table-cell; padding: 4px; background-color: #02069B; vertical-align: middle; text-align: center;"></div>');
 		$(guideCell).append($('<span>โปรดเลือกว่า ต้องการส่งผลอ่านแบบไหนจากรายการเลือก</span>'));
 		$(guideCell).appendTo($(selectSaveTypeOptionGuide));
+
 		let normalSaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
 		$(normalSaveTypeOption).appendTo($(saveTypeOptionBox));
+		let normalPointIconCell = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey; vertical-align: middle; text-align: center;"></div>');
+		let normalPointIcon = $('<img src="/images/triangle-right-icon.png" width="25px" height="auto"/>');
+		$(normalPointIcon).hide();
+		$(normalPointIcon).appendTo($(normalPointIconCell));
+		$(normalPointIconCell).appendTo($(normalSaveTypeOption));
+		$(normalSaveTypeOption).hover(()=>{$(normalPointIcon).toggle();})
 		let labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Normal</div>');
 		$(labelOption).appendTo($(normalSaveTypeOption));
+
 		let attentionSaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
 		$(attentionSaveTypeOption).appendTo($(saveTypeOptionBox));
+		let attentionPointIconCell = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey; vertical-align: middle; text-align: center;"></div>');
+		let attentionPointIcon = $('<img src="/images/triangle-right-icon.png" width="25px" height="auto"/>');
+		$(attentionPointIcon).hide();
+		$(attentionPointIcon).appendTo($(attentionPointIconCell));
+		$(attentionPointIconCell).appendTo($(attentionSaveTypeOption));
+		$(attentionSaveTypeOption).hover(()=>{$(attentionPointIcon).toggle();})
 		labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Need Attention</div>');
 		$(labelOption).appendTo($(attentionSaveTypeOption));
+
 		let criticalSaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
 		$(criticalSaveTypeOption).appendTo($(saveTypeOptionBox));
+		let criticalPointIconCell = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey; vertical-align: middle; text-align: center;"></div>');
+		let criticalPointIcon = $('<img src="/images/triangle-right-icon.png" width="25px" height="auto"/>');
+		$(criticalPointIcon).hide();
+		$(criticalPointIcon).appendTo($(criticalPointIconCell));
+		$(criticalPointIconCell).appendTo($(criticalSaveTypeOption));
+		$(criticalSaveTypeOption).hover(()=>{$(criticalPointIcon).toggle();})
 		labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Critical</div>');
 		$(labelOption).appendTo($(criticalSaveTypeOption));
-		let prelimibarySaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
-		$(prelimibarySaveTypeOption).appendTo($(saveTypeOptionBox));
-		labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Pre-Limitary</div>');
-		$(labelOption).appendTo($(prelimibarySaveTypeOption));
+
+		let preliminarySaveTypeOption = $('<div style="display: table-row; width: 100%; cursor: pointer;" class="case-row"></div>');
+		$(preliminarySaveTypeOption).appendTo($(saveTypeOptionBox));
+		let preliminaryPointIconCell = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey; vertical-align: middle; text-align: center;"></div>');
+		let preliminaryPointIcon = $('<img src="/images/triangle-right-icon.png" width="25px" height="auto"/>');
+		$(preliminaryPointIcon).hide();
+		$(preliminaryPointIcon).appendTo($(preliminaryPointIconCell));
+		$(preliminaryPointIconCell).appendTo($(preliminarySaveTypeOption));
+		$(preliminarySaveTypeOption).hover(()=>{$(preliminaryPointIcon).toggle();})
+		labelOption = $('<div style="display: table-cell; padding: 4px; border: 2px solid grey;">Pre-Liminary</div>');
+		$(labelOption).appendTo($(preliminarySaveTypeOption));
 
 		$('#quickreply').css(quickReplyDialogStyle);
 		$(saveTypeOptionBox).css(quickReplyContentStyle);
@@ -2435,8 +2467,8 @@ module.exports = function ( jq ) {
 		$(attentionSaveTypeOption).on('click', onAttentionSaveOptionCmdClick);
 		$(criticalSaveTypeOption).data('saveResponseData', saveResponseData);
 		$(criticalSaveTypeOption).on('click', onCriticalSaveOptionCmdClick);
-		$(prelimibarySaveTypeOption).data('saveResponseData', saveResponseData);
-		$(prelimibarySaveTypeOption).on('click', onPrelimibarySaveOptionCmdClick);
+		$(preliminarySaveTypeOption).data('saveResponseData', saveResponseData);
+		$(preliminarySaveTypeOption).on('click', onPreliminarySaveOptionCmdClick);
 	}
 
 	const onNormalSaveOptionCmdClick = async function(evt) {
@@ -2463,7 +2495,7 @@ module.exports = function ( jq ) {
 		await doSaveResponse(responseType, reportType, saveResponseData)
 	}
 
-	const onPrelimibarySaveOptionCmdClick = async function(evt) {
+	const onPreliminarySaveOptionCmdClick = async function(evt) {
 		const responseType = 'normal';
 		const reportType = 'preliminary';
 		const normalSaveResponseCmd = $(evt.currentTarget);
@@ -2481,8 +2513,7 @@ module.exports = function ( jq ) {
 			let responseHTML = $('#SimpleEditor').val();
 			doBackupDraft(responseHTML);
 			let saveData = {Response_Text: responseHTML, Response_Type: responseType};
-			let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId, reporttype: reportType};
-
+			let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId, reporttype: reportType, PDF_Filename: saveResponseData.reportLink};
 			let saveResponseRes = await doCallSaveResponse(params);
 			if (saveResponseRes.status.code == 200){
 				$('#quickreply').empty();
@@ -2501,12 +2532,9 @@ module.exports = function ( jq ) {
 		});
 	}
 
-	const onSaveDraftResponseCmdClick = function(evt) {
+	function doSaveDraft(saveDraftResponseData) {
 		return new Promise(async function(resolve, reject) {
-			$('body').loading('start');
-			const saveDraftResponseCmd = $(evt.currentTarget);
 			const main = require('../main.js');
-	    const saveDraftResponseData = $(saveDraftResponseCmd).data('saveDraftResponseData');
 			let type = saveDraftResponseData.type;
 			let caseId = saveDraftResponseData.caseId
 			let userdata = JSON.parse(main.doGetUserData());
@@ -2515,6 +2543,16 @@ module.exports = function ( jq ) {
 			let saveData = {Response_Text: responseHTML, Response_Type: type};
 			let params = {caseId: caseId, userId: userId, data: saveData, responseId: caseResponseId};
 			let saveResponseRes = await doCallSaveResponse(params);
+			resolve(saveResponseRes);
+		});
+	}
+
+	const onSaveDraftResponseCmdClick = function(evt) {
+		return new Promise(async function(resolve, reject) {
+			$('body').loading('start');
+			const saveDraftResponseCmd = $(evt.currentTarget);
+	    const saveDraftResponseData = $(saveDraftResponseCmd).data('saveDraftResponseData');
+			let saveResponseRes = await doSaveDraft(saveDraftResponseData);
 			if (saveResponseRes.status.code == 200){
 				caseResponseId = draftResponseRes.Record[0].id;
 				if (!caseResponseId) {
@@ -2643,7 +2681,11 @@ module.exports = function ( jq ) {
 		$(pasteCmd).css(commandButtonStyle);
 		$(pasteCmd).appendTo($(responseBackwarBox));
 		$(pasteCmd).on('click', async (evt)=>{
-			$('#SimpleEditor').jqteVal(responseText);
+			let yourResponse = $('#SimpleEditor').val();
+			let yourNewResponse = yourResponse + '<br/>' + responseText;
+			$('#SimpleEditor').jqteVal(yourNewResponse);
+			doBackupDraft(yourNewResponse);
+			keytypecounter = 0;
 		});
 		return $(responseBackwarBox);
 	}
@@ -2847,15 +2889,16 @@ module.exports = function ( jq ) {
       let simpleEditor = $('<input type="text" id="SimpleEditor"/>');
       $(simpleEditor).css({ 'min-height': '350px' });
       $(simpleEditor).appendTo($(simpleEditorBox));
-			keytypecounter = 0
+			keytypecounter = 0;
+			backupDraftCounter = 0;
       $(simpleEditor).jqte({change: (evt)=>{
 				//auto backup on local storage
 				if (keytypecounter == 100) {
 					let currentContent = $(summary).find('#SimpleEditor').val();
 					doBackupDraft(currentContent);
 					keytypecounter = 0;
-					let draftRestore = doRestoreDraft();
-					doViewBackupDraft(draftRestore.content);
+					//let draftRestore = doRestoreDraft();
+					// doViewBackupDraft(draftRestore.content);
 				} else {
 					keytypecounter += 1;
 				}
@@ -3007,8 +3050,18 @@ module.exports = function ( jq ) {
   }
 
 	const doBackupDraft = function(content){
-		let draftbackup = {content: content, backupAt: new Date()};
-		localStorage.setItem('draftbackup', JSON.stringify(draftbackup));
+		return new Promise(async function(resolve, reject) {
+			let draftbackup = {content: content, backupAt: new Date()};
+			localStorage.setItem('draftbackup', JSON.stringify(draftbackup));
+			if (backupDraftCounter == 5) {
+				let saveDraftResponseData = {type: 'draft', caseId: caseId};
+				await doSaveDraft(saveDraftResponseData);
+				backupDraftCounter = 0;
+			} else {
+				backupDraftCounter =+ 1;
+			}
+			resolve(draftbackup);
+		});
 	}
 
 	const doRestoreDraft = function(){
@@ -3058,11 +3111,76 @@ module.exports = function ( jq ) {
   const util = require('../../case/mod/utilmod.js')($);
   const common = require('../../case/mod/commonlib.js')($);
 
-  function doCreateCaseItemCommand(caseItem) {
-		let cmdColumn = $('<div text-align: center;"></div>');
-		let operationCmdButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/arrow-down-icon.png" title="คลิกเพื่อเปิดรายการคำสั่งใช้งานของคุณ"/>');
-		$(operationCmdButton).click(function() {
+	const doCreateCaseCmd = function(cmd, data, clickCallbak) {
+		const cmdIcon = $('<img class="pacs-command" data-toggle="tooltip"/>');
+		switch (cmd) {
+			case 'view':
+			$(cmdIcon).attr('src','/images/pdf-icon.png');
+			$(cmdIcon).attr('title', 'Open Result Report.');
+			break;
 
+			case 'print':
+			$(cmdIcon).attr('src','/images/print-icon.png');
+			$(cmdIcon).attr('title', 'Print Result Report.');
+			break;
+
+			case 'convert':
+			$(cmdIcon).attr('src','/images/convert-icon.png');
+			$(cmdIcon).attr('title', 'Convert Result Report to Synapse (PACS).');
+			break;
+
+			case 'callzoom':
+			$(cmdIcon).attr('src','/images/zoom-black-icon.png');
+			$(cmdIcon).attr('title', 'Call Radiologist by zoom App.');
+			break;
+
+			case 'upd':
+			$(cmdIcon).attr('src','/images/update-icon.png');
+			$(cmdIcon).attr('title', 'Update Case data.');
+			break;
+
+			case 'delete':
+			$(cmdIcon).attr('src','/images/delete-icon.png');
+			$(cmdIcon).attr('title', 'Delete Case.');
+			break;
+
+			case 'ren':
+			$(cmdIcon).attr('src','/images/renew-icon.png');
+			$(cmdIcon).attr('title', 'Re-New Case.');
+			break;
+
+			case 'cancel':
+			$(cmdIcon).attr('src','/images/cancel-icon.png');
+			$(cmdIcon).attr('title', 'Cancel Case.');
+			break;
+
+		}
+		$(cmdIcon).on('click', (evt)=>{
+			clickCallbak(data);
+		});
+		return $(cmdIcon);
+	}
+
+  function doCreateCaseItemCommand(ownerRow, caseItem) {
+		let cmdColumn = $('<div style="text-align: center;"></div>');
+		let operationCmdButton = $('<img class="pacs-command" data-toggle="tooltip" src="/images/arrow-down-icon.png" title="คลิกเพื่อเปิดรายการคำสั่งใช้งานของคุณ"/>');
+		$(operationCmdButton).click(async function() {
+			let casestatusId = caseItem.case.casestatusId;
+			let cando = await common.doGetApi('/api/cases/cando/' + casestatusId, {});
+			if (cando.status.code == 200) {
+				let cmdRow = $('<div class="cmd-row" style="display: tbable-row; width: 100%;"></div>');
+				$(cmdRow).append($('<div style="display: table-cell; border-color: transparent;"></div>'));
+				let cmdCell = $('<div style="display: table-cell; position: relative; left:0px; width: 100%; border: 1px solid black; background-color: #ccc; text-align: right;"></div>');
+				$(cmdRow).append($(cmdCell));
+				await cando.next.actions.forEach((item, i) => {
+					let iconCmd = doCreateCaseCmd(item, caseItem.case.id, (data)=>{
+						console.log(data);
+					});
+					$(iconCmd).appendTo($(cmdCell));
+				});
+				$('.cmd-row').remove();
+				$(cmdRow).insertAfter(ownerRow);
+			}
 		});
 		$(operationCmdButton).appendTo($(cmdColumn));
 
@@ -3300,7 +3418,7 @@ module.exports = function ( jq ) {
       //console.log(caseItem);
       let caseHosName = caseItem.case.hospital.Hos_Name;
       let caseSTAT = caseItem.case.casestatus.CS_Name_EN;
-      let caseCMD = doCreateCaseItemCommand(caseItem);
+
 
       let itemRow = $('<div class="case-row" style="display: table-row; width: 100%;"></div>');
       let itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
@@ -3345,6 +3463,8 @@ module.exports = function ( jq ) {
       itemColumn = $('<div style="display: table-cell; text-align: left;"></div>');
       $(itemColumn).append(caseSTAT);
       $(itemColumn).appendTo($(itemRow));
+
+      let caseCMD = doCreateCaseItemCommand(itemRow, caseItem);
 
       itemColumn = $('<div style="display: table-cell; text-align: center;"></div>');
       $(itemColumn).append($(caseCMD));

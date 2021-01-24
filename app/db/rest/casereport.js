@@ -90,7 +90,7 @@ const reportCreator = function(elements, variable, pdfFileName){
 		const { JSDOM } = jsdom;
 
 		const qrgenerator = require('../../lib/qrcodegenerator.js');
-		const qrcontent = 'https://202.28.68.28:4443/img/usr/qrcode/' + pdfFileName + '.pdf';
+		const qrcontent = 'https://radconnext.info/img/usr/qrcode/' + pdfFileName;
 		const qrcode = await qrgenerator(qrcontent, pdfFileName);
 		const qrlink = qrcode.qrlink;
 
@@ -130,8 +130,9 @@ const reportCreator = function(elements, variable, pdfFileName){
 			_window.doMergeContent(elements, variable, qrlink, async (reportHTML) =>{
 
 				/******/
+				const fileNames = pdfFileName.split('.');
 				const usrPdfPath = publicDir + process.env.USRPDF_PATH;
-				const htmlFileName = pdfFileName + '.html';
+				const htmlFileName = fileNames[0] + '.html';
 				const reportHtmlLinkPath = process.env.USRPDF_PATH + '/' + htmlFileName;
 
 				var writerStream = fs.createWriteStream(usrPdfPath + '/' + htmlFileName);
@@ -147,8 +148,8 @@ const reportCreator = function(elements, variable, pdfFileName){
 					log.info('==> ' + reportContent);
 					log.info("Start Create Pdf Report.");
 
-					const reportPdfFilePath = usrPdfPath + '/' + pdfFileName + '.pdf';
-					const reportPdfLinkPath = process.env.USRPDF_PATH + '/' + pdfFileName + '.pdf';
+					const reportPdfFilePath = usrPdfPath + '/' + pdfFileName;
+					const reportPdfLinkPath = process.env.USRPDF_PATH + '/' + pdfFileName;
 
 					const creatReportCommand = parseStr('wkhtmltopdf -s A4 http://localhost:8080/%s %s', reportHtmlLinkPath, reportPdfFilePath);
 
@@ -394,6 +395,7 @@ app.post('/create', (req, res) => {
 				const reportVar = await doLoadVariable(caseId, userId);
 
 				let report = await reportCreator(reportElements, reportVar, pdfFileName);
+
 				res.json({status: {code: 200}, reportLink: report.reportPdfLinkPath, htmlLink: report.reportHtmlLinkPath});
       } else {
         log.info('Can not found user from token.');

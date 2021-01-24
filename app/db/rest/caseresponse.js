@@ -97,6 +97,8 @@ app.post('/add', (req, res) => {
 
           }
           */
+          await statusControl.onDraftCaseEvent(caseId);
+
           res.json({ status: {code: 200}, result: {responseId: adResponse.id}});
         } else if (nowStatusId == 9 ) {
           let responseId = req.body.responseId;
@@ -104,9 +106,10 @@ app.post('/add', (req, res) => {
           let upResponse = await Response.update(updateResponse, { where: { id: responseId } });
           if (responseType === 'normal'){
             let changeResult = await statusControl.doChangeCaseStatus(cases[0].casestatusId, nextStatus, caseId, userId, remark);
-            let newCaseReport = {Remark: remark, Report_Type: req.body.reporttype};
+            let newCaseReport = {Remark: remark, Report_Type: req.body.reporttype, PDF_Filename: req.body.PDF_Filename};
             let adReport = await db.casereports.create(newCaseReport);
             await db.casereports.update({caseId: caseId, userId: userId, caseresponseId: responseId}, { where: { id: adReport.id } });
+            await statusControl.onSuccessCaseEvent(caseId);
             res.json({ status: {code: 200}, result: changeResult});
           } else if (responseType === 'draft'){
             res.json({ status: {code: 200}, result: {responseId: responseId}});
