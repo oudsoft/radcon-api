@@ -93,7 +93,7 @@
           Template
         </div>
       </div>
-      <div class="NavSub" id="TemplateSubCmd">
+      <div class="NavSub" id="QueryRetrieveSubCmd">
         <div class="NavSubIconCell"></div>
         <div class="NavSubIconCell">
           <img src="/images/orthanc-icon-1.png" width="30px" height="auto"/>
@@ -218,9 +218,22 @@
   $(hospitalNameBox).append('<h4 style="text-align: center;">โรงพยาบาล' + yourUserdata.hospital.Hos_Name + '</h4>')
   $('#NavHeader').append($(hospitalNameBox));
   */
-  let userFullName = yourUserdata.userinfo.User_NameEN + ' ' + yourUserdata.userinfo.User_LastNameEN + ' (' + yourUserdata.userinfo.User_NameTH + ' ' + yourUserdata.userinfo.User_LastNameTH + ')';
+  function doDisplayUserFullName(userinfo) {
+    let userFullNameTH = userinfo.userinfo.User_NameTH + ' ' + userinfo.userinfo.User_LastNameTH;
+    let userFullNameEN = userinfo.userinfo.User_NameEN + ' ' + userinfo.userinfo.User_LastNameEN;
 
-  $('#UserInfoMenu').empty().append($('<span>' + userFullName + '</span>'));
+    let userFullName = undefined;
+    if (userFullNameTH !== '') {
+      userFullName = userFullNameTH;
+    } else {
+      userFullName = userFullNameEN;
+    }
+
+    $('#UserInfoMenu').empty().append($('<span>' + userFullName + '</span>'));
+  }
+
+  doDisplayUserFullName(yourUserdata);
+
   $('#UserInfoMenu').css({'color': 'white'});
   $('#UserInfoMenu').hover(()=>{$('#UserInfoMenu').css({'color': 'black'})}, ()=>{$('#UserInfoMenu').css({'color': 'white'})});
 

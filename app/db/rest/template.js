@@ -68,7 +68,7 @@ app.post('/select/(:templateId)', (req, res) => {
       if (ur.length > 0){
         try {
           const templateId = req.params.templateId;
-          const template = await Template.findAll({attributes: ['Content'], where: {id: templateId}});
+          const template = await Template.findAll({attributes: ['id', 'Name', 'Content'], where: {id: templateId}, order: [['id', 'ASC']]});
           //res.json({status: {code: 200}, types: types});
           //log.info('Result=> ' + JSON.stringify(types));
           res.json({ status: {code: 200}, Record: template});

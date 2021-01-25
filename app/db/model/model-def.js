@@ -72,6 +72,9 @@ const RadUserInfoDef = {
 			},
 			User_Hospitals : {
 				type: Sequelize.JSON
+			},
+			User_Profile : {
+				type: Sequelize.JSON
 			}
 		};
 

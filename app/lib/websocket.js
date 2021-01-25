@@ -23,6 +23,7 @@ function RadconWebSocketServer (arg, log) {
 		log.info(wssPath);
 		ws.id = wssPath[(wssPath.length -2)];
 		ws.hospitalId = wssPath[(wssPath.length -1)];
+		ws.counterping = 0;
 		let connectType;
 		if (wssQuery) {
 			let queries = wssQuery.split('&');
@@ -132,6 +133,9 @@ function RadconWebSocketServer (arg, log) {
 						let resultData = {type: 'callzoomback', result: data.result};
 						$this.selfSendMessage(ws, resultData, sendBackTo);
 					break;
+					case "reset":
+						ws.counterping = 0;
+					break;
 				}
 			} else {
 				ws.send(JSON.stringify({type: 'error', message: 'Your command invalid type.'}));
@@ -141,13 +145,18 @@ function RadconWebSocketServer (arg, log) {
 		ws.isAlive = true;
 
 		ws.on('pong', () => {
-			//log.info(ws.id + ' => On Pong have state => ' + ws.readyState);
+			ws.counterping += 1;
 			ws.isAlive = true;
+			ws.send(JSON.stringify({type: 'ping', counterping: ws.counterping, datetime: new Date()}));
 		});
 
-		ws.on('close', function(ws, req) {
-			//log.info(`WS Conn Url : ${req.url} Close.`);
+		ws.on('close', async function(ws, req) {
 			log.info(`WS Conn Url : ${ws.id} Close.`);
+			let socketUsername = ws.id;
+			let anotherSockets = await $this.clients.filter((client) =>{
+				if (client.id !== socketUsername) return ws;
+			});
+			$this.clients = anotherSockets
 		});
 
 	});
@@ -155,11 +164,10 @@ function RadconWebSocketServer (arg, log) {
 	setInterval(() => {
 		wss.clients.forEach((ws) => {
 			if (!ws.isAlive) return ws.terminate();
-			//ws.isAlive = false;
-			//log.info(ws.id +' => Start Ping have state => ' + ws.readyState);
+			log.info('Start Ping');
 			ws.ping(null, false, true);
 		});
-	}, 85000);
+	}, 60000);
 
 	this.findUserSocket = function(fromWs, username) {
 		return new Promise(async function(resolve, reject) {
@@ -207,10 +215,23 @@ function RadconWebSocketServer (arg, log) {
 			if (userSockets.length > 0) {
 				await userSockets.forEach((socket, i) => {
 					socket.send(JSON.stringify(message));
+					socket.counterping = 0;
 				});
 				resolve(true);
 			} else {
 				log.error('sendMessage::Can not find socket of ' + sendto);
+				resolve(false);
+			}
+		});
+	}
+
+	this.getPingCounter = function(username){
+		return new Promise(async function(resolve, reject) {
+			let userSockets = await $this.filterUserSocket(username);
+			if (userSockets.length > 0) {
+				resolve(userSockets[0].counterping);
+			} else {
+				log.error('getPingCounter::Can not find socket of ' + username);
 				resolve(false);
 			}
 		});

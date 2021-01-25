@@ -390,7 +390,7 @@ module.exports = function ( jq ) {
   const apiconnector = require('./apiconnect.js')($);
 
 	const caseReadWaitStatus = [1];
-	const caseResultWaitStatus = [2, 8, 9];
+	const caseResultWaitStatus = [2, 8, 9, 13];
 	const caseNegativeStatus = [3,4,7];
 	const caseReadSuccessStatus = [5];
 	const caseAllStatus = [1,2,3,4,5,6,7];
@@ -832,6 +832,7 @@ module.exports = function ( jq ) {
   				let yourUserdata = JSON.parse(localStorage.getItem('userdata'));
   				yourUserdata.userinfo = newUserInfo;
   				localStorage.setItem('userdata', JSON.stringify(yourUserdata));
+					doDisplayUserFullName(yourUserdata);
   				$.notify("บันทึกการแก้ไขจ้อมูลของคุณ่เข้าสู่ระบบสำเร็จ", "success");
   				$("#dialog").find('#CloseUserProfile-Cmd').click();
   			});
@@ -881,6 +882,9 @@ module.exports = function ( jq ) {
   		let yourLineIDFrag = createFormFragment('UserLineID', 'Line ID', yourUserdata.userinfo.User_LineID);
   		$(yourLineIDFrag).appendTo($(table));
 
+			let yourDefaultDownloadPathFrag = createFormFragment('UserPathRadiant', 'โฟลเดอร์ดาวน์โหลด Dicom', yourUserdata.userinfo.User_PathRadiant);
+  		$(yourDefaultDownloadPathFrag).appendTo($(table));
+
   		$('#UserProfileBox').empty().append($(table));
   		$(".modal-footer").css('text-align', 'center');
   		$("#SaveUserProfile-Cmd").click((evt)=>{
@@ -892,6 +896,7 @@ module.exports = function ( jq ) {
   			let newEmail = $(table).find('#UserEmail').val();
   			let newPhone = $(table).find('#UserPhone').val();
   			let newLineID = $(table).find('#UserLineID').val();
+				let newPathRadiant = $(table).find('#UserPathRadiant').val();
   			if (newNameEN === '') {
   				$(table).find('#UserNameEN').css('border', '1px solid red');
   				return;
@@ -911,9 +916,13 @@ module.exports = function ( jq ) {
   				$(table).find('#UserLastNameTH').css('border', '');
   				$(table).find('#UserEmial').css('border', '1px solid red');
   				return;
+				} else if (newPathRadiant	 === '') {
+  				$(table).find('#UserEmial').css('border', '');
+  				$(table).find('#UserPathRadiant').css('border', '1px solid red');
+  				return;
   			} else {
-  				$(table).find('#UserEmail').css('border', '');
-  				let yourNewUserInfo = {User_NameEN: newNameEN, User_LastNameEN: newLastNameEN, User_NameTH: newNameTH, User_LastNameTH: newLastNameTH, User_Email: newEmail, User_Phone: newPhone, User_LineID: newLineID};
+  				$(table).find('#UserPathRadiant').css('border', '');
+  				let yourNewUserInfo = {User_NameEN: newNameEN, User_LastNameEN: newLastNameEN, User_NameTH: newNameTH, User_LastNameTH: newLastNameTH, User_Email: newEmail, User_Phone: newPhone, User_LineID: newLineID, User_PathRadiant: newPathRadiant};
   				yourNewUserInfo.userId = yourUserdata.id;
   				yourNewUserInfo.infoId = yourUserdata.userinfo.id;
   				yourNewUserInfo.usertypeId = yourUserdata.usertype.id;
@@ -1287,6 +1296,14 @@ module.exports = function ( jq ) {
 		alwaysLowered = false;
 	}
 
+	const doResetPingCounter = function(){
+		if ((wsm.readyState == 0) || (wsm.readyState == 1)){
+			wsm.send(JSON.stringify({type: 'reset', what: 'pingcounter'}));
+		} else {
+			$.notify("คุณไม่อยู่ในสถานะการเชื่อมต่อกับเซิร์ฟเวอร์ โปรดรีเฟรช (F5) หรือ Logout แล้ว Login ใหม่ อีกครั้ง", "warn");
+		}
+	}
+
 	const doConnectWebsocketMaster = function(username, usertype, hospitalId, connecttype){
 	  const hostname = window.location.hostname;
 	  const port = window.location.port;
@@ -1409,12 +1426,13 @@ module.exports = function ( jq ) {
 		base64ToBlob,
 		windowMinimize,
 		windowMaximize,
+		doResetPingCounter,
 		doConnectWebsocketMaster,
 		doConnectWebsocketLocal
 	}
 }
 
-},{"../../radio/mod/websocketmessage.js":13,"./websocketmessage.js":6}],6:[function(require,module,exports){
+},{"../../radio/mod/websocketmessage.js":14,"./websocketmessage.js":6}],6:[function(require,module,exports){
 /* websocketmessage.js */
 module.exports = function ( jq, wsLocal ) {
 	const $ = jq;
@@ -1521,6 +1539,7 @@ const newcase = require('./mod/newcaselib.js')($);
 const acccase = require('./mod/acccaselib.js')($);
 const searchcase = require('./mod/searchcaselib.js')($);
 const opencase = require('./mod/opencase.js')($);
+const template = require('./mod/templatelib.js')($);
 
 var noti, wsm;
 
@@ -1633,6 +1652,7 @@ function doLoadMainPage(){
 
 	let countdownclockPluginUrl = "../setting/plugin/jquery-countdown-clock-plugin.js";
 	let controlPagePlugin = "../setting/plugin/jquery-controlpage-plugin.js"
+  let readystatePlugin = "../setting/plugin/jqury-readystate-plugin.js"
 
 	$('head').append('<script src="' + jqueryUiJsUrl + '"></script>');
 	$('head').append('<link rel="stylesheet" href="' + jqueryUiCssUrl + '" type="text/css" />');
@@ -1643,7 +1663,9 @@ function doLoadMainPage(){
 
 	$('head').append('<script src="' + countdownclockPluginUrl + '"></script>');
 	$('head').append('<script src="' + controlPagePlugin + '"></script>');
+  $('head').append('<script src="' + readystatePlugin + '"></script>');
 
+  $('head').append('<link rel="stylesheet" href="../case/css/scanpart.css" type="text/css" />');
   $('body').append($('<div id="overlay"><div class="loader"></div></div>'));
 
   $('body').loading({overlay: $("#overlay"), stoppable: true});
@@ -1668,24 +1690,28 @@ function doLoadMainPage(){
 		$('#Menu').load('form/menu.html', function(){
       $(document).on('openedituserinfo', (evt, data)=>{
 				userinfo.doShowUserProfile();
+        util.doResetPingCounter();
 			});
 			$(document).on('userlogout', (evt, data)=>{
 				doUserLogout();
 			});
 			$(document).on('openhome', (evt, data)=>{
         doLoadDefualtPage();
+        util.doResetPingCounter();
 			});
       $(document).on('opennewstatuscase', async (evt, data)=>{
         let newcaseTitlePage = newcase.doCreateNewCaseTitlePage();
         $(".mainfull").empty().append($(newcaseTitlePage));
         let newcasePage = await newcase.doCreateNewCasePage();
         $(".mainfull").append($(newcasePage));
+        util.doResetPingCounter();
       });
       $(document).on('openacceptedstatuscase', async (evt, data)=>{
         let acccaseTitlePage = acccase.doCreateAccCaseTitlePage();
         $(".mainfull").empty().append($(acccaseTitlePage));
         let acccasePage = await acccase.doCreateAccCasePage();
         $(".mainfull").append($(acccasePage));
+        util.doResetPingCounter();
       });
       $(document).on('opensearchcase', async (evt, data)=>{
         $('body').loading('start');
@@ -1708,16 +1734,24 @@ function doLoadMainPage(){
         } else {
           $(".mainfull").append('<h3>ระบบค้นหาเคสขัดข้อง โปรดแจ้งผู้ดูแลระบบ</h3>');
         }
+        util.doResetPingCounter();
       });
       $(document).on('opencase', async (evt, data)=>{
         let opencaseTitlePage = acccase.doCreateAccCaseTitlePage();
         $(".mainfull").empty().append($(opencaseTitlePage));
         let opencasePage = await opencase.doCreateOpenCasePage(data.caseId);
         $(".mainfull").append($(opencasePage));
+        util.doResetPingCounter();
       });
-
+      $(document).on('opentemplatedesign', async (evt, data)=>{
+        let templateTitlePage = template.doCreateTemplateTitlePage();
+        $(".mainfull").empty().append($(templateTitlePage));
+        let templatePage = await template.doCreateTemplatePage();
+        $(".mainfull").append($(templatePage));
+      });
       $(document).on('defualsettingschange', (evt, data)=>{
-				doUpdateDefualSeeting(data.key, data.value)
+				doUpdateDefualSeeting(data.key, data.value);
+        util.doResetPingCounter();
 			});
 
 			doUseFullPage();
@@ -1778,7 +1812,7 @@ module.exports = {
 	doGetWsm
 }
 
-},{"../case/mod/apiconnect.js":1,"../case/mod/commonlib.js":2,"../case/mod/userinfolib.js":3,"../case/mod/userprofilelib.js":4,"../case/mod/utilmod.js":5,"./mod/acccaselib.js":8,"./mod/newcaselib.js":9,"./mod/opencase.js":11,"./mod/searchcaselib.js":12,"./mod/welcomelib.js":14,"jquery":15}],8:[function(require,module,exports){
+},{"../case/mod/apiconnect.js":1,"../case/mod/commonlib.js":2,"../case/mod/userinfolib.js":3,"../case/mod/userprofilelib.js":4,"../case/mod/utilmod.js":5,"./mod/acccaselib.js":8,"./mod/newcaselib.js":9,"./mod/opencase.js":11,"./mod/searchcaselib.js":12,"./mod/templatelib.js":13,"./mod/welcomelib.js":15,"jquery":16}],8:[function(require,module,exports){
 /* acccaselib.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -2310,6 +2344,8 @@ module.exports = function ( jq ) {
 	      var fullNameENRes = await common.getPatientFullNameEN(casePatientId);
 				var patientFullNameEN = fullNameENRes.fullNameEN;
 	      patientFullNameEN.split(' ').join('_');
+				patientFullNameEN = patientFullNameEN.trim();
+				console.log(patientFullNameEN + '*');
 	      var dicomFilename = patientFullNameEN + '-' + casedate + '.zip';
 				var pom = document.createElement('a');
 				pom.setAttribute('href', response.link);
@@ -2344,14 +2380,15 @@ module.exports = function ( jq ) {
 		const main = require('../main.js');
 		const userdata = JSON.parse(main.doGetUserData());
 		const defaultDownloadPath = userdata.userinfo.User_PathRadiant;
-		let thirdPartyLink = 'radiant://?n=ZIPARCHIVE.zip&v=%22';
+		//const defaultDownloadPath = 'C:/Users/Administrator/Downloads';
+		let thirdPartyLink = 'radiant://?n=f&v=';
 		if (downloadDicomList.length > 0) {
 			if (downloadDicomList.length <= 3) {
 				downloadDicomList.forEach((item, i) => {
 					if (i < (downloadDicomList.length-1)) {
-						thirdPartyLink += defaultDownloadPath + '/' + item + '%22&v=%22';
+						thirdPartyLink += defaultDownloadPath + '/' + item + '&v=';
 					} else {
-						thirdPartyLink += defaultDownloadPath + '/' + item + '%22';
+						thirdPartyLink += defaultDownloadPath + '/' + item;
 					}
 				});
 				console.log(thirdPartyLink);
@@ -2607,17 +2644,97 @@ module.exports = function ( jq ) {
 	}
 
 	const onAddNewTemplateCmdClick = function(evt) {
+		let jqtePluginStyleUrl = '../../lib/jqte/jquery-te-1.4.0.css';
+		$('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
+		$('head').append('<link rel="stylesheet" href="../case/css/scanpart.css" type="text/css" />');
+		let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
+		$('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
+
 		let saveTypeOptionBox = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
 
 		let selectSaveTypeOptionGuide = $('<div style="display: table-row; width: 100%;"></div>');
 		$(selectSaveTypeOptionGuide).appendTo($(saveTypeOptionBox));
-		$(selectSaveTypeOptionGuide).append($('<div style="display: table-cell; padding: 4px; background-color: #02069B; color: white;"><img src="/images/figger-right-icon.png" width="25px" height="auto"/></div>'));
-		let guideCell = $('<div style="display: table-cell; padding: 4px; background-color: #02069B; vertical-align: middle; text-align: center;"></div>');
-		$(guideCell).append($('<span>โปรดตั้งชื่อ Template ก่อนเพิ่มเป็นรายการใหม่</span>'));
+		$(selectSaveTypeOptionGuide).append($('<div style="display: table-cell; padding: 4px; background-color: #02069B; vertical-align: middle;"><img src="/images/figger-right-icon.png" width="25px" height="auto"/></div>'));
+		let guideCell = $('<div style="display: table-cell; padding: 4px; background-color: #02069B; vertical-align: middle; text-align: left;"></div>');
+		$(guideCell).append($('<span style="color: white;">โปรดตั้งชื่อและแก้ไขข้อมูล Template ก่อนเพิ่มเป็นรายการ Template ใหม่</span>'));
 		$(guideCell).appendTo($(selectSaveTypeOptionGuide));
+
+		let templateNameRow = $('<div style="display: table-row; width: 100%;"></div>');
+		$(templateNameRow).appendTo($(saveTypeOptionBox));
+		let labelNameCell = $('<div style="display: table-cell; padding: 4px;"><span>ขื่อ</span></div>');
+		$(labelNameCell).appendTo($(templateNameRow));
+		let inputNameCell = $('<div style="display: table-cell; padding: 4px;"></div>');
+		$(inputNameCell).appendTo($(templateNameRow));
+		let inputName = $('<input type="text"/>');
+		$(inputName).appendTo($(inputNameCell));
+
+		let templateContentRow = $('<div style="display: table-row; width: 100%;"></div>');
+		$(templateContentRow).appendTo($(saveTypeOptionBox));
+		let labelContentCell = $('<div style="display: table-cell; padding: 4px;"><span>ข้อมูล</span></div>');
+		$(labelContentCell).appendTo($(templateContentRow));
+		let inputContentCell = $('<div style="display: table-cell; padding: 4px;"></div>');
+		$(inputContentCell).appendTo($(templateContentRow));
+		let simpleEditor = $('<input type="text" id="NewSimpleEditor"/>');
+		$(simpleEditor).appendTo($(inputContentCell));
+		$(simpleEditor).jqte();
+		let yourTemplateContent = $('#SimpleEditor').val();
+		$(saveTypeOptionBox).find('#NewSimpleEditor').jqteVal(yourTemplateContent);
+		$(saveTypeOptionBox).find('.jqte_editor').css({ height: '260px' });
+
+		let cmdRow = $('<div style="display: table-row; width: 100%; text-align: center;"></div>');
+		$(cmdRow).appendTo($(saveTypeOptionBox));
+		let dummyCell = $('<div style="display: table-cell; padding: 4px;"></div>');
+		$(dummyCell).appendTo($(cmdRow))
+		let cmdCell = $('<div style="display: table-cell; padding: 4px;"></div>');
+		$(cmdCell).appendTo($(cmdRow))
+		let okCmd = $('<input type="button" value=" ตกลง "/>');
+		$(okCmd).appendTo($(cmdCell));
+		$(cmdCell).append($('<span>  </span>'));
+		let cancelCmd = $('<input type="button" value=" ยกเลิก "/>');
+		$(cancelCmd).appendTo($(cmdCell));
+		$(cancelCmd).on('click', (evt)=>{
+			$('#quickreply').empty();
+			$('#quickreply').removeAttr('style');
+		});
+		$(okCmd).on('click', async (evt)=>{
+			let templateName = $(inputName).val();
+			let templateContent = $(saveTypeOptionBox).find('#NewSimpleEditor').val();
+			if(templateName === '') {
+				$(inputName).css('border', '1px solid red');
+				$.notify("โปรดตั้งชื่อ Template ก่อนครับ", "warn");
+			} else if(templateContent === '') {
+				$(inputName).css('border', '');
+				$(saveTypeOptionBox).find('#SimpleEditor').css('border', '1px solid red');
+				$.notify("โปรดใส่ข้อมูล Template ก่อนครับ", "warn");
+			} else {
+				$(saveTypeOptionBox).find('#SimpleEditor').css('border', '');
+				const main = require('../main.js');
+				let yourTemplate = templateContent;
+				let userdata = JSON.parse(main.doGetUserData());
+				let userId = userdata.id;
+				let rqParams = {userId: userId, data: {Name: templateName, Content: yourTemplate}};
+				let callAddTemplateUrl = '/api/template/add';
+				let response = await common.doCallApi(callAddTemplateUrl, rqParams);
+				if (response.status.code == 200) {
+					$.notify('บันทึกข้อมูลสำเร็จ', "success");
+					let yourTemplates = await doLoadTemplateList(userId);
+					$("#TemplateSelector").empty();
+					$("#TemplateSelector").append('<option value="0">เลือก Template ของฉัน</option>');
+					if (yourTemplates.Options.length > 0) {
+						yourTemplates.Options.forEach((item, i) => {
+							$("#TemplateSelector").append('<option value="' + item.Value + '">' + item.DisplayText + '</option>');
+						});
+					}
+					$(cancelCmd).click();
+				} else {
+					$.notify('ไม่สามารถบันทึกข้อมูลได้ในขณะนี้', "error");
+				}
+			}
+		});
 
 		$('#quickreply').css(quickReplyDialogStyle);
 		$(saveTypeOptionBox).css(quickReplyContentStyle);
+		$(saveTypeOptionBox).css({'width' : '720px', 'max-height': '320px', 'margin': '10% auto'});
 		$('#quickreply').append($(saveTypeOptionBox));
 	}
 
@@ -2742,7 +2859,7 @@ module.exports = function ( jq ) {
 	}
 
 	const doCreateToggleSwitch = function(patentFullName, backwardView) {
-		let switchBox = $('<div></div>')
+		let switchBox = $('<div></div>');
 		let toggleSwitch = $('<label class="switch"></label>');
 		let input = $('<input type="checkbox">');
 		let slider = $('<span class="slider"></span>');
@@ -2943,7 +3060,6 @@ module.exports = function ( jq ) {
 
       let simpleEditorBox = $('<div></div>');
       let simpleEditor = $('<input type="text" id="SimpleEditor"/>');
-      $(simpleEditor).css({ 'min-height': '350px' });
       $(simpleEditor).appendTo($(simpleEditorBox));
 			keytypecounter = 0;
 			backupDraftCounter = 0;
@@ -2994,11 +3110,15 @@ module.exports = function ( jq ) {
 					if (resType === 'draft') {
 						let cloudUpdatedAt = new Date(draftResponseRes.Record[0].updatedAt);
 						let draftBackup = doRestoreDraft();
-						let localUpdateAt = new Date(draftBackup.backupAt);
-						if (localUpdateAt.getTime() > cloudUpdatedAt.getTime()) {
-							let yourAnwser = confirm('พบว่ามีข้อมูลผลอ่านแบ็คอัพที่ Local ปรับปรุงล่าสุดกว่าที่ Server\nต้องการให้กู้ข้อมูลผลอ่านจาก Lacal มาแทนที่หรือไม่');
-							if (yourAnwser) {
-								$(summary).find('#SimpleEditor').jqteVal(draftBackup.content);
+						if (draftBackup) {
+							let localUpdateAt = new Date(draftBackup.backupAt);
+							if (localUpdateAt.getTime() > cloudUpdatedAt.getTime()) {
+								let yourAnwser = confirm('พบว่ามีข้อมูลผลอ่านแบ็คอัพที่ Local ปรับปรุงล่าสุดกว่าที่ Server\nต้องการให้กู้ข้อมูลผลอ่านจาก Lacal มาแทนที่หรือไม่');
+								if (yourAnwser) {
+									$(summary).find('#SimpleEditor').jqteVal(draftBackup.content);
+								} else {
+									$(summary).find('#SimpleEditor').jqteVal(draftResponseRes.Record[0].Response_Text);
+								}
 							} else {
 								$(summary).find('#SimpleEditor').jqteVal(draftResponseRes.Record[0].Response_Text);
 							}
@@ -3247,7 +3367,10 @@ module.exports = function ( jq ) {
 			if (cando.status.code == 200) {
 				let cmdRow = $('<div class="cmd-row" style="display: tbable-row; width: 100%;"></div>');
 				$(cmdRow).append($('<div style="display: table-cell; border-color: transparent;"></div>'));
-				let cmdCell = $('<div style="display: table-cell; position: relative; left:0px; width: 100%; border: 1px solid black; background-color: #ccc; text-align: right;"></div>');
+				let mainBoxWidth = parseInt($(".mainfull").css('width'), 10);
+				console.log(mainBoxWidth);
+				// left: 0px; width: 100%;
+				let cmdCell = $('<div style="display: table-cell; position: absolute; width: ' + (mainBoxWidth-8) + 'px; border: 1px solid black; background-color: #ccc; text-align: right;"></div>');
 				$(cmdRow).append($(cmdCell));
 				await cando.next.actions.forEach((item, i) => {
 					let iconCmd = doCreateCaseCmd(item, caseItem.case.id, (data)=>{
@@ -3643,6 +3766,307 @@ module.exports = function ( jq ) {
 }
 
 },{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../../case/mod/utilmod.js":5,"../main.js":7}],13:[function(require,module,exports){
+/* templatelib.js */
+module.exports = function ( jq ) {
+	const $ = jq;
+
+	const apiconnector = require('../../case/mod/apiconnect.js')($);
+  const util = require('../../case/mod/utilmod.js')($);
+  const common = require('../../case/mod/commonlib.js')($);
+
+  const onAddNewTemplateClick = async function(evt){
+    const addCmd = $(evt.currentTarget);
+    let jqtePluginStyleUrl = '../../lib/jqte/jquery-te-1.4.0.css';
+    $('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
+    $('head').append('<link rel="stylesheet" href="../case/css/scanpart.css" type="text/css" />');
+    let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
+    $('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
+
+    let templateNameBox = $('<div style="width: 100%; text-align: left;"><span>ขื่อ Template:  </span></div>');
+    let templateNameInput = $('<input type="text" id="TemplateName"/>');
+    $(templateNameInput).appendTo($(templateNameBox));
+    let templateViewBox = $('<div style="width: 100%; border: 2px solid grey; background-color: #ccc;"></div>');
+    let simpleEditor = $('<input type="text" id="SimpleEditor"/>');
+    $(simpleEditor).appendTo($(templateViewBox));
+    $(simpleEditor).jqte();
+    $(templateViewBox).find('.jqte_editor').css({ height: '350px' });
+    let templateCmdBar = $('<div style="width: 100%; text-align: center; margin-top: 5px;"></div>');
+
+    let saveCmd = $('<input type="button" value=" Save"/>');
+    $(saveCmd).appendTo($(templateCmdBar));
+    $(saveCmd).data('templateData', templateData);
+    $(templateCmdBar).append($('<span>  </span>'));
+    $(saveCmd).on('click', onSaveNewCmdClick);
+    let cancelCmd = $('<input type="button" value=" Cancel "/>');
+    $(cancelCmd).appendTo($(templateCmdBar));
+    $(cancelCmd).on('click',(evt)=>{$(cancelCmd).trigger('opentemplatedesign')});
+
+    $(".mainfull").empty().append($(templateNameBox)).append($(templateViewBox)).append($(templateCmdBar));
+  }
+
+  const onViewCmdClick = async function(evt) {
+    const viewCmd = $(evt.currentTarget);
+		const templateData = $(viewCmd).data('templateData');
+    let rqParams = {};
+    let apiUrl = '/api/template/select/' + templateData.templateId;
+    let response = await common.doCallApi(apiUrl, rqParams);
+    let templateNameBox = $('<div style="width: 100%; text-align: center;"></div>');
+    let templateViewBox = $('<div style="width: 100%; border: 2px solid grey; background-color: #ccc;"></div>');
+    let templateCmdBar = $('<div style="width: 100%; text-align: center; margin-top: 5px;"></div>');
+    if (response.Record.length > 0) {
+      $(templateNameBox).append($('<h4>' + response.Record[0].Name + '</h4>'));
+      let thisTemplate = response.Record[0].Content;
+      $(templateViewBox).html(thisTemplate);
+      let editCmd = $('<input type="button" value=" Edit"/>');
+      $(editCmd).appendTo($(templateCmdBar));
+      $(editCmd).data('templateData', templateData);
+      $(templateCmdBar).append($('<span>  </span>'));
+      $(editCmd).on('click', onEditCmdClick);
+      let backCmd = $('<input type="button" value=" Back "/>');
+      $(backCmd).appendTo($(templateCmdBar));
+      $(backCmd).on('click',(evt)=>{$(backCmd).trigger('opentemplatedesign')});
+    } else {
+      $(templateViewBox).append($('<span>ไม่พบรายการ Template รายการนี้</span>'));
+    }
+    $(".mainfull").empty().append($(templateNameBox)).append($(templateViewBox)).append($(templateCmdBar));
+  }
+
+  const onEditCmdClick = async function(evt) {
+    const editCmd = $(evt.currentTarget);
+		const templateData = $(editCmd).data('templateData');
+
+    let jqtePluginStyleUrl = '../../lib/jqte/jquery-te-1.4.0.css';
+    $('head').append('<link rel="stylesheet" href="' + jqtePluginStyleUrl + '" type="text/css" />');
+    $('head').append('<link rel="stylesheet" href="../case/css/scanpart.css" type="text/css" />');
+    let jqtePluginScriptUrl = '../../lib/jqte/jquery-te-1.4.0.min.js';
+    $('head').append('<script src="' + jqtePluginScriptUrl + '"></script>');
+
+    let rqParams = {};
+    let apiUrl = '/api/template/select/' + templateData.templateId;
+    let response = await common.doCallApi(apiUrl, rqParams);
+    let templateNameBox = $('<div style="width: 100%; text-align: left;"><span>ขื่อ Template:  </span></div>');
+    let templateNameInput = $('<input type="text" id="TemplateName"/>');
+    $(templateNameInput).appendTo($(templateNameBox));
+    let templateViewBox = $('<div style="width: 100%; border: 2px solid grey; background-color: #ccc;"></div>');
+    let simpleEditor = $('<input type="text" id="SimpleEditor"/>');
+    $(simpleEditor).appendTo($(templateViewBox));
+    $(simpleEditor).jqte();
+    $(templateViewBox).find('.jqte_editor').css({ height: '350px' });
+    let templateCmdBar = $('<div style="width: 100%; text-align: center; margin-top: 5px;"></div>');
+    if (response.Record.length > 0) {
+      $(templateNameInput).val(response.Record[0].Name);
+      $(templateViewBox).find('#SimpleEditor').jqteVal(response.Record[0].Content);
+      let saveCmd = $('<input type="button" value=" Save"/>');
+      $(saveCmd).appendTo($(templateCmdBar));
+      $(saveCmd).data('templateData', templateData);
+      $(templateCmdBar).append($('<span>  </span>'));
+      $(saveCmd).on('click', onSaveEditCmdClick);
+      let cancelCmd = $('<input type="button" value=" Cancel "/>');
+      $(cancelCmd).appendTo($(templateCmdBar));
+      $(cancelCmd).on('click',(evt)=>{$(cancelCmd).trigger('opentemplatedesign')});
+    } else {
+      $(templateViewBox).append($('<span>ไม่พบรายการ Template รายการนี้</span>'));
+    }
+    $(".mainfull").empty().append($(templateNameBox)).append($(templateViewBox)).append($(templateCmdBar));
+  }
+
+  const onDeleteCmdClick = async function(evt) {
+    const deleteCmd = $(evt.currentTarget);
+		const templateData = $(deleteCmd).data('templateData');
+    let yourAnswer = confirm('โปรดยืนยันการลบ Template โดยคลิก ตกลง หรือ OK');
+    if (yourAnswer === true) {
+      let callDeleteTemplateUrl = '/api/template/delete';
+      let templateId = templateData.templateId;
+      let rqParams = {id: templateId}
+      let response = await common.doCallApi(callDeleteTemplateUrl, rqParams);
+      if (response.status.code == 200) {
+        $.notify("ลบรายการ Template สำเร็จ", "success");
+        $(deleteCmd).trigger('opentemplatedesign')
+      } else {
+        $.notify("ลบรายการ Template ขัดข้อง", "`error`");
+      }
+    }
+  }
+
+  const onSaveNewCmdClick = async function(evt){
+    const saveEditCmd = $(evt.currentTarget);
+		const templateData = $(saveEditCmd).data('templateData');
+    let templaeName = $('#TemplateName').val();
+    let templateContent = $('#SimpleEditor').val();
+    let templateId = templateData.templateId;
+    if (templaeName === '') {
+      $.notify("ชื่อ Template ต้องไม่ว่าง", "warn");
+      $('#TemplateName').css('border', '1px solid red');
+    } else if (templateContent === ''){
+      $('#TemplateName').css('border', '');
+      $.notify("ข้อมูล Template ต้องไม่ว่าง", "warn");
+      $('#SimpleEditor').css('border', '1px solid red;');
+    } else {
+      $('#SimpleEditor').css('border', '');
+      const main = require('../main.js');
+			let userdata = JSON.parse(main.doGetUserData());
+			let radioId = userdata.id;
+
+      let callAddTemplateUrl = '/api/template/add';
+      let rqParams = {data: {Name: templaeName, Content: templateContent}, userId: radioId};
+      let response = await common.doCallApi(callAddTemplateUrl, rqParams);
+      if (response.status.code == 200) {
+        $.notify("บันทึก Template สำเร็จ", "success");
+        $(saveEditCmd).trigger('opentemplatedesign')
+      } else {
+        $.notify("บันทึก Template ขัดข้อง", "`error`");
+      }
+    }
+  }
+
+  const onSaveEditCmdClick = async function(evt){
+    const saveEditCmd = $(evt.currentTarget);
+		const templateData = $(saveEditCmd).data('templateData');
+    let templaeName = $('#TemplateName').val();
+    let templateContent = $('#SimpleEditor').val();
+    let templateId = templateData.templateId;
+    if (templaeName === '') {
+      $.notify("ชื่อ Template ต้องไม่ว่าง", "warn");
+      $('#TemplateName').css('border', '1px solid red');
+    } else if (templateContent === ''){
+      $('#TemplateName').css('border', '');
+      $.notify("ข้อมูล Template ต้องไม่ว่าง", "warn");
+      $('#SimpleEditor').css('border', '1px solid red;');
+    } else {
+      $('#SimpleEditor').css('border', '');
+      let callUpdateTemplateUrl = '/api/template/update';
+      let rqParams = {data: {Name: templaeName, Content: templateContent}, id: templateId};
+      let response = await common.doCallApi(callUpdateTemplateUrl, rqParams);
+      if (response.status.code == 200) {
+        $.notify("บันทึก Template สำเร็จ", "success");
+        $(saveEditCmd).trigger('opentemplatedesign')
+      } else {
+        $.notify("บันทึก Template ขัดข้อง", "`error`");
+      }
+    }
+  }
+
+  const doCreateTemplateTitlePage = function() {
+    const templateTitle = 'Template';
+    let templateTitleBox = $('<div class="title-content"></div>');
+    let logoPage = $('<img src="/images/format-design-icon.png" width="40px" height="auto" style="float: left;"/>');
+    $(logoPage).appendTo($(templateTitleBox));
+    let titleText = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>' + templateTitle + '</h3></div>');
+    $(titleText).appendTo($(templateTitleBox));
+    return $(templateTitleBox);
+  }
+
+  const doCallMyTemplate = function() {
+    return new Promise(async function(resolve, reject) {
+      const main = require('../main.js');
+			let userdata = JSON.parse(main.doGetUserData());
+			let radioId = userdata.id;
+			let rqParams = {};
+			let apiUrl = '/api/template/options/' + radioId;
+			try {
+				let response = await common.doCallApi(apiUrl, rqParams);
+        resolve(response);
+			} catch(e) {
+	      reject(e);
+    	}
+    });
+  }
+
+  const doCreateHeaderRow = function(){
+    let headerRow = $('<div style="display: table-row; width: 100%;"></div>');
+
+		let headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
+		$(headColumn).append('<span>#</span>');
+		$(headColumn).appendTo($(headerRow));
+
+    headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
+		$(headColumn).append('<span>ขื่อ Template</span>');
+		$(headColumn).appendTo($(headerRow));
+
+    headColumn = $('<div style="display: table-cell; text-align: center;" class="header-cell"></div>');
+		$(headColumn).append('<span>คำสั่ง</span>');
+		$(headColumn).appendTo($(headerRow));
+
+    return $(headerRow);
+  }
+
+  const doCreateTemplateItemRow = function(i, tmItem){
+    return new Promise(function(resolve, reject) {
+      const templateData = {templateId: tmItem.Value};
+      let tmRow = $('<div style="display: table-row; width: 100%;"></div>');
+
+      let tmCell = $('<div style="display: table-cell; text-align: center;"></div>');
+  		$(tmCell).append('<span>' + (i+1) + '</span>');
+  		$(tmCell).appendTo($(tmRow));
+
+      tmCell = $('<div style="display: table-cell; text-align: left;"></div>');
+  		$(tmCell).append('<span>' + tmItem.DisplayText + '</span>');
+  		$(tmCell).appendTo($(tmRow));
+
+      tmCell = $('<div style="display: table-cell; text-align: center;"></div>');
+  		$(tmCell).appendTo($(tmRow));
+
+      let viewCmd = $('<input type="button" value=" View "/>');
+      $(viewCmd).appendTo($(tmCell));
+      $(viewCmd).data('templateData', templateData);
+      $(viewCmd).on('click', onViewCmdClick);
+      $(tmCell).append($('<span>  </span>'));
+
+      let editCmd = $('<input type="button" value=" Edit "/>');
+      $(editCmd).appendTo($(tmCell));
+      $(editCmd).data('templateData', templateData);
+      $(editCmd).on('click', onEditCmdClick);
+      $(tmCell).append($('<span>  </span>'));
+
+      let deleteCmd = $('<input type="button" value=" Delete "/>');
+      $(deleteCmd).appendTo($(tmCell));
+      $(deleteCmd).data('templateData', templateData);
+      $(deleteCmd).on('click', onDeleteCmdClick);
+
+      resolve($(tmRow));
+    });
+  }
+
+  const doCreateTemplatePage = function(){
+    return new Promise(async function(resolve, reject) {
+      $('body').loading('start');
+      let myTemplatePage = $('<div style="width: 100%;"></div>');
+      let myTemplate = await doCallMyTemplate();
+      let addNewTemplateBox = $('<div style="width: 100%; text-align: right; padding: 4px;"></div>');
+      let addNewTemplateCmd = $('<input type="button" value=" New Template "/>');
+      $(addNewTemplateCmd).appendTo($(addNewTemplateBox));
+      $(addNewTemplateCmd).on('click', onAddNewTemplateClick);
+      let myTemplateView = $('<div style="display: table; width: 100%; border-collapse: collapse;"></div>');
+      let tempalateHearder = doCreateHeaderRow();
+      $(myTemplateView).append($(tempalateHearder));
+      let templateLists = myTemplate.Options;
+      if (templateLists.length > 0) {
+        for (let i=0; i < templateLists.length; i++) {
+          let tmItem = templateLists[i];
+          let tmRow = await doCreateTemplateItemRow(i, tmItem);
+          $(myTemplateView).append($(tmRow));
+        }
+      } else {
+        let notFoundMessage = $('<h3>ไม่พบรายการ Template ของคุณในขณะนี้</h3>')
+        $(myTemplateView).append($(notFoundMessage));
+      }
+
+      $(myTemplatePage).append($(addNewTemplateBox));
+      $(myTemplatePage).append($(myTemplateView));
+      resolve($(myTemplatePage));
+      $('body').loading('stop');
+    });
+  }
+
+  return {
+    doCreateTemplateTitlePage,
+    doCreateHeaderRow,
+    doCallMyTemplate,
+    doCreateTemplatePage
+	}
+}
+
+},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../../case/mod/utilmod.js":5,"../main.js":7}],14:[function(require,module,exports){
 /* websocketmessage.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -3689,7 +4113,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 /* welcomelib.js */
 module.exports = function ( jq ) {
 	const $ = jq;
@@ -3708,6 +4132,10 @@ module.exports = function ( jq ) {
     $(logoPage).appendTo($(homeTitle));
     let titleText = $('<div style="float: left; margin-left: 10px; margin-top: -5px;"><h3>' + welcomeTitle + '</h3></div>');
     $(titleText).appendTo($(homeTitle));
+		let readySwitchBox = $('<div style="float: right; margin-right: 4px;"></div>');
+		let readyOption = {onActionCallback: ()=>{console.log('one');}, offActionCallback: ()=>{console.log('two');} };
+		let readySwitch = $(readySwitchBox).readystate(readyOption);
+		$(homeTitle).append($(readySwitchBox));
     return $(homeTitle);
   }
 
@@ -3739,6 +4167,9 @@ module.exports = function ( jq ) {
         }
       break;
       case 2:
+			case 8:
+      case 9:
+      case 13:
         if (accstatusCases.indexOf(Number(caseId)) < 0) {
           accstatusCases.push(caseId);
         }
@@ -3752,8 +4183,6 @@ module.exports = function ( jq ) {
       case 5:
       case 6:
       case 7:
-      case 8:
-      case 9:
       case 10:
       case 11:
       case 12:
@@ -3776,7 +4205,7 @@ module.exports = function ( jq ) {
 			let rqParams = {userId: userId};
 			rqParams.casestatusIds = [1];
 			let newList = await common.doCallApi(loadUrl, rqParams);
-			rqParams.casestatusIds = [2, 8, 9];
+			rqParams.casestatusIds = [2, 8, 9, 13];
 			let accList = await common.doCallApi(loadUrl, rqParams);
 			resolve({newList, accList});
 		});
@@ -3834,7 +4263,7 @@ module.exports = function ( jq ) {
 	}
 }
 
-},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../main.js":7,"./onrefreshtrigger.js":10}],15:[function(require,module,exports){
+},{"../../case/mod/apiconnect.js":1,"../../case/mod/commonlib.js":2,"../main.js":7,"./onrefreshtrigger.js":10}],16:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.5.1
  * https://jquery.com/
